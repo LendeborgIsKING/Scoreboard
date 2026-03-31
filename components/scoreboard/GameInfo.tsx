@@ -2,13 +2,18 @@
 
 import { motion } from "framer-motion";
 import { useGameStore } from "@/lib/gameStore";
-import { resolveSportConfig, hasFeature } from "@/lib/sportRegistry";
+import {
+  resolveSportConfig,
+  hasFeature,
+  resolveActiveVariant,
+} from "@/lib/sportRegistry";
 import { formatSeconds } from "@/lib/format";
 import { useTimerDisplay } from "@/hooks/useTimerDisplay";
 
 export function GameInfo() {
   const sportId = useGameStore((s) => s.sportId);
   const customSport = useGameStore((s) => s.customSport);
+  const timerVariantId = useGameStore((s) => s.timerVariantId);
   const period = useGameStore((s) => s.period);
   const halfInning = useGameStore((s) => s.halfInning);
   const down = useGameStore((s) => s.down);
@@ -17,6 +22,9 @@ export function GameInfo() {
   const outs = useGameStore((s) => s.outs);
   const timer = useGameStore((s) => s.timer);
   const cfg = resolveSportConfig(sportId, customSport);
+  const activeVariant = resolveActiveVariant(cfg, timerVariantId);
+  const periodLabel =
+    activeVariant?.periodLabel ?? cfg.periodLabel;
   const displaySec = useTimerDisplay();
   const running = timer.running;
   const bigClock = cfg.timerEmphasis;
@@ -26,6 +34,9 @@ export function GameInfo() {
 
   return (
     <div className="flex w-full max-w-4xl flex-col items-center gap-3">
+      {activeVariant && (
+        <p className="text-center text-xs text-zinc-500">{activeVariant.label}</p>
+      )}
       <motion.div
         animate={
           running
@@ -51,7 +62,7 @@ export function GameInfo() {
       <div className="flex flex-wrap items-center justify-center gap-2 text-sm text-zinc-400">
         {(hasFeature(cfg, "periods") || hasFeature(cfg, "innings")) && (
           <span className="rounded-full bg-white/5 px-3 py-1 font-medium text-zinc-200">
-            {cfg.periodLabel} {period}
+            {periodLabel} {period}
             {hasFeature(cfg, "halfInning") && (
               <span className="text-emerald-400/90">
                 {" "}

@@ -17,6 +17,23 @@ export type ScoringAction = {
   value: number;
 };
 
+/** Regulation / format timing — drives quick “apply period” countdowns */
+export type TimerVariant = {
+  id: string;
+  label: string;
+  /** One regulation period length (seconds) for countdown presets (0 = no game clock) */
+  periodSeconds: number;
+  regulationPeriods: number;
+  /** Quarter, Half, Period, Set (display only) */
+  periodLabel: string;
+  /** Overtime / extra period length (optional) */
+  overtimeSeconds?: number;
+  /** Short bullets for UI */
+  hints?: string[];
+  /** Cap period/inning counter for this format (e.g. youth baseball 6) */
+  periodCap?: number;
+};
+
 export type SportConfig = {
   id: string;
   name: string;
@@ -27,6 +44,13 @@ export type SportConfig = {
   maxPeriods?: number;
   /** Hint for timer UX (soccer: emphasize clock) */
   timerEmphasis?: boolean;
+  /** Official formats & times — user picks one; IDs are stable */
+  timerVariants?: TimerVariant[];
+  defaultVariantId?: string;
+  /** Collapsible reference (official times, clock behavior) */
+  rulesReference?: string;
+  /** Hide shot clock UI — use stopwatch manually or rallies only */
+  noGameClock?: boolean;
 };
 
 export type ThemeId = "dark" | "neon" | "classic";
@@ -53,6 +77,7 @@ export interface TimerState {
 export interface GameSnapshot {
   sportId: string;
   customSport: SportConfig | null;
+  timerVariantId: string;
   teamA: TeamState;
   teamB: TeamState;
   period: number;

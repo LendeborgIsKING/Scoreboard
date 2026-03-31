@@ -10,7 +10,12 @@ import type {
   TimerState,
 } from "./types";
 import { BASKETBALL } from "./sportPresets";
-import { resolveSportConfig } from "./sportRegistry";
+import {
+  defaultVariantId,
+  effectiveMaxPeriods,
+  resolveActiveVariant,
+  resolveSportConfig,
+} from "./sportRegistry";
 
 const UNDO_MAX = 40;
 
@@ -36,6 +41,7 @@ function snapshotFrom(
   return {
     sportId: s.sportId,
     customSport: s.customSport,
+    timerVariantId: s.timerVariantId,
     teamA: { ...s.teamA },
     teamB: { ...s.teamB },
     period: s.period,
@@ -61,6 +67,7 @@ export interface GameState extends GameStateSlice {
 interface GameStateSlice {
   sportId: string;
   customSport: SportConfig | null;
+  timerVariantId: string;
   teamA: TeamState;
   teamB: TeamState;
   period: number;
@@ -76,6 +83,7 @@ interface GameStateSlice {
 const initialSlice: GameStateSlice = {
   sportId: BASKETBALL.id,
   customSport: null,
+  timerVariantId: defaultVariantId(BASKETBALL),
   teamA: defaultTeam("HOME", "#22c55e"),
   teamB: defaultTeam("AWAY", "#3b82f6"),
   period: 1,
@@ -116,6 +124,9 @@ type GameStore = GameState & {
   setHypeMode: (v: boolean) => void;
   setTheme: (t: import("./types").ThemeId) => void;
   setControlsCollapsed: (v: boolean) => void;
+  setTimerVariant: (variantId: string) => void;
+  applyOfficialPeriodTimer: () => void;
+  applyOvertimeTimer: () => void;
 };
 
 export const useGameStore = create<GameStore>()(
@@ -142,6 +153,7 @@ export const useGameStore = create<GameStore>()(
         set({
           sportId: prev.sportId,
           customSport: prev.customSport,
+          timerVariantId: prev.timerVariantId,
           teamA: prev.teamA,
           teamB: prev.teamB,
           period: prev.period,
@@ -158,12 +170,72 @@ export const useGameStore = create<GameStore>()(
 
       setSport: (id) => {
         get().pushUndo();
-        set({ sportId: id });
+        const cfg = resolveSportConfig(id, get().customSport);
+        const vid = defaultVariantId(cfg);
+        set({
+          sportId: id,
+          timerVariantId: vid,
+          period: 1,
+        });
       },
 
       setCustomSport: (config) => {
         get().pushUndo();
-        set({ customSport: config, sportId: "custom" });
+        const vid = defaultVariantId(config);
+        set({
+          customSport: config,
+          sportId: "custom",
+          timerVariantId: vid,
+          period: 1,
+        });
+      },
+
+      setTimerVariant: (variantId) => {
+        get().pushUndo();
+        const { sportId, customSport, period } = get();
+        const cfg = resolveSportConfig(sportId, customSport);
+        const cap = effectiveMaxPeriods(cfg, variantId);
+        set({
+          timerVariantId: variantId,
+          period: cap != null ? Math.min(period, cap) : period,
+        });
+      },
+
+      applyOfficialPeriodTimer: () => {
+        get().pushUndo();
+        const { sportId, customSport, timerVariantId } = get();
+        const cfg = resolveSportConfig(sportId, customSport);
+        const v = resolveActiveVariant(cfg, timerVariantId);
+        if (!v || v.periodSeconds <= 0) return;
+        set((state) => ({
+          timer: {
+            ...state.timer,
+            mode: "countdown",
+            countdownFromSeconds: v.periodSeconds,
+            accumulatedMs: 0,
+            running: false,
+            runStartedAt: null,
+          },
+        }));
+      },
+
+      applyOvertimeTimer: () => {
+        get().pushUndo();
+        const { sportId, customSport, timerVariantId } = get();
+        const cfg = resolveSportConfig(sportId, customSport);
+        const v = resolveActiveVariant(cfg, timerVariantId);
+        const ot = v?.overtimeSeconds;
+        if (ot == null || ot <= 0) return;
+        set((state) => ({
+          timer: {
+            ...state.timer,
+            mode: "countdown",
+            countdownFromSeconds: ot,
+            accumulatedMs: 0,
+            running: false,
+            runStartedAt: null,
+          },
+        }));
       },
 
       addScore: (team, actionId) => {
@@ -216,9 +288,9 @@ export const useGameStore = create<GameStore>()(
 
       nextPeriod: () => {
         get().pushUndo();
-        const { sportId, customSport, period } = get();
+        const { sportId, customSport, period, timerVariantId } = get();
         const cfg = resolveSportConfig(sportId, customSport);
-        const max = cfg.maxPeriods;
+        const max = effectiveMaxPeriods(cfg, timerVariantId) ?? cfg.maxPeriods;
         set({
           period: max ? Math.min(period + 1, max) : period + 1,
         });
@@ -270,8 +342,13 @@ export const useGameStore = create<GameStore>()(
 
       resetGame: () => {
         get().pushUndo();
+        const { sportId, customSport } = get();
+        const cfg = resolveSportConfig(sportId, customSport);
         set({
           ...initialSlice,
+          sportId,
+          customSport,
+          timerVariantId: defaultVariantId(cfg),
           teamA: { ...get().teamA, score: 0, fouls: 0 },
           teamB: { ...get().teamB, score: 0, fouls: 0 },
           timer: defaultTimer(),
@@ -388,6 +465,7 @@ export const useGameStore = create<GameStore>()(
       partialize: (state) => ({
         sportId: state.sportId,
         customSport: state.customSport,
+        timerVariantId: state.timerVariantId,
         teamA: state.teamA,
         teamB: state.teamB,
         period: state.period,
@@ -402,6 +480,16 @@ export const useGameStore = create<GameStore>()(
         theme: state.theme,
       }),
       skipHydration: true,
+      merge: (persisted, current) => {
+        const p = persisted as Partial<GameStore> | undefined;
+        const merged = { ...current, ...p } as GameStore;
+        if (!merged.timerVariantId) {
+          merged.timerVariantId = defaultVariantId(
+            resolveSportConfig(merged.sportId, merged.customSport),
+          );
+        }
+        return merged;
+      },
     },
   ),
 );
