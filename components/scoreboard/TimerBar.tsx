@@ -5,6 +5,7 @@ import { useGameStore } from "@/lib/gameStore";
 import {
   resolveActiveVariant,
   resolveSportConfig,
+  usesCountUpTimer,
 } from "@/lib/sportRegistry";
 import { RuleNotes } from "./RuleNotes";
 
@@ -31,7 +32,11 @@ export function TimerBar() {
   const active = resolveActiveVariant(cfg, timerVariantId);
   const showOfficial =
     variants.length > 0 && active && active.periodSeconds > 0;
-  const showOt = active?.overtimeSeconds && active.overtimeSeconds > 0;
+  const showOt =
+    !usesCountUpTimer(sportId) &&
+    active?.overtimeSeconds &&
+    active.overtimeSeconds > 0;
+  const isSoccer = usesCountUpTimer(sportId);
 
   return (
     <>
@@ -149,12 +154,9 @@ export function TimerBar() {
               onClick={() => applyOfficialPeriodTimer()}
               className="rounded-lg bg-cyan-900/50 px-3 py-1.5 text-[11px] font-bold uppercase tracking-wide text-cyan-100 hover:bg-cyan-800/50"
             >
-              Set clock → period ({Math.floor((active?.periodSeconds ?? 0) / 60)}:
-              {String(Math.floor((active?.periodSeconds ?? 0) % 60)).padStart(
-                2,
-                "0",
-              )}
-              )
+              {isSoccer
+                ? `Reset period (count up · ${Math.floor((active?.periodSeconds ?? 0) / 60)}′)`
+                : `Set clock → period (${Math.floor((active?.periodSeconds ?? 0) / 60)}:${String(Math.floor((active?.periodSeconds ?? 0) % 60)).padStart(2, "0")})`}
             </button>
             {showOt && (
               <button

@@ -15,6 +15,7 @@ import {
   effectiveMaxPeriods,
   resolveActiveVariant,
   resolveSportConfig,
+  usesCountUpTimer,
 } from "./sportRegistry";
 
 const UNDO_MAX = 40;
@@ -27,13 +28,35 @@ const defaultTeam = (name: string, color: string): TeamState => ({
   timeouts: 7,
 });
 
-const defaultTimer = (): TimerState => ({
-  mode: "countup",
-  running: false,
-  runStartedAt: null,
-  accumulatedMs: 0,
-  countdownFromSeconds: 12 * 60,
-});
+function defaultTimerForSport(
+  sportId: string,
+  customSport: SportConfig | null,
+  timerVariantId: string,
+): TimerState {
+  const cfg = resolveSportConfig(sportId, customSport);
+  const v = resolveActiveVariant(cfg, timerVariantId);
+  const periodSec =
+    v?.periodSeconds && v.periodSeconds > 0 ? v.periodSeconds : 12 * 60;
+
+  if (usesCountUpTimer(sportId)) {
+    return {
+      mode: "countup",
+      running: false,
+      runStartedAt: null,
+      accumulatedMs: 0,
+      countdownFromSeconds:
+        v?.periodSeconds && v.periodSeconds > 0 ? v.periodSeconds : 45 * 60,
+    };
+  }
+
+  return {
+    mode: "countdown",
+    running: false,
+    runStartedAt: null,
+    accumulatedMs: 0,
+    countdownFromSeconds: periodSec,
+  };
+}
 
 function snapshotFrom(
   s: GameStateSlice,
@@ -93,7 +116,11 @@ const initialSlice: GameStateSlice = {
   outs: 0,
   down: 1,
   possession: "a",
-  timer: defaultTimer(),
+  timer: defaultTimerForSport(
+    BASKETBALL.id,
+    null,
+    defaultVariantId(BASKETBALL),
+  ),
 };
 
 type GameStore = GameState & {
@@ -176,6 +203,7 @@ export const useGameStore = create<GameStore>()(
           sportId: id,
           timerVariantId: vid,
           period: 1,
+          timer: defaultTimerForSport(id, get().customSport, vid),
         });
       },
 
@@ -187,6 +215,7 @@ export const useGameStore = create<GameStore>()(
           sportId: "custom",
           timerVariantId: vid,
           period: 1,
+          timer: defaultTimerForSport("custom", config, vid),
         });
       },
 
@@ -198,6 +227,7 @@ export const useGameStore = create<GameStore>()(
         set({
           timerVariantId: variantId,
           period: cap != null ? Math.min(period, cap) : period,
+          timer: defaultTimerForSport(sportId, customSport, variantId),
         });
       },
 
@@ -207,6 +237,19 @@ export const useGameStore = create<GameStore>()(
         const cfg = resolveSportConfig(sportId, customSport);
         const v = resolveActiveVariant(cfg, timerVariantId);
         if (!v || v.periodSeconds <= 0) return;
+        if (usesCountUpTimer(sportId)) {
+          set((state) => ({
+            timer: {
+              ...state.timer,
+              mode: "countup",
+              accumulatedMs: 0,
+              running: false,
+              runStartedAt: null,
+              countdownFromSeconds: v.periodSeconds,
+            },
+          }));
+          return;
+        }
         set((state) => ({
           timer: {
             ...state.timer,
@@ -226,6 +269,19 @@ export const useGameStore = create<GameStore>()(
         const v = resolveActiveVariant(cfg, timerVariantId);
         const ot = v?.overtimeSeconds;
         if (ot == null || ot <= 0) return;
+        if (usesCountUpTimer(sportId)) {
+          set((state) => ({
+            timer: {
+              ...state.timer,
+              mode: "countup",
+              accumulatedMs: 0,
+              running: false,
+              runStartedAt: null,
+              countdownFromSeconds: ot,
+            },
+          }));
+          return;
+        }
         set((state) => ({
           timer: {
             ...state.timer,
@@ -344,14 +400,15 @@ export const useGameStore = create<GameStore>()(
         get().pushUndo();
         const { sportId, customSport } = get();
         const cfg = resolveSportConfig(sportId, customSport);
+        const vid = defaultVariantId(cfg);
         set({
           ...initialSlice,
           sportId,
           customSport,
-          timerVariantId: defaultVariantId(cfg),
+          timerVariantId: vid,
           teamA: { ...get().teamA, score: 0, fouls: 0 },
           teamB: { ...get().teamB, score: 0, fouls: 0 },
-          timer: defaultTimer(),
+          timer: defaultTimerForSport(sportId, customSport, vid),
           period: 1,
           halfInning: "top",
           balls: 0,
