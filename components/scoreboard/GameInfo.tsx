@@ -29,35 +29,38 @@ export function GameInfo() {
   const running = timer.running;
   const bigClock = cfg.timerEmphasis;
 
-  const lowTime =
-    timer.mode === "countdown" && displaySec <= 60 && displaySec > 0;
+  const lowTime = displaySec <= 60 && displaySec > 0;
 
   return (
     <div className="flex w-full max-w-4xl flex-col items-center gap-3">
       {activeVariant && (
         <p className="text-center text-xs text-zinc-500">{activeVariant.label}</p>
       )}
-      <motion.div
-        animate={
-          running
-            ? { boxShadow: "0 0 32px rgba(34,211,238,0.35)" }
-            : { boxShadow: "0 0 0 rgba(0,0,0,0)" }
-        }
-        className={`rounded-2xl border px-6 py-3 text-center font-mono font-bold tabular-nums ${
-          bigClock ? "text-5xl sm:text-6xl" : "text-4xl sm:text-5xl"
-        } ${
-          lowTime
-            ? "border-red-500/80 bg-red-950/40 text-red-100 shadow-[0_0_40px_rgba(239,68,68,0.45)]"
-            : "border-white/15 bg-black/30 text-white"
-        }`}
-      >
-        {formatSeconds(displaySec)}
-        {timer.mode === "countdown" && (
+      {!cfg.noGameClock ? (
+        <motion.div
+          animate={
+            running
+              ? { boxShadow: "0 0 32px rgba(34,211,238,0.35)" }
+              : { boxShadow: "0 0 0 rgba(0,0,0,0)" }
+          }
+          className={`rounded-2xl border px-6 py-3 text-center font-mono font-bold tabular-nums ${
+            bigClock ? "text-5xl sm:text-6xl" : "text-4xl sm:text-5xl"
+          } ${
+            lowTime
+              ? "border-red-500/80 bg-red-950/40 text-red-100 shadow-[0_0_40px_rgba(239,68,68,0.45)]"
+              : "border-white/15 bg-black/30 text-white"
+          }`}
+        >
+          {formatSeconds(displaySec)}
           <span className="ml-2 align-middle text-sm font-normal text-zinc-500">
             left
           </span>
-        )}
-      </motion.div>
+        </motion.div>
+      ) : (
+        <p className="rounded-2xl border border-white/10 bg-black/20 px-6 py-4 text-center text-sm text-zinc-500">
+          No game clock — use score and period info below.
+        </p>
+      )}
 
       <div className="flex flex-wrap items-center justify-center gap-2 text-sm text-zinc-400">
         {(hasFeature(cfg, "periods") || hasFeature(cfg, "innings")) && (

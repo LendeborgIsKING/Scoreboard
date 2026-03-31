@@ -33,6 +33,7 @@ export function ScoreboardDisplay() {
   const controlsCollapsed = useGameStore((s) => s.controlsCollapsed);
   const setPresentation = useGameStore((s) => s.setPresentationMode);
   const setControlsCollapsed = useGameStore((s) => s.setControlsCollapsed);
+  const setUiPhase = useGameStore((s) => s.setUiPhase);
 
   const [settingsOpen, setSettingsOpen] = useState(false);
 
@@ -53,6 +54,16 @@ export function ScoreboardDisplay() {
             </h1>
           </div>
           <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                setPresentation(false);
+                setUiPhase("menu");
+              }}
+              className="rounded-full border border-white/15 bg-white/5 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-zinc-200 hover:bg-white/10"
+            >
+              Main menu
+            </button>
             <button
               type="button"
               onClick={() => setSettingsOpen(true)}

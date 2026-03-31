@@ -64,15 +64,16 @@ export interface TeamState {
 }
 
 export interface TimerState {
-  mode: "countup" | "countdown";
   running: boolean;
   /** Wall-clock ms when current run segment started */
   runStartedAt: number | null;
   /** Ms counted before current run (excludes active segment) */
   accumulatedMs: number;
-  /** Starting duration for countdown mode (seconds) */
+  /** Countdown duration (seconds) */
   countdownFromSeconds: number;
 }
+
+export type UiPhase = "menu" | "setup" | "game";
 
 export interface GameSnapshot {
   sportId: string;

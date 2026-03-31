@@ -51,7 +51,3 @@ export function effectiveMaxPeriods(
   return cfg.maxPeriods;
 }
 
-/** Soccer uses a running clock (count-up); other presets default to shot/period countdown */
-export function usesCountUpTimer(sportId: string): boolean {
-  return sportId === "soccer";
-}

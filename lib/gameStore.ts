@@ -8,6 +8,7 @@ import type {
   TeamId,
   TeamState,
   TimerState,
+  UiPhase,
 } from "./types";
 import { BASKETBALL } from "./sportPresets";
 import {
@@ -15,7 +16,6 @@ import {
   effectiveMaxPeriods,
   resolveActiveVariant,
   resolveSportConfig,
-  usesCountUpTimer,
 } from "./sportRegistry";
 
 const UNDO_MAX = 40;
@@ -38,19 +38,7 @@ function defaultTimerForSport(
   const periodSec =
     v?.periodSeconds && v.periodSeconds > 0 ? v.periodSeconds : 12 * 60;
 
-  if (usesCountUpTimer(sportId)) {
-    return {
-      mode: "countup",
-      running: false,
-      runStartedAt: null,
-      accumulatedMs: 0,
-      countdownFromSeconds:
-        v?.periodSeconds && v.periodSeconds > 0 ? v.periodSeconds : 45 * 60,
-    };
-  }
-
   return {
-    mode: "countdown",
     running: false,
     runStartedAt: null,
     accumulatedMs: 0,
@@ -85,6 +73,7 @@ export interface GameState extends GameStateSlice {
   hypeMode: boolean;
   theme: import("./types").ThemeId;
   controlsCollapsed: boolean;
+  uiPhase: UiPhase;
 }
 
 interface GameStateSlice {
@@ -141,7 +130,6 @@ type GameStore = GameState & {
   resetGame: () => void;
   setTeamName: (team: TeamId, name: string) => void;
   setTeamColor: (team: TeamId, color: string) => void;
-  setTimerMode: (mode: TimerState["mode"]) => void;
   setCountdownDuration: (seconds: number) => void;
   startTimer: () => void;
   pauseTimer: () => void;
@@ -154,6 +142,7 @@ type GameStore = GameState & {
   setTimerVariant: (variantId: string) => void;
   applyOfficialPeriodTimer: () => void;
   applyOvertimeTimer: () => void;
+  setUiPhase: (phase: UiPhase) => void;
 };
 
 export const useGameStore = create<GameStore>()(
@@ -165,6 +154,7 @@ export const useGameStore = create<GameStore>()(
       hypeMode: false,
       theme: "dark",
       controlsCollapsed: false,
+      uiPhase: "menu",
 
       pushUndo: () => {
         const snap = snapshotFrom(get());
@@ -237,23 +227,9 @@ export const useGameStore = create<GameStore>()(
         const cfg = resolveSportConfig(sportId, customSport);
         const v = resolveActiveVariant(cfg, timerVariantId);
         if (!v || v.periodSeconds <= 0) return;
-        if (usesCountUpTimer(sportId)) {
-          set((state) => ({
-            timer: {
-              ...state.timer,
-              mode: "countup",
-              accumulatedMs: 0,
-              running: false,
-              runStartedAt: null,
-              countdownFromSeconds: v.periodSeconds,
-            },
-          }));
-          return;
-        }
         set((state) => ({
           timer: {
             ...state.timer,
-            mode: "countdown",
             countdownFromSeconds: v.periodSeconds,
             accumulatedMs: 0,
             running: false,
@@ -269,23 +245,9 @@ export const useGameStore = create<GameStore>()(
         const v = resolveActiveVariant(cfg, timerVariantId);
         const ot = v?.overtimeSeconds;
         if (ot == null || ot <= 0) return;
-        if (usesCountUpTimer(sportId)) {
-          set((state) => ({
-            timer: {
-              ...state.timer,
-              mode: "countup",
-              accumulatedMs: 0,
-              running: false,
-              runStartedAt: null,
-              countdownFromSeconds: ot,
-            },
-          }));
-          return;
-        }
         set((state) => ({
           timer: {
             ...state.timer,
-            mode: "countdown",
             countdownFromSeconds: ot,
             accumulatedMs: 0,
             running: false,
@@ -428,19 +390,6 @@ export const useGameStore = create<GameStore>()(
         set({ [key]: { ...get()[key], color } });
       },
 
-      setTimerMode: (mode) => {
-        get().pushUndo();
-        set((state) => ({
-          timer: {
-            ...state.timer,
-            mode,
-            running: false,
-            runStartedAt: null,
-            accumulatedMs: 0,
-          },
-        }));
-      },
-
       setCountdownDuration: (seconds) => {
         get().pushUndo();
         set((state) => ({
@@ -495,7 +444,7 @@ export const useGameStore = create<GameStore>()(
 
       checkCountdownEnd: () => {
         const { timer } = get();
-        if (!timer.running || timer.mode !== "countdown") return;
+        if (!timer.running) return;
         const total = timer.countdownFromSeconds * 1000;
         const elapsed = getElapsedMs(timer);
         if (elapsed >= total) {
@@ -515,6 +464,7 @@ export const useGameStore = create<GameStore>()(
       setHypeMode: (v) => set({ hypeMode: v }),
       setTheme: (t) => set({ theme: t }),
       setControlsCollapsed: (v) => set({ controlsCollapsed: v }),
+      setUiPhase: (phase) => set({ uiPhase: phase }),
     }),
     {
       name: "scoreboard-game-v1",
@@ -545,6 +495,10 @@ export const useGameStore = create<GameStore>()(
             resolveSportConfig(merged.sportId, merged.customSport),
           );
         }
+        merged.uiPhase = "menu";
+        if (merged.timer && "mode" in merged.timer) {
+          delete (merged.timer as { mode?: unknown }).mode;
+        }
         return merged;
       },
     },
@@ -565,9 +519,6 @@ export function formatClockFromMs(ms: number): string {
 }
 
 export function getDisplaySeconds(timer: TimerState): number {
-  if (timer.mode === "countup") {
-    return Math.floor(getElapsedMs(timer) / 1000);
-  }
   const total = timer.countdownFromSeconds * 1000;
   const rem = Math.max(0, total - getElapsedMs(timer));
   return Math.ceil(rem / 1000);

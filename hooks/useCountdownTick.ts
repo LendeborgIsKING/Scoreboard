@@ -7,13 +7,12 @@ import { useGameStore } from "@/lib/gameStore";
 export function useCountdownTick() {
   const checkCountdownEnd = useGameStore((s) => s.checkCountdownEnd);
   const running = useGameStore((s) => s.timer.running);
-  const mode = useGameStore((s) => s.timer.mode);
 
   useEffect(() => {
-    if (!running || mode !== "countdown") return;
+    if (!running) return;
     const id = window.setInterval(() => {
       checkCountdownEnd();
     }, 200);
     return () => window.clearInterval(id);
-  }, [running, mode, checkCountdownEnd]);
+  }, [running, checkCountdownEnd]);
 }

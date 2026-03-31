@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { useGameStore } from "@/lib/gameStore";
-import { PRESETS, CUSTOM_TEMPLATE } from "@/lib/sportPresets";
+import { CUSTOM_TEMPLATE } from "@/lib/sportPresets";
 import type { ScoringAction, SportConfig, SportFeature, ThemeId } from "@/lib/types";
 
 const FEATURE_OPTIONS: { id: SportFeature; label: string }[] = [
@@ -26,7 +26,6 @@ export function SettingsModal({ onClose }: Props) {
   const teamB = useGameStore((s) => s.teamB);
   const theme = useGameStore((s) => s.theme);
   const hypeMode = useGameStore((s) => s.hypeMode);
-  const setSport = useGameStore((s) => s.setSport);
   const setCustomSport = useGameStore((s) => s.setCustomSport);
   const setTeamName = useGameStore((s) => s.setTeamName);
   const setTeamColor = useGameStore((s) => s.setTeamColor);
@@ -36,11 +35,6 @@ export function SettingsModal({ onClose }: Props) {
   const [draft, setDraft] = useState<SportConfig>(() =>
     customSport ? { ...customSport } : { ...CUSTOM_TEMPLATE },
   );
-
-  const applyPreset = (id: string) => {
-    setSport(id);
-    if (id !== "custom") onClose();
-  };
 
   const saveCustom = () => {
     setCustomSport({
@@ -110,23 +104,9 @@ export function SettingsModal({ onClose }: Props) {
           >
             <h2 className="text-lg font-bold text-white">Settings</h2>
             <p className="mt-1 text-sm text-zinc-500">
-              Sport presets are data-driven — custom builds your own.
+              Theme, teams, and custom layout. Use{" "}
+              <span className="text-zinc-400">Main menu</span> to switch sports.
             </p>
-
-            <label className="mt-6 block text-xs font-semibold uppercase tracking-wide text-zinc-500">
-              Sport preset
-            </label>
-            <select
-              value={sportId}
-              onChange={(e) => applyPreset(e.target.value)}
-              className="mt-2 w-full rounded-xl border border-white/15 bg-zinc-900 px-3 py-2 text-white"
-            >
-              {PRESETS.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name}
-                </option>
-              ))}
-            </select>
 
             {sportId === "custom" && (
               <div className="mt-6 space-y-4 border-t border-white/10 pt-6">
