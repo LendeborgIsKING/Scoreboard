@@ -334,6 +334,28 @@ export const PRESETS: SportConfig[] = [
   CUSTOM_TEMPLATE,
 ];
 
+/** Mobile menu order (matches common app layouts) */
+export const SPORT_MENU_ORDER: string[] = [
+  "baseball",
+  "football",
+  "hockey",
+  "basketball",
+  "soccer",
+  "volleyball",
+  "tennis",
+  "rugby",
+  "pickleball",
+  "custom",
+];
+
+export function sortPresetsForMenu(list: SportConfig[]): SportConfig[] {
+  return [...list].sort((a, b) => {
+    const ia = SPORT_MENU_ORDER.indexOf(a.id);
+    const ib = SPORT_MENU_ORDER.indexOf(b.id);
+    return (ia === -1 ? 999 : ia) - (ib === -1 ? 999 : ib);
+  });
+}
+
 export function presetById(id: string): SportConfig | undefined {
   return PRESETS.find((p) => p.id === id);
 }

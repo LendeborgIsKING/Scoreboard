@@ -1,0 +1,18 @@
+---
+description: After substantive edits, commit and push to origin
+alwaysApply: true
+---
+
+# Git: commit and push
+
+When you finish a **substantive** change set in this repo (new files, features, refactors, or multi-file fixes):
+
+1. Run `git status` to confirm what changed.
+2. If there are changes to commit: `git add -A`, then `git commit -m "<clear imperative message>"` (complete sentence, describe what changed).
+3. Push: `git push origin` with the current branch (use `git branch --show-current` if needed; default branch is often `master`).
+4. If there is **nothing to commit**, skip git steps.
+5. If push fails (auth, network), report the error once and stop; do not loop.
+
+Do **not** commit for: empty sessions, pure questions with no edits, or when the user explicitly says not to commit yet.
+
+Single trivial typo fixes: commit only if the user already asked for commit behavior or the session included other committed work.

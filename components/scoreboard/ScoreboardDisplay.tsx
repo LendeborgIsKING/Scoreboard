@@ -41,7 +41,7 @@ export function ScoreboardDisplay() {
 
   return (
     <div
-      className={`relative flex min-h-full flex-col items-center px-3 pb-28 pt-6 sm:px-6 sm:pb-12 sm:pt-10 ${themeClass(theme)}`}
+      className={`relative flex min-h-full flex-1 flex-col items-center px-3 pb-28 pt-6 sm:px-6 sm:pb-12 sm:pt-10 ${themeClass(theme)}`}
     >
       {!presentation && (
         <header className="mb-6 flex w-full max-w-5xl flex-wrap items-center justify-between gap-3">
