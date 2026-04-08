@@ -64,42 +64,16 @@ export function ScoreboardDisplay() {
 
   return (
     <div
-      className={`relative flex min-h-full flex-1 flex-col items-center px-3 pb-28 pt-6 sm:px-6 sm:pb-12 sm:pt-10 ${themeClass(theme)}`}
+      className={`relative flex min-h-full flex-1 flex-col items-center overflow-hidden ${themeClass(theme)}`}
     >
-      <div className="flex w-full flex-1 flex-col landscape:hidden">
-        <div className="flex flex-1 flex-col items-center justify-center text-center">
-          <div className="mb-4 rounded-2xl bg-white/5 p-8">
-            <svg
-              className="h-12 w-12 text-zinc-400"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={1.5}
-                d="M6 18L18 6M6 6l12 12"
-              />
-            </svg>
-          </div>
-          <h2 className="text-xl font-bold text-white">Rotate your device</h2>
-          <p className="mt-2 max-w-[240px] text-sm text-zinc-500">
-            The scoreboard is designed for landscape mode to give you the best view.
-          </p>
-          <button
-            type="button"
-            onClick={() => setUiPhase("menu")}
-            className="mt-8 text-sm font-semibold text-cyan-400"
-          >
-            ← Back to menu
-          </button>
-        </div>
-      </div>
-
-      <div className="hidden w-full flex-1 flex-col items-center portrait:hidden landscape:flex">
+      {/* 
+        Forced Landscape Wrapper:
+        On portrait screens (including PC), we rotate the entire scoreboard 90deg 
+        so it always displays in landscape orientation.
+      */}
+      <div className="flex h-full w-full flex-1 flex-col items-center portrait:absolute portrait:left-1/2 portrait:top-1/2 portrait:h-[100vw] portrait:w-[100vh] portrait:-translate-x-1/2 portrait:-translate-y-1/2 portrait:rotate-90">
         {!presentation && (
-          <header className="mb-4 flex w-full max-w-5xl items-center justify-between gap-3">
+          <header className="mb-4 flex w-full max-w-5xl items-center justify-between gap-3 px-6 pt-4 sm:pt-10">
             <button
               type="button"
               onClick={() => setUiPhase("menu")}
@@ -136,7 +110,7 @@ export function ScoreboardDisplay() {
           </button>
         )}
 
-        <div className="flex w-full flex-1 items-center justify-between gap-4">
+        <div className="flex w-full flex-1 items-center justify-between gap-4 px-6">
           <TeamPanel
             team="a"
             data={teamA}
@@ -157,10 +131,12 @@ export function ScoreboardDisplay() {
         </div>
 
         {!presentation && (
-          <ControlPanel
-            collapsed={controlsCollapsed}
-            onToggleCollapse={() => setControlsCollapsed(!controlsCollapsed)}
-          />
+          <div className="w-full px-6 pb-6">
+            <ControlPanel
+              collapsed={controlsCollapsed}
+              onToggleCollapse={() => setControlsCollapsed(!controlsCollapsed)}
+            />
+          </div>
         )}
       </div>
 

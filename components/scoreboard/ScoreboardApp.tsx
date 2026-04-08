@@ -36,5 +36,7 @@ export function ScoreboardApp() {
     content = <ScoreboardDisplay />;
   }
 
-  return <MobileAppShell>{content}</MobileAppShell>;
+  return (
+    <MobileAppShell isGame={uiPhase === "game"}>{content}</MobileAppShell>
+  );
 }
