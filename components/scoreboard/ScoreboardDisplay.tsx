@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { useGameStore } from "@/lib/gameStore";
 import { resolveSportConfig } from "@/lib/sportRegistry";
@@ -38,6 +38,28 @@ export function ScoreboardDisplay() {
   const [settingsOpen, setSettingsOpen] = useState(false);
 
   const cfg = resolveSportConfig(sportId, customSport);
+
+  useEffect(() => {
+    // Attempt to lock orientation to landscape when entering the scoreboard
+    if (typeof window !== "undefined" && window.screen?.orientation?.lock) {
+      window.screen.orientation
+        .lock("landscape")
+        .catch((err) => {
+          console.warn("Orientation lock failed:", err);
+        });
+    }
+
+    // Cleanup: try to unlock or just let it be when leaving
+    return () => {
+      if (typeof window !== "undefined" && window.screen?.orientation?.unlock) {
+        try {
+          window.screen.orientation.unlock();
+        } catch (e) {
+          /* ignore */
+        }
+      }
+    };
+  }, []);
 
   return (
     <div
