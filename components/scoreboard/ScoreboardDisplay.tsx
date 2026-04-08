@@ -41,19 +41,20 @@ export function ScoreboardDisplay() {
 
   useEffect(() => {
     // Attempt to lock orientation to landscape when entering the scoreboard
-    if (typeof window !== "undefined" && window.screen?.orientation?.lock) {
-      window.screen.orientation
+    const screenAny = window.screen as any;
+    if (typeof window !== "undefined" && screenAny.orientation?.lock) {
+      screenAny.orientation
         .lock("landscape")
-        .catch((err) => {
+        .catch((err: any) => {
           console.warn("Orientation lock failed:", err);
         });
     }
 
     // Cleanup: try to unlock or just let it be when leaving
     return () => {
-      if (typeof window !== "undefined" && window.screen?.orientation?.unlock) {
+      if (typeof window !== "undefined" && screenAny.orientation?.unlock) {
         try {
-          window.screen.orientation.unlock();
+          screenAny.orientation.unlock();
         } catch (e) {
           /* ignore */
         }
