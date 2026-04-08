@@ -12,7 +12,7 @@ export function MobileAppShell({ children }: { children: ReactNode }) {
   return (
     <div className="flex min-h-[100dvh] justify-center bg-zinc-700 sm:items-center sm:bg-zinc-800 sm:py-6">
       <div
-        className="relative flex min-h-[100dvh] w-full max-w-[390px] flex-col bg-black sm:min-h-[min(844px,calc(100dvh-3rem))] sm:max-h-[844px] sm:rounded-[2.75rem] sm:border-[12px] sm:border-zinc-950 sm:shadow-[0_25px_80px_-12px_rgba(0,0,0,0.85)] sm:ring-1 sm:ring-white/[0.06]"
+        className="relative flex min-h-[100dvh] w-full max-w-[390px] flex-col bg-black sm:min-h-[min(844px,calc(100dvh-3rem))] sm:max-h-[844px] sm:rounded-[2.75rem] sm:border-[12px] sm:border-zinc-950 sm:shadow-[0_25px_80px_-12px_rgba(0,0,0,0.85)] sm:ring-1 sm:ring-white/[0.06] landscape:max-w-none landscape:sm:max-w-none landscape:sm:rounded-none landscape:sm:border-0"
         style={{ width: "100%", maxWidth: MOBILE_APP_WIDTH_PX }}
       >
         {/* subtle status-bar notch area */}

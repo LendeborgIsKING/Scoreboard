@@ -16,9 +16,8 @@ export function TeamPanel({ team, data, active, hype }: Props) {
 
   return (
     <motion.div
-      data-team={team}
       layout
-      className={`relative flex min-h-[min(40vh,320px)] flex-1 flex-col items-center justify-center rounded-3xl border-2 px-4 py-8 transition-shadow duration-300 sm:px-8 ${
+      className={`relative flex min-h-0 flex-1 flex-col items-center justify-center rounded-3xl border-2 px-4 py-6 transition-shadow duration-300 ${
         active
           ? "border-white/30 shadow-[0_0_60px_-10px_rgba(255,255,255,0.35)]"
           : "border-white/10 shadow-none"
@@ -33,7 +32,7 @@ export function TeamPanel({ team, data, active, hype }: Props) {
       <button
         type="button"
         onClick={() => setPossession(team)}
-        className="mb-2 text-center text-xs font-semibold uppercase tracking-[0.25em] text-zinc-400 transition hover:text-zinc-200"
+        className="mb-1 text-center text-[10px] font-semibold uppercase tracking-[0.25em] text-zinc-400 transition hover:text-zinc-200"
       >
         {data.name}
       </button>
@@ -49,7 +48,7 @@ export function TeamPanel({ team, data, active, hype }: Props) {
               stiffness: hype ? 420 : 500,
               damping: hype ? 22 : 30,
             }}
-            className="font-mono text-7xl font-black tabular-nums tracking-tighter text-white drop-shadow-lg sm:text-8xl md:text-9xl"
+            className="font-stencil text-7xl font-black tabular-nums tracking-tighter text-white drop-shadow-lg sm:text-8xl md:text-9xl"
             style={{ textShadow: `0 0 40px ${data.color}99` }}
           >
             {data.score}

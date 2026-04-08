@@ -43,9 +43,9 @@ export function GameInfo() {
               ? { boxShadow: "0 0 32px rgba(34,211,238,0.35)" }
               : { boxShadow: "0 0 0 rgba(0,0,0,0)" }
           }
-          className={`rounded-2xl border px-6 py-3 text-center font-mono font-bold tabular-nums ${
-            bigClock ? "text-5xl sm:text-6xl" : "text-4xl sm:text-5xl"
-          } ${
+        className={`rounded-2xl border px-6 py-3 text-center font-stencil font-bold tabular-nums ${
+          bigClock ? "text-5xl sm:text-6xl" : "text-4xl sm:text-5xl"
+        } ${
             lowTime
               ? "border-red-500/80 bg-red-950/40 text-red-100 shadow-[0_0_40px_rgba(239,68,68,0.45)]"
               : "border-white/15 bg-black/30 text-white"

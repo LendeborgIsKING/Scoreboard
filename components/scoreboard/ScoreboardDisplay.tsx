@@ -43,67 +43,88 @@ export function ScoreboardDisplay() {
     <div
       className={`relative flex min-h-full flex-1 flex-col items-center px-3 pb-28 pt-6 sm:px-6 sm:pb-12 sm:pt-10 ${themeClass(theme)}`}
     >
-      {!presentation && (
-        <header className="mb-6 flex w-full max-w-5xl flex-wrap items-center justify-between gap-3">
-          <div>
-            <p className="text-[10px] font-bold uppercase tracking-[0.4em] text-zinc-500">
-              {cfg.name}
-            </p>
-            <h1 className="text-xl font-semibold tracking-tight text-white sm:text-2xl">
-              Virtual scoreboard
-            </h1>
+      <div className="flex w-full flex-1 flex-col landscape:hidden">
+        <div className="flex flex-1 flex-col items-center justify-center text-center">
+          <div className="mb-4 rounded-2xl bg-white/5 p-8">
+            <svg
+              className="h-12 w-12 text-zinc-400"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={1.5}
+                d="M6 18L18 6M6 6l12 12"
+              />
+            </svg>
           </div>
-          <div className="flex flex-wrap gap-2">
-            <button
-              type="button"
-              onClick={() => {
-                setPresentation(false);
-                setUiPhase("menu");
-              }}
-              className="rounded-full border border-white/15 bg-white/5 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-zinc-200 hover:bg-white/10"
-            >
-              Main menu
-            </button>
-            <button
-              type="button"
-              onClick={() => setSettingsOpen(true)}
-              className="rounded-full border border-white/15 bg-white/5 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-zinc-200 hover:bg-white/10"
-            >
-              Settings
-            </button>
-            <button
-              type="button"
-              onClick={() => setPresentation(true)}
-              className="rounded-full border border-white/15 bg-white/5 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-zinc-200 hover:bg-white/10"
-            >
-              Present
-            </button>
-          </div>
-        </header>
-      )}
+          <h2 className="text-xl font-bold text-white">Rotate your device</h2>
+          <p className="mt-2 max-w-[240px] text-sm text-zinc-500">
+            The scoreboard is designed for landscape mode to give you the best view.
+          </p>
+          <button
+            type="button"
+            onClick={() => setUiPhase("menu")}
+            className="mt-8 text-sm font-semibold text-cyan-400"
+          >
+            ← Back to menu
+          </button>
+        </div>
+      </div>
 
-      {presentation && (
-        <button
-          type="button"
-          onClick={() => setPresentation(false)}
-          className="fixed right-4 top-4 z-50 rounded-full border border-white/20 bg-black/60 px-4 py-2 text-xs font-semibold uppercase text-white backdrop-blur"
-        >
-          Exit present
-        </button>
-      )}
+      <div className="hidden w-full flex-1 flex-col items-center portrait:hidden landscape:flex">
+        {!presentation && (
+          <header className="mb-4 flex w-full max-w-5xl items-center justify-between gap-3">
+            <button
+              type="button"
+              onClick={() => setUiPhase("menu")}
+              className="text-xs font-bold uppercase tracking-widest text-zinc-500 hover:text-white"
+            >
+              ← Menu
+            </button>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => setSettingsOpen(true)}
+                className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[10px] font-bold uppercase text-zinc-300"
+              >
+                Settings
+              </button>
+              <button
+                type="button"
+                onClick={() => setPresentation(true)}
+                className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[10px] font-bold uppercase text-zinc-300"
+              >
+                Present
+              </button>
+            </div>
+          </header>
+        )}
 
-      <motion.div
-        layout
-        className="flex w-full max-w-6xl flex-col items-center gap-8"
-      >
-        <GameInfo />
-        <div className="grid w-full gap-4 sm:grid-cols-2 sm:gap-6">
+        {presentation && (
+          <button
+            type="button"
+            onClick={() => setPresentation(false)}
+            className="fixed right-4 top-4 z-50 rounded-full border border-white/20 bg-black/60 px-4 py-2 text-xs font-semibold uppercase text-white backdrop-blur"
+          >
+            Exit present
+          </button>
+        )}
+
+        <div className="flex w-full flex-1 items-center justify-between gap-4">
           <TeamPanel
             team="a"
             data={teamA}
             active={possession === "a"}
             hype={hype}
           />
+
+          <div className="flex flex-col items-center justify-center gap-4">
+            <GameInfo />
+          </div>
+
           <TeamPanel
             team="b"
             data={teamB}
@@ -111,14 +132,14 @@ export function ScoreboardDisplay() {
             hype={hype}
           />
         </div>
-      </motion.div>
 
-      {!presentation && (
-        <ControlPanel
-          collapsed={controlsCollapsed}
-          onToggleCollapse={() => setControlsCollapsed(!controlsCollapsed)}
-        />
-      )}
+        {!presentation && (
+          <ControlPanel
+            collapsed={controlsCollapsed}
+            onToggleCollapse={() => setControlsCollapsed(!controlsCollapsed)}
+          />
+        )}
+      </div>
 
       {settingsOpen && (
         <SettingsModal onClose={() => setSettingsOpen(false)} />
