@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { motion } from "framer-motion";
 import { useGameStore } from "@/lib/gameStore";
 import { resolveSportConfig } from "@/lib/sportRegistry";
 import type { ThemeId } from "@/lib/types";
@@ -77,9 +76,11 @@ export function ScoreboardDisplay() {
             <button
               type="button"
               onClick={() => setUiPhase("menu")}
-              className="text-xs font-bold uppercase tracking-widest text-zinc-500 hover:text-white"
+              className="group flex items-center gap-2"
             >
-              ← Menu
+              <span className="text-xs font-bold uppercase tracking-widest text-zinc-500 transition group-hover:text-white">
+                ← {cfg.name}
+              </span>
             </button>
             <div className="flex gap-2">
               <button

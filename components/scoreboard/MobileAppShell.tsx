@@ -18,12 +18,14 @@ export function MobileAppShell({
   return (
     <div className="flex min-h-[100dvh] justify-center bg-zinc-700 sm:items-center sm:bg-zinc-800 sm:py-6">
       <div
-        className={`relative flex min-h-[100dvh] w-full flex-col bg-black transition-all duration-500 sm:min-h-[min(844px,calc(100dvh-3rem))] sm:max-h-[844px] sm:shadow-[0_25px_80px_-12px_rgba(0,0,0,0.85)] sm:ring-1 sm:ring-white/[0.06] ${
+        className={`relative flex min-h-[100dvh] w-full flex-col bg-black transition-all duration-500 sm:shadow-[0_25px_80px_-12px_rgba(0,0,0,0.85)] sm:ring-1 sm:ring-white/[0.06] ${
           isGame
-            ? "max-w-[844px] sm:max-w-[844px] sm:rounded-[2.75rem] sm:border-[12px] sm:border-zinc-950"
-            : "max-w-[390px] sm:rounded-[2.75rem] sm:border-[12px] sm:border-zinc-950"
+            ? "sm:min-h-[390px] sm:max-h-[390px] sm:w-[844px] sm:max-w-[844px] sm:rounded-[2.75rem] sm:border-[12px] sm:border-zinc-950"
+            : "sm:min-h-[min(844px,calc(100dvh-3rem))] sm:max-h-[844px] sm:w-[390px] sm:max-w-[390px] sm:rounded-[2.75rem] sm:border-[12px] sm:border-zinc-950"
         }`}
-        style={{ width: "100%", maxWidth: isGame ? 844 : MOBILE_APP_WIDTH_PX }}
+        style={{
+          width: "100%",
+        }}
       >
         {/* subtle status-bar notch area - hide in game */}
         {!isGame && (
