@@ -71,7 +71,7 @@ export function ScoreboardDisplay() {
         On portrait screens (including PC), we rotate the entire scoreboard 90deg 
         so it always displays in landscape orientation.
       */}
-      <div className="flex h-full w-full flex-1 flex-col items-center portrait:absolute portrait:left-1/2 portrait:top-1/2 portrait:h-[100vw] portrait:w-[100vh] portrait:-translate-x-1/2 portrait:-translate-y-1/2 portrait:rotate-90">
+      <div className="flex h-full w-full flex-1 flex-col items-center portrait:absolute portrait:left-1/2 portrait:top-1/2 portrait:h-[390px] portrait:w-[844px] portrait:-translate-x-1/2 portrait:-translate-y-1/2 portrait:rotate-90">
         {!presentation && (
           <header className="mb-4 flex w-full max-w-5xl items-center justify-between gap-3 px-6 pt-4 sm:pt-10">
             <button
