@@ -7,7 +7,7 @@ import type { ThemeId } from "@/lib/types";
 import { TeamPanel } from "./TeamPanel";
 import { GameInfo } from "./GameInfo";
 import { ControlPanel } from "./ControlPanel";
-import { SettingsModal } from "./SettingsModal";
+import { SettingsModal } from "./SettingsModal";`r`n`r`ntype ScreenOrientationWithLock = ScreenOrientation & {`r`n  lock?: (orientation: OrientationLockType) => Promise<void>;`r`n  unlock?: () => void;`r`n};
 
 function themeClass(theme: ThemeId): string {
   switch (theme) {
@@ -147,3 +147,4 @@ export function ScoreboardDisplay() {
     </div>
   );
 }
+
