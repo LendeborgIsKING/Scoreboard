@@ -7,7 +7,12 @@ import type { ThemeId } from "@/lib/types";
 import { TeamPanel } from "./TeamPanel";
 import { GameInfo } from "./GameInfo";
 import { ControlPanel } from "./ControlPanel";
-import { SettingsModal } from "./SettingsModal";`r`n`r`ntype ScreenOrientationWithLock = ScreenOrientation & {`r`n  lock?: (orientation: OrientationLockType) => Promise<void>;`r`n  unlock?: () => void;`r`n};
+import { SettingsModal } from "./SettingsModal";
+
+type ScreenOrientationWithLock = ScreenOrientation & {
+  lock?: (orientation: "portrait" | "landscape" | "any") => Promise<void>;
+  unlock?: () => void;
+};
 
 function themeClass(theme: ThemeId): string {
   switch (theme) {
@@ -39,22 +44,20 @@ export function ScoreboardDisplay() {
   const cfg = resolveSportConfig(sportId, customSport);
 
   useEffect(() => {
-    // Attempt to lock orientation to landscape when entering the scoreboard
-    const screenAny = window.screen as any;
-    if (typeof window !== "undefined" && screenAny.orientation?.lock) {
-      screenAny.orientation
-        .lock("landscape")
-        .catch((err: any) => {
-          console.warn("Orientation lock failed:", err);
-        });
+    if (typeof window === "undefined") return;
+
+    const orientation = window.screen.orientation as ScreenOrientationWithLock;
+    if (orientation.lock) {
+      orientation.lock("landscape").catch((err) => {
+        console.warn("Orientation lock failed:", err);
+      });
     }
 
-    // Cleanup: try to unlock or just let it be when leaving
     return () => {
-      if (typeof window !== "undefined" && screenAny.orientation?.unlock) {
+      if (orientation.unlock) {
         try {
-          screenAny.orientation.unlock();
-        } catch (e) {
+          orientation.unlock();
+        } catch {
           /* ignore */
         }
       }
@@ -65,11 +68,6 @@ export function ScoreboardDisplay() {
     <div
       className={`relative flex min-h-full flex-1 flex-col items-center overflow-hidden ${themeClass(theme)}`}
     >
-      {/* 
-        Forced Landscape Wrapper:
-        On portrait screens (including PC), we rotate the entire scoreboard 90deg 
-        so it always displays in landscape orientation.
-      */}
       <div className="flex h-full w-full flex-1 flex-col items-center portrait:absolute portrait:left-1/2 portrait:top-1/2 portrait:h-[390px] portrait:w-[844px] portrait:-translate-x-1/2 portrait:-translate-y-1/2 portrait:rotate-90">
         {!presentation && (
           <header className="mb-4 flex w-full max-w-5xl items-center justify-between gap-3 px-6 pt-4 sm:pt-10">
@@ -79,7 +77,7 @@ export function ScoreboardDisplay() {
               className="group flex items-center gap-2"
             >
               <span className="text-xs font-bold uppercase tracking-widest text-zinc-500 transition group-hover:text-white">
-                ← {cfg.name}
+                ? {cfg.name}
               </span>
             </button>
             <div className="flex gap-2">
