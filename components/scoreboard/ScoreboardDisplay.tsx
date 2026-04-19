@@ -55,8 +55,6 @@ export function ScoreboardDisplay() {
   const startTimer = useGameStore((s) => s.startTimer);
   const pauseTimer = useGameStore((s) => s.pauseTimer);
   const resetTimer = useGameStore((s) => s.resetTimer);
-  const resetGame = useGameStore((s) => s.resetGame);
-  const undo = useGameStore((s) => s.undo);
   const setUiPhase = useGameStore((s) => s.setUiPhase);
   const setPresentation = useGameStore((s) => s.setPresentationMode);
   const nextPeriod = useGameStore((s) => s.nextPeriod);
@@ -139,10 +137,7 @@ export function ScoreboardDisplay() {
             </button>
           </div>
 
-          <div className="ml-auto flex items-center gap-2">
-            <CircleBtn label="U" onClick={() => undo()} />
-            <CircleBtn label="R" onClick={() => resetGame()} />
-          </div>
+          <div />
         </div>
 
         <div className="mt-2 grid flex-1 grid-cols-[auto_1fr_auto_1fr_auto] items-stretch gap-3 px-4 pb-2">
