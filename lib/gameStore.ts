@@ -127,10 +127,13 @@ type GameStore = GameState & {
   adjustBSO: (key: "balls" | "strikes" | "outs", delta: number) => void;
   resetCount: () => void;
   adjustDown: (delta: number) => void;
+  setPeriod: (value: number) => void;
+  adjustScore: (team: TeamId, delta: number) => void;
   resetGame: () => void;
   setTeamName: (team: TeamId, name: string) => void;
   setTeamColor: (team: TeamId, color: string) => void;
   setCountdownDuration: (seconds: number) => void;
+  setClockSeconds: (seconds: number) => void;
   startTimer: () => void;
   pauseTimer: () => void;
   resetTimer: () => void;
@@ -358,6 +361,26 @@ export const useGameStore = create<GameStore>()(
         }));
       },
 
+      setPeriod: (value) => {
+        get().pushUndo();
+        const next = Math.max(1, Math.floor(value));
+        set({ period: next });
+      },
+
+      adjustScore: (team, delta) => {
+        get().pushUndo();
+        set((state) => {
+          const key = team === "a" ? "teamA" : "teamB";
+          const prev = state[key].score;
+          return {
+            [key]: {
+              ...state[key],
+              score: Math.max(0, prev + delta),
+            },
+          };
+        });
+      },
+
       resetGame: () => {
         get().pushUndo();
         const { sportId, customSport } = get();
@@ -396,6 +419,20 @@ export const useGameStore = create<GameStore>()(
           timer: {
             ...state.timer,
             countdownFromSeconds: Math.max(1, seconds),
+            accumulatedMs: 0,
+            running: false,
+            runStartedAt: null,
+          },
+        }));
+      },
+
+      setClockSeconds: (seconds) => {
+        get().pushUndo();
+        const safe = Math.max(0, Math.floor(seconds));
+        set((state) => ({
+          timer: {
+            ...state.timer,
+            countdownFromSeconds: safe,
             accumulatedMs: 0,
             running: false,
             runStartedAt: null,

@@ -1,280 +1,276 @@
 "use client";
 
-import { useState } from "react";
-import { motion } from "framer-motion";
+import { useState, type ReactNode } from "react";
 import { useGameStore } from "@/lib/gameStore";
-import { CUSTOM_TEMPLATE } from "@/lib/sportPresets";
-import type { ScoringAction, SportConfig, SportFeature, ThemeId } from "@/lib/types";
-
-const FEATURE_OPTIONS: { id: SportFeature; label: string }[] = [
-  { id: "fouls", label: "Fouls" },
-  { id: "timeouts", label: "Timeouts" },
-  { id: "possession", label: "Possession" },
-  { id: "periods", label: "Periods" },
-  { id: "downs", label: "Downs" },
-  { id: "innings", label: "Innings" },
-  { id: "halfInning", label: "Top/Bottom" },
-  { id: "ballsStrikesOuts", label: "B / S / O" },
-];
+import {
+  hasFeature,
+  resolveActiveVariant,
+  resolveSportConfig,
+} from "@/lib/sportRegistry";
 
 type Props = { onClose: () => void };
+type Mode = "menu" | "edit";
 
 export function SettingsModal({ onClose }: Props) {
+  const [mode, setMode] = useState<Mode>("menu");
+
   const sportId = useGameStore((s) => s.sportId);
   const customSport = useGameStore((s) => s.customSport);
+  const timerVariantId = useGameStore((s) => s.timerVariantId);
   const teamA = useGameStore((s) => s.teamA);
   const teamB = useGameStore((s) => s.teamB);
-  const theme = useGameStore((s) => s.theme);
-  const hypeMode = useGameStore((s) => s.hypeMode);
-  const setCustomSport = useGameStore((s) => s.setCustomSport);
-  const setTeamName = useGameStore((s) => s.setTeamName);
-  const setTeamColor = useGameStore((s) => s.setTeamColor);
-  const setTheme = useGameStore((s) => s.setTheme);
-  const setHypeMode = useGameStore((s) => s.setHypeMode);
+  const period = useGameStore((s) => s.period);
+  const timer = useGameStore((s) => s.timer);
 
-  const [draft, setDraft] = useState<SportConfig>(() =>
-    customSport ? { ...customSport } : { ...CUSTOM_TEMPLATE },
+  const setTeamName = useGameStore((s) => s.setTeamName);
+  const setPeriod = useGameStore((s) => s.setPeriod);
+  const setClockSeconds = useGameStore((s) => s.setClockSeconds);
+  const adjustScore = useGameStore((s) => s.adjustScore);
+  const adjustFouls = useGameStore((s) => s.adjustFouls);
+
+  const cfg = resolveSportConfig(sportId, customSport);
+  const variant = resolveActiveVariant(cfg, timerVariantId);
+  const periodLabel = variant?.periodLabel ?? cfg.periodLabel;
+  const hasFouls = hasFeature(cfg, "fouls");
+
+  const [homeName, setHomeName] = useState(teamA.name);
+  const [awayName, setAwayName] = useState(teamB.name);
+  const [periodDraft, setPeriodDraft] = useState(period);
+  const [minutesDraft, setMinutesDraft] = useState(
+    Math.floor(timer.countdownFromSeconds / 60),
+  );
+  const [secondsDraft, setSecondsDraft] = useState(
+    timer.countdownFromSeconds % 60,
   );
 
-  const saveCustom = () => {
-    setCustomSport({
-      ...draft,
-      id: "custom",
-      scoring: draft.scoring.filter((s) => s.label.trim().length > 0),
-    });
-    onClose();
+  const applyEdit = () => {
+    setTeamName("a", homeName.trim() || "HOME");
+    setTeamName("b", awayName.trim() || "AWAY");
+    setPeriod(periodDraft);
+    const total = Math.max(0, (minutesDraft * 60) + secondsDraft);
+    setClockSeconds(total);
   };
 
-  const updateScoringRow = (index: number, patch: Partial<ScoringAction>) => {
-    setDraft((d) => {
-      const scoring = [...d.scoring];
-      scoring[index] = { ...scoring[index], ...patch };
-      return { ...d, scoring };
-    });
-  };
-
-  const addScoringRow = () => {
-    setDraft((d) => ({
-      ...d,
-      scoring: [
-        ...d.scoring,
-        {
-          id: `c${Date.now()}`,
-          label: "+1",
-          value: 1,
-        },
-      ],
-    }));
-  };
-
-  const removeScoringRow = (index: number) => {
-    setDraft((d) => ({
-      ...d,
-      scoring: d.scoring.filter((_, i) => i !== index),
-    }));
-  };
-
-  const toggleFeature = (id: SportFeature) => {
-    setDraft((d) => {
-      const has = d.features.includes(id);
-      return {
-        ...d,
-        features: has ? d.features.filter((f) => f !== id) : [...d.features, id],
-      };
-    });
-  };
-
-  return (
-    <motion.div
-      className="fixed inset-0 z-50 flex items-end justify-center sm:items-center"
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-    >
+  if (mode === "menu") {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm">
+        <div className="relative flex h-[390px] w-[844px] flex-col bg-black text-white">
           <button
             type="button"
-            className="absolute inset-0 bg-black/70 backdrop-blur-sm"
-            aria-label="Close"
             onClick={onClose}
-          />
-          <motion.div
-            initial={{ y: 40, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            exit={{ y: 40, opacity: 0 }}
-            className="relative z-10 max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-t-3xl border border-white/10 bg-zinc-950 p-6 shadow-2xl sm:rounded-3xl"
+            className="absolute left-8 top-6 flex flex-col items-center text-white"
           >
-            <h2 className="text-lg font-bold text-white">Settings</h2>
-            <p className="mt-1 text-sm text-zinc-500">
-              Theme, teams, and custom layout. Use{" "}
-              <span className="text-zinc-400">Main menu</span> to switch sports.
-            </p>
+            <CircleShell>
+              <span className="text-2xl font-black">E</span>
+            </CircleShell>
+            <span className="mt-1 text-3xl font-black">Exit</span>
+          </button>
 
-            {sportId === "custom" && (
-              <div className="mt-6 space-y-4 border-t border-white/10 pt-6">
-                <label className="text-xs font-semibold uppercase text-zinc-500">
-                  Custom name
-                </label>
-                <input
-                  value={draft.name}
-                  onChange={(e) =>
-                    setDraft((d) => ({ ...d, name: e.target.value }))
-                  }
-                  className="w-full rounded-xl border border-white/15 bg-zinc-900 px-3 py-2 text-white"
-                />
-                <label className="text-xs font-semibold uppercase text-zinc-500">
-                  Period label
-                </label>
-                <input
-                  value={draft.periodLabel}
-                  onChange={(e) =>
-                    setDraft((d) => ({ ...d, periodLabel: e.target.value }))
-                  }
-                  className="w-full rounded-xl border border-white/15 bg-zinc-900 px-3 py-2 text-white"
-                />
-                <p className="text-xs text-zinc-500">Scoring buttons</p>
-                <div className="space-y-2">
-                  {draft.scoring.map((row, i) => (
-                    <div key={row.id} className="flex gap-2">
-                      <input
-                        value={row.label}
-                        onChange={(e) =>
-                          updateScoringRow(i, { label: e.target.value })
-                        }
-                        className="flex-1 rounded-lg border border-white/10 bg-black/40 px-2 py-1.5 text-sm text-white"
-                        placeholder="Label"
-                      />
-                      <input
-                        type="number"
-                        value={row.value}
-                        onChange={(e) =>
-                          updateScoringRow(i, {
-                            value: Number(e.target.value) || 0,
-                          })
-                        }
-                        className="w-20 rounded-lg border border-white/10 bg-black/40 px-2 py-1.5 text-sm text-white"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => removeScoringRow(i)}
-                        className="rounded-lg bg-white/10 px-2 text-xs text-zinc-400"
-                      >
-                        ✕
-                      </button>
-                    </div>
-                  ))}
-                </div>
-                <button
-                  type="button"
-                  onClick={addScoringRow}
-                  className="text-sm text-cyan-400 hover:underline"
-                >
-                  + Add button
-                </button>
-                <div className="flex flex-wrap gap-2">
-                  {FEATURE_OPTIONS.map((f) => (
-                    <button
-                      key={f.id}
-                      type="button"
-                      onClick={() => toggleFeature(f.id)}
-                      className={`rounded-full px-3 py-1 text-xs font-medium ${
-                        draft.features.includes(f.id)
-                          ? "bg-cyan-600 text-white"
-                          : "bg-white/5 text-zinc-400"
-                      }`}
-                    >
-                      {f.label}
-                    </button>
-                  ))}
-                </div>
-                <button
-                  type="button"
-                  onClick={saveCustom}
-                  className="w-full rounded-xl bg-emerald-600 py-2.5 text-sm font-bold text-white hover:bg-emerald-500"
-                >
-                  Save custom sport
-                </button>
-              </div>
-            )}
+          <button
+            type="button"
+            onClick={onClose}
+            className="absolute right-8 top-6 flex flex-col items-center text-white"
+          >
+            <CircleShell>
+              <span className="text-3xl font-black">X</span>
+            </CircleShell>
+            <span className="mt-1 text-3xl font-black">Close</span>
+          </button>
 
-            <div className="mt-6 space-y-3 border-t border-white/10 pt-6">
-              <p className="text-xs font-semibold uppercase text-zinc-500">
-                Teams
-              </p>
-              <div className="grid gap-3 sm:grid-cols-2">
-                <div>
-                  <label className="text-[10px] text-zinc-500">Home</label>
-                  <input
-                    value={teamA.name}
-                    onChange={(e) => setTeamName("a", e.target.value)}
-                    className="mt-1 w-full rounded-lg border border-white/10 bg-zinc-900 px-2 py-1.5 text-sm text-white"
-                  />
-                  <input
-                    type="color"
-                    value={teamA.color}
-                    onChange={(e) => setTeamColor("a", e.target.value)}
-                    className="mt-2 h-9 w-full cursor-pointer rounded border border-white/10"
-                  />
-                </div>
-                <div>
-                  <label className="text-[10px] text-zinc-500">Away</label>
-                  <input
-                    value={teamB.name}
-                    onChange={(e) => setTeamName("b", e.target.value)}
-                    className="mt-1 w-full rounded-lg border border-white/10 bg-zinc-900 px-2 py-1.5 text-sm text-white"
-                  />
-                  <input
-                    type="color"
-                    value={teamB.color}
-                    onChange={(e) => setTeamColor("b", e.target.value)}
-                    className="mt-2 h-9 w-full cursor-pointer rounded border border-white/10"
-                  />
-                </div>
-              </div>
-            </div>
-
-            <div className="mt-6 flex flex-wrap gap-2 border-t border-white/10 pt-6">
-              <div className="w-full text-xs font-semibold uppercase text-zinc-500">
-                Theme
-              </div>
-              {(
-                [
-                  ["dark", "Dark"],
-                  ["neon", "Neon"],
-                  ["classic", "Classic"],
-                ] as const
-              ).map(([id, label]) => (
-                <button
-                  key={id}
-                  type="button"
-                  onClick={() => setTheme(id as ThemeId)}
-                  className={`rounded-full px-4 py-1.5 text-xs font-semibold ${
-                    theme === id
-                      ? "bg-white text-black"
-                      : "bg-white/5 text-zinc-400"
-                  }`}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
-
-            <label className="mt-4 flex cursor-pointer items-center gap-2 text-sm text-zinc-300">
-              <input
-                type="checkbox"
-                checked={hypeMode}
-                onChange={(e) => setHypeMode(e.target.checked)}
-                className="rounded border-white/20"
-              />
-              Hype mode (stronger motion + score blip)
-            </label>
-
+          <div className="mx-auto mt-24 grid grid-cols-3 gap-8">
             <button
               type="button"
-              onClick={onClose}
-              className="mt-6 w-full rounded-xl border border-white/15 py-2.5 text-sm text-zinc-300 hover:bg-white/5"
+              onClick={() => setMode("edit")}
+              className="flex flex-col items-center text-white"
             >
-              Done
+              <CircleShell>
+                <span className="text-3xl font-black">P</span>
+              </CircleShell>
+              <span className="mt-2 text-4xl font-black">Edit</span>
             </button>
-          </motion.div>
-    </motion.div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm">
+      <div className="h-[390px] w-[844px] overflow-auto bg-black px-8 py-6 text-white">
+        <div className="mb-4 flex items-center justify-between">
+          <button
+            type="button"
+            onClick={() => setMode("menu")}
+            className="text-sm font-bold uppercase tracking-widest text-zinc-400"
+          >
+            Back
+          </button>
+          <h2 className="font-stencil text-3xl">Edit</h2>
+          <button
+            type="button"
+            onClick={onClose}
+            className="text-sm font-bold uppercase tracking-widest text-zinc-400"
+          >
+            Close
+          </button>
+        </div>
+
+        <div className="grid grid-cols-2 gap-6">
+          <section className="rounded-2xl border border-white/10 bg-white/5 p-4">
+            <h3 className="mb-3 text-sm font-bold uppercase tracking-widest text-zinc-400">
+              Team Names
+            </h3>
+            <div className="space-y-2">
+              <label className="block text-xs text-zinc-500">Home</label>
+              <input
+                value={homeName}
+                onChange={(e) => setHomeName(e.target.value)}
+                className="w-full rounded-lg border border-white/15 bg-black/40 px-3 py-2 text-white"
+              />
+              <label className="block text-xs text-zinc-500">Away</label>
+              <input
+                value={awayName}
+                onChange={(e) => setAwayName(e.target.value)}
+                className="w-full rounded-lg border border-white/15 bg-black/40 px-3 py-2 text-white"
+              />
+            </div>
+          </section>
+
+          <section className="rounded-2xl border border-white/10 bg-white/5 p-4">
+            <h3 className="mb-3 text-sm font-bold uppercase tracking-widest text-zinc-400">
+              {periodLabel} / Clock
+            </h3>
+            <div className="space-y-3">
+              <label className="block text-xs text-zinc-500">{periodLabel}</label>
+              <input
+                type="number"
+                min={1}
+                value={periodDraft}
+                onChange={(e) => setPeriodDraft(Number(e.target.value) || 1)}
+                className="w-full rounded-lg border border-white/15 bg-black/40 px-3 py-2 text-white"
+              />
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="block text-xs text-zinc-500">Minutes</label>
+                  <input
+                    type="number"
+                    min={0}
+                    value={minutesDraft}
+                    onChange={(e) =>
+                      setMinutesDraft(Math.max(0, Number(e.target.value) || 0))
+                    }
+                    className="w-full rounded-lg border border-white/15 bg-black/40 px-3 py-2 text-white"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-zinc-500">Seconds</label>
+                  <input
+                    type="number"
+                    min={0}
+                    max={59}
+                    value={secondsDraft}
+                    onChange={(e) =>
+                      setSecondsDraft(
+                        Math.max(0, Math.min(59, Number(e.target.value) || 0)),
+                      )
+                    }
+                    className="w-full rounded-lg border border-white/15 bg-black/40 px-3 py-2 text-white"
+                  />
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section className="rounded-2xl border border-white/10 bg-white/5 p-4">
+            <h3 className="mb-3 text-sm font-bold uppercase tracking-widest text-zinc-400">
+              Subtract Points
+            </h3>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => adjustScore("a", -1)}
+                className="rounded-full bg-white px-3 py-2 text-xs font-black text-black"
+              >
+                Home -1
+              </button>
+              <button
+                type="button"
+                onClick={() => adjustScore("a", -2)}
+                className="rounded-full bg-white px-3 py-2 text-xs font-black text-black"
+              >
+                Home -2
+              </button>
+              <button
+                type="button"
+                onClick={() => adjustScore("b", -1)}
+                className="rounded-full bg-white px-3 py-2 text-xs font-black text-black"
+              >
+                Away -1
+              </button>
+              <button
+                type="button"
+                onClick={() => adjustScore("b", -2)}
+                className="rounded-full bg-white px-3 py-2 text-xs font-black text-black"
+              >
+                Away -2
+              </button>
+            </div>
+          </section>
+
+          <section className="rounded-2xl border border-white/10 bg-white/5 p-4">
+            <h3 className="mb-3 text-sm font-bold uppercase tracking-widest text-zinc-400">
+              Fouls
+            </h3>
+            {hasFouls ? (
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() => adjustFouls("a", -1)}
+                  className="rounded-full bg-white px-3 py-2 text-xs font-black text-black"
+                >
+                  Home Foul -1
+                </button>
+                <button
+                  type="button"
+                  onClick={() => adjustFouls("b", -1)}
+                  className="rounded-full bg-white px-3 py-2 text-xs font-black text-black"
+                >
+                  Away Foul -1
+                </button>
+              </div>
+            ) : (
+              <p className="text-sm text-zinc-500">
+                Fouls are not enabled for this sport.
+              </p>
+            )}
+          </section>
+        </div>
+
+        <div className="mt-6 flex justify-end gap-2">
+          <button
+            type="button"
+            onClick={() => setMode("menu")}
+            className="rounded-lg border border-white/20 px-4 py-2 text-sm text-zinc-300"
+          >
+            Back
+          </button>
+          <button
+            type="button"
+            onClick={applyEdit}
+            className="rounded-lg bg-white px-4 py-2 text-sm font-bold text-black"
+          >
+            Apply
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function CircleShell({ children }: { children: ReactNode }) {
+  return (
+    <span className="flex h-16 w-16 items-center justify-center rounded-full bg-white text-black shadow">
+      {children}
+    </span>
   );
 }
