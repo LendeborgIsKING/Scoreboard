@@ -281,6 +281,10 @@ export function ScoreboardDisplay() {
             {presentation ? "Exit present" : "Present"}
           </button>
         )}
+
+        <AnimatePresence>
+          {editOpen && <EditOverlay onClose={() => setEditOpen(false)} />}
+        </AnimatePresence>
       </div>
 
       <AnimatePresence>
@@ -293,10 +297,6 @@ export function ScoreboardDisplay() {
             }}
           />
         )}
-      </AnimatePresence>
-
-      <AnimatePresence>
-        {editOpen && <EditOverlay onClose={() => setEditOpen(false)} />}
       </AnimatePresence>
     </div>
   );

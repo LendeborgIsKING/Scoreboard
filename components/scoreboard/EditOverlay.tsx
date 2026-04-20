@@ -95,18 +95,18 @@ export function EditOverlay({ onClose }: Props) {
 
   return (
     <motion.div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/90"
+      className="absolute inset-0 z-40 overflow-hidden bg-black text-white"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       transition={{ duration: 0.18 }}
     >
       <motion.div
-        initial={{ y: 12, opacity: 0 }}
+        initial={{ y: 8, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
-        exit={{ y: 12, opacity: 0 }}
+        exit={{ y: 8, opacity: 0 }}
         transition={{ duration: 0.22, ease: "easeOut" }}
-        className="relative h-[390px] w-[844px] overflow-hidden bg-black text-white"
+        className="relative h-full w-full overflow-hidden bg-black text-white"
       >
         <CornerBtn
           position="left"
