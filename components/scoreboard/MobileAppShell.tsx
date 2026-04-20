@@ -18,11 +18,7 @@ export function MobileAppShell({
   return (
     <div className="flex min-h-[100dvh] justify-center bg-zinc-700 sm:items-center sm:bg-zinc-800 sm:py-6">
       <div
-        className={`relative flex w-full flex-col bg-black transition-all duration-500 sm:shadow-[0_25px_80px_-12px_rgba(0,0,0,0.85)] sm:ring-1 sm:ring-white/[0.06] ${
-          isGame
-            ? "min-h-[100dvh] sm:h-auto sm:w-[844px] sm:aspect-[844/390] sm:max-w-[844px] sm:rounded-[2.75rem] sm:border-[12px] sm:border-zinc-950"
-            : "min-h-[100dvh] sm:h-auto sm:w-[390px] sm:aspect-[390/844] sm:max-w-[390px] sm:rounded-[2.75rem] sm:border-[12px] sm:border-zinc-950"
-        }`}
+        className="relative flex min-h-[100dvh] w-full flex-col bg-black transition-all duration-500 sm:h-auto sm:aspect-[390/844] sm:w-[390px] sm:max-w-[390px] sm:rounded-[2.75rem] sm:border-[12px] sm:border-zinc-950 sm:shadow-[0_25px_80px_-12px_rgba(0,0,0,0.85)] sm:ring-1 sm:ring-white/[0.06]"
         style={{
           width: "100%",
         }}

@@ -109,7 +109,7 @@ export function ScoreboardDisplay() {
     <div
       className={`relative flex min-h-full flex-1 flex-col items-center overflow-hidden ${themeClass(theme)}`}
     >
-      <div className="flex h-full w-full flex-1 flex-col portrait:absolute portrait:left-1/2 portrait:top-1/2 portrait:h-[390px] portrait:w-[844px] portrait:-translate-x-1/2 portrait:-translate-y-1/2 portrait:rotate-90">
+      <div className="absolute left-1/2 top-1/2 flex h-[390px] w-[844px] -translate-x-1/2 -translate-y-1/2 rotate-90 flex-col">
         <div className="grid grid-cols-[auto_1fr_auto] items-center gap-2 px-6 pt-4 text-white">
           <div className="flex items-center gap-2">
             <CircleBtn
