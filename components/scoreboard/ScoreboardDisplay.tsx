@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { useGameStore, playScoreChime } from "@/lib/gameStore";
 import {
   hasFeature,
@@ -10,6 +11,8 @@ import {
 import { formatSeconds } from "@/lib/format";
 import { useTimerDisplay } from "@/hooks/useTimerDisplay";
 import { SettingsModal } from "./SettingsModal";
+import { SportLineIcon } from "./SportLineIcons";
+import { GearIcon, MenuIcon, PauseIcon, PlayIcon } from "./UiIcons";
 
 type ScreenOrientationWithLock = ScreenOrientation & {
   lock?: (orientation: "portrait" | "landscape" | "any") => Promise<void>;
@@ -105,26 +108,47 @@ export function ScoreboardDisplay() {
       className={`relative flex min-h-full flex-1 flex-col items-center overflow-hidden ${themeClass(theme)}`}
     >
       <div className="flex h-full w-full flex-1 flex-col portrait:absolute portrait:left-1/2 portrait:top-1/2 portrait:h-[390px] portrait:w-[844px] portrait:-translate-x-1/2 portrait:-translate-y-1/2 portrait:rotate-90">
-        <div className="grid grid-cols-[1fr_auto_1fr] items-center px-6 pt-4 text-white">
+        <div className="grid grid-cols-[auto_1fr_auto] items-center gap-2 px-6 pt-4 text-white">
           <div className="flex items-center gap-2">
-            <CircleBtn label="M" onClick={() => setUiPhase("menu")} />
             <CircleBtn
-              label={timer.running ? "||" : ">"}
+              icon={<MenuIcon className="h-5 w-5" />}
+              onClick={() => setUiPhase("menu")}
+              ariaLabel="Exit to menu"
+            />
+            <CircleBtn
+              icon={
+                timer.running ? (
+                  <PauseIcon className="h-5 w-5" />
+                ) : (
+                  <PlayIcon className="h-5 w-5" />
+                )
+              }
               onClick={() => (timer.running ? pauseTimer() : startTimer())}
+              ariaLabel={timer.running ? "Pause clock" : "Start clock"}
             />
           </div>
 
           <div className="flex flex-col items-center gap-1">
             {!cfg.noGameClock ? (
-              <button
+              <motion.button
                 type="button"
                 onClick={() => setCountdownDuration(timer.countdownFromSeconds)}
                 className={`font-stencil text-6xl leading-none tracking-[0.08em] ${
                   lowTime ? "text-red-400" : "text-red-500"
                 }`}
+                animate={
+                  lowTime
+                    ? { opacity: [1, 0.5, 1], scale: [1, 1.02, 1] }
+                    : { opacity: 1, scale: 1 }
+                }
+                transition={
+                  lowTime
+                    ? { duration: 1, repeat: Infinity, ease: "easeInOut" }
+                    : { duration: 0.2 }
+                }
               >
                 {formatSeconds(clockSec)}
-              </button>
+              </motion.button>
             ) : (
               <div className="font-stencil text-4xl text-zinc-500">--:--</div>
             )}
@@ -137,7 +161,7 @@ export function ScoreboardDisplay() {
             </button>
           </div>
 
-          <div />
+          <div className="h-12 w-12" aria-hidden />
         </div>
 
         <div className="mt-2 grid flex-1 grid-cols-[auto_1fr_auto_1fr_auto] items-stretch gap-3 px-4 pb-2">
@@ -151,7 +175,7 @@ export function ScoreboardDisplay() {
             >
               {teamA.name} ({teamA.timeouts})
             </button>
-            <ScoreDigits colorClass="text-lime-400" value={teamA.score} />
+            <AnimatedScore value={teamA.score} colorClass="text-lime-400" />
             <MiniRow
               enabled={hasFeature(cfg, "fouls")}
               value={teamA.fouls}
@@ -162,7 +186,11 @@ export function ScoreboardDisplay() {
           </section>
 
           <section className="flex flex-col items-center justify-center gap-3">
-            <div className="font-stencil text-8xl text-white">X</div>
+            <div className="flex flex-col items-center gap-2 text-white/90">
+              <span className="h-14 w-px bg-white/15" aria-hidden />
+              <SportLineIcon sportId={cfg.id} className="h-10 w-10 text-white/80" />
+              <span className="h-14 w-px bg-white/15" aria-hidden />
+            </div>
             {hasFeature(cfg, "downs") && (
               <StatPill label="Down" value={String(down)} />
             )}
@@ -201,7 +229,7 @@ export function ScoreboardDisplay() {
             >
               {teamB.name} ({teamB.timeouts})
             </button>
-            <ScoreDigits colorClass="text-lime-400" value={teamB.score} />
+            <AnimatedScore value={teamB.score} colorClass="text-lime-400" />
             <MiniRow
               enabled={hasFeature(cfg, "fouls")}
               value={teamB.fouls}
@@ -219,50 +247,75 @@ export function ScoreboardDisplay() {
           {possession && <span className="ml-2 text-cyan-400">- Poss {possession === "a" ? "Home" : "Away"}</span>}
         </div>
 
-        <button
+        <motion.button
           type="button"
           onClick={() => setSettingsOpen(true)}
+          whileTap={{ scale: 0.92 }}
           className="absolute right-3 top-3 z-20 p-0 text-white"
           aria-label="Open settings"
         >
-          <svg viewBox="0 0 24 24" className="h-10 w-10 fill-current">
-            <path d="M19.14 12.94a7.96 7.96 0 0 0 .05-.94 7.96 7.96 0 0 0-.05-.94l2.03-1.58a.5.5 0 0 0 .12-.64l-1.92-3.32a.5.5 0 0 0-.6-.22l-2.39.96a7.3 7.3 0 0 0-1.63-.94l-.36-2.54a.5.5 0 0 0-.5-.42h-3.84a.5.5 0 0 0-.5.42l-.36 2.54a7.3 7.3 0 0 0-1.63.94l-2.39-.96a.5.5 0 0 0-.6.22L2.7 8.84a.5.5 0 0 0 .12.64l2.03 1.58a7.96 7.96 0 0 0-.05.94c0 .32.02.63.05.94L2.82 14.52a.5.5 0 0 0-.12.64l1.92 3.32a.5.5 0 0 0 .6.22l2.39-.96c.5.39 1.05.72 1.63.94l.36 2.54a.5.5 0 0 0 .5.42h3.84a.5.5 0 0 0 .5-.42l.36-2.54c.58-.22 1.13-.55 1.63-.94l2.39.96a.5.5 0 0 0 .6-.22l1.92-3.32a.5.5 0 0 0-.12-.64l-2.03-1.58ZM12 15.5A3.5 3.5 0 1 1 12 8.5a3.5 3.5 0 0 1 0 7Z" />
-          </svg>
-        </button>
+          <GearIcon className="h-10 w-10" />
+        </motion.button>
 
         {!settingsOpen && (
           <button
             type="button"
             onClick={() => setPresentation(!presentation)}
-            className="absolute right-4 top-20 rounded-full border border-white/20 bg-white/5 px-3 py-1 text-[10px] uppercase"
+            className="absolute bottom-3 right-4 text-[10px] uppercase tracking-[0.2em] text-zinc-500 hover:text-zinc-200"
           >
-            {presentation ? "Exit Present" : "Present"}
+            {presentation ? "Exit present" : "Present"}
           </button>
         )}
       </div>
 
-      {settingsOpen && <SettingsModal onClose={() => setSettingsOpen(false)} />}
+      <AnimatePresence>
+        {settingsOpen && <SettingsModal onClose={() => setSettingsOpen(false)} />}
+      </AnimatePresence>
     </div>
   );
 }
 
-function ScoreDigits({ value, colorClass }: { value: number; colorClass: string }) {
+function AnimatedScore({ value, colorClass }: { value: number; colorClass: string }) {
   return (
-    <div className={`font-stencil text-[140px] leading-[0.9] tracking-tight ${colorClass}`}>
-      {value}
+    <div className="relative h-[130px] w-full overflow-hidden">
+      <AnimatePresence mode="popLayout" initial={false}>
+        <motion.div
+          key={value}
+          initial={{ scale: 1.35, opacity: 0, y: -12 }}
+          animate={{ scale: 1, opacity: 1, y: 0 }}
+          exit={{ scale: 0.85, opacity: 0, y: 12 }}
+          transition={{ type: "spring", stiffness: 380, damping: 26 }}
+          className={`absolute inset-0 flex items-center justify-center font-stencil text-[140px] leading-[0.9] tracking-tight ${colorClass}`}
+        >
+          {value}
+        </motion.div>
+      </AnimatePresence>
     </div>
   );
 }
 
-function CircleBtn({ label, onClick }: { label: string; onClick: () => void }) {
+function CircleBtn({
+  label,
+  icon,
+  onClick,
+  ariaLabel,
+}: {
+  label?: string;
+  icon?: ReactNode;
+  onClick: () => void;
+  ariaLabel?: string;
+}) {
   return (
-    <button
+    <motion.button
       type="button"
       onClick={onClick}
-      className="flex h-12 w-12 items-center justify-center rounded-full bg-white text-2xl font-black text-black shadow"
+      whileTap={{ scale: 0.92 }}
+      whileHover={{ scale: 1.04 }}
+      aria-label={ariaLabel ?? label}
+      className="flex h-12 w-12 items-center justify-center rounded-full bg-white text-black shadow transition hover:bg-white/90"
     >
-      {label}
-    </button>
+      {icon ?? <span className="text-2xl font-black">{label}</span>}
+    </motion.button>
   );
 }
 
@@ -271,22 +324,24 @@ function ActionColumn({
   actions,
   onTap,
 }: {
-  side: Side;
+  side: "a" | "b";
   actions: { id: string; label: string; value: number }[];
-  onTap: (side: Side, actionId: string) => void;
+  onTap: (side: "a" | "b", actionId: string) => void;
 }) {
   return (
     <div className="flex flex-col items-center justify-center gap-2 py-2">
       {actions.map((a) => (
-        <button
+        <motion.button
           key={`${side}-${a.id}`}
           type="button"
           onClick={() => onTap(side, a.id)}
+          whileTap={{ scale: 0.9 }}
+          whileHover={{ scale: 1.05 }}
           className="flex h-14 w-14 items-center justify-center rounded-full bg-white text-xl font-black text-black shadow"
           title={`${a.label} (${a.value})`}
         >
           {a.label}
-        </button>
+        </motion.button>
       ))}
     </div>
   );

@@ -1,12 +1,14 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
+import { motion } from "framer-motion";
 import { useGameStore } from "@/lib/gameStore";
 import {
   hasFeature,
   resolveActiveVariant,
   resolveSportConfig,
 } from "@/lib/sportRegistry";
+import { CheckIcon, CloseIcon, MenuIcon, PencilIcon } from "./UiIcons";
 
 type Props = { onClose: () => void };
 type Mode = "menu" | "edit";
@@ -53,15 +55,28 @@ export function SettingsModal({ onClose }: Props) {
 
   if (mode === "menu") {
     return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm">
-        <div className="relative flex h-[390px] w-[844px] flex-col bg-black text-white">
+      <motion.div
+        className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        transition={{ duration: 0.18 }}
+      >
+        <motion.div
+          initial={{ y: 16, opacity: 0, scale: 0.98 }}
+          animate={{ y: 0, opacity: 1, scale: 1 }}
+          exit={{ y: 12, opacity: 0, scale: 0.98 }}
+          transition={{ duration: 0.22, ease: "easeOut" }}
+          className="relative flex h-[390px] w-[844px] flex-col bg-black text-white"
+        >
           <button
             type="button"
             onClick={onClose}
             className="absolute left-8 top-6 flex flex-col items-center text-white"
+            aria-label="Exit settings"
           >
             <CircleShell>
-              <span className="text-2xl font-black">E</span>
+              <MenuIcon className="h-8 w-8" />
             </CircleShell>
             <span className="mt-1 text-3xl font-black">Exit</span>
           </button>
@@ -70,38 +85,53 @@ export function SettingsModal({ onClose }: Props) {
             type="button"
             onClick={onClose}
             className="absolute right-8 top-6 flex flex-col items-center text-white"
+            aria-label="Close settings"
           >
             <CircleShell>
-              <span className="text-3xl font-black">X</span>
+              <CloseIcon className="h-8 w-8" />
             </CircleShell>
             <span className="mt-1 text-3xl font-black">Close</span>
           </button>
 
           <div className="mx-auto mt-24 grid grid-cols-3 gap-8">
-            <button
+            <motion.button
               type="button"
               onClick={() => setMode("edit")}
+              whileTap={{ scale: 0.94 }}
+              whileHover={{ scale: 1.04 }}
               className="flex flex-col items-center text-white"
             >
               <CircleShell>
-                <span className="text-3xl font-black">P</span>
+                <PencilIcon className="h-8 w-8" />
               </CircleShell>
               <span className="mt-2 text-4xl font-black">Edit</span>
-            </button>
+            </motion.button>
           </div>
-        </div>
-      </div>
+        </motion.div>
+      </motion.div>
     );
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm">
-      <div className="h-[390px] w-[844px] overflow-auto bg-black px-8 py-6 text-white">
+    <motion.div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.18 }}
+    >
+      <motion.div
+        initial={{ y: 16, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        exit={{ y: 12, opacity: 0 }}
+        transition={{ duration: 0.22, ease: "easeOut" }}
+        className="h-[390px] w-[844px] overflow-auto bg-black px-8 py-6 text-white"
+      >
         <div className="mb-4 flex items-center justify-between">
           <button
             type="button"
             onClick={() => setMode("menu")}
-            className="text-sm font-bold uppercase tracking-widest text-zinc-400"
+            className="text-sm font-bold uppercase tracking-widest text-zinc-400 hover:text-white"
           >
             Back
           </button>
@@ -109,9 +139,10 @@ export function SettingsModal({ onClose }: Props) {
           <button
             type="button"
             onClick={onClose}
-            className="text-sm font-bold uppercase tracking-widest text-zinc-400"
+            aria-label="Close settings"
+            className="rounded-full p-1 text-zinc-400 hover:bg-white/10 hover:text-white"
           >
-            Close
+            <CloseIcon className="h-5 w-5" />
           </button>
         </div>
 
@@ -125,13 +156,13 @@ export function SettingsModal({ onClose }: Props) {
               <input
                 value={homeName}
                 onChange={(e) => setHomeName(e.target.value)}
-                className="w-full rounded-lg border border-white/15 bg-black/40 px-3 py-2 text-white"
+                className="w-full rounded-lg border border-white/15 bg-black/40 px-3 py-2 text-white outline-none focus:ring-2 focus:ring-white/30"
               />
               <label className="block text-xs text-zinc-500">Away</label>
               <input
                 value={awayName}
                 onChange={(e) => setAwayName(e.target.value)}
-                className="w-full rounded-lg border border-white/15 bg-black/40 px-3 py-2 text-white"
+                className="w-full rounded-lg border border-white/15 bg-black/40 px-3 py-2 text-white outline-none focus:ring-2 focus:ring-white/30"
               />
             </div>
           </section>
@@ -147,7 +178,7 @@ export function SettingsModal({ onClose }: Props) {
                 min={1}
                 value={periodDraft}
                 onChange={(e) => setPeriodDraft(Number(e.target.value) || 1)}
-                className="w-full rounded-lg border border-white/15 bg-black/40 px-3 py-2 text-white"
+                className="w-full rounded-lg border border-white/15 bg-black/40 px-3 py-2 text-white outline-none focus:ring-2 focus:ring-white/30"
               />
               <div className="grid grid-cols-2 gap-2">
                 <div>
@@ -159,7 +190,7 @@ export function SettingsModal({ onClose }: Props) {
                     onChange={(e) =>
                       setMinutesDraft(Math.max(0, Number(e.target.value) || 0))
                     }
-                    className="w-full rounded-lg border border-white/15 bg-black/40 px-3 py-2 text-white"
+                    className="w-full rounded-lg border border-white/15 bg-black/40 px-3 py-2 text-white outline-none focus:ring-2 focus:ring-white/30"
                   />
                 </div>
                 <div>
@@ -174,7 +205,7 @@ export function SettingsModal({ onClose }: Props) {
                         Math.max(0, Math.min(59, Number(e.target.value) || 0)),
                       )
                     }
-                    className="w-full rounded-lg border border-white/15 bg-black/40 px-3 py-2 text-white"
+                    className="w-full rounded-lg border border-white/15 bg-black/40 px-3 py-2 text-white outline-none focus:ring-2 focus:ring-white/30"
                   />
                 </div>
               </div>
@@ -189,28 +220,28 @@ export function SettingsModal({ onClose }: Props) {
               <button
                 type="button"
                 onClick={() => adjustScore("a", -1)}
-                className="rounded-full bg-white px-3 py-2 text-xs font-black text-black"
+                className="rounded-full bg-white px-3 py-2 text-xs font-black text-black transition hover:bg-white/90 active:scale-95"
               >
                 Home -1
               </button>
               <button
                 type="button"
                 onClick={() => adjustScore("a", -2)}
-                className="rounded-full bg-white px-3 py-2 text-xs font-black text-black"
+                className="rounded-full bg-white px-3 py-2 text-xs font-black text-black transition hover:bg-white/90 active:scale-95"
               >
                 Home -2
               </button>
               <button
                 type="button"
                 onClick={() => adjustScore("b", -1)}
-                className="rounded-full bg-white px-3 py-2 text-xs font-black text-black"
+                className="rounded-full bg-white px-3 py-2 text-xs font-black text-black transition hover:bg-white/90 active:scale-95"
               >
                 Away -1
               </button>
               <button
                 type="button"
                 onClick={() => adjustScore("b", -2)}
-                className="rounded-full bg-white px-3 py-2 text-xs font-black text-black"
+                className="rounded-full bg-white px-3 py-2 text-xs font-black text-black transition hover:bg-white/90 active:scale-95"
               >
                 Away -2
               </button>
@@ -226,14 +257,14 @@ export function SettingsModal({ onClose }: Props) {
                 <button
                   type="button"
                   onClick={() => adjustFouls("a", -1)}
-                  className="rounded-full bg-white px-3 py-2 text-xs font-black text-black"
+                  className="rounded-full bg-white px-3 py-2 text-xs font-black text-black transition hover:bg-white/90 active:scale-95"
                 >
                   Home Foul -1
                 </button>
                 <button
                   type="button"
                   onClick={() => adjustFouls("b", -1)}
-                  className="rounded-full bg-white px-3 py-2 text-xs font-black text-black"
+                  className="rounded-full bg-white px-3 py-2 text-xs font-black text-black transition hover:bg-white/90 active:scale-95"
                 >
                   Away Foul -1
                 </button>
@@ -250,20 +281,21 @@ export function SettingsModal({ onClose }: Props) {
           <button
             type="button"
             onClick={() => setMode("menu")}
-            className="rounded-lg border border-white/20 px-4 py-2 text-sm text-zinc-300"
+            className="rounded-full border border-white/20 px-4 py-2 text-sm text-zinc-300 hover:bg-white/5"
           >
             Back
           </button>
           <button
             type="button"
             onClick={applyEdit}
-            className="rounded-lg bg-white px-4 py-2 text-sm font-bold text-black"
+            className="inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 text-sm font-bold text-black transition hover:bg-white/90 active:scale-95"
           >
+            <CheckIcon className="h-4 w-4" />
             Apply
           </button>
         </div>
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   );
 }
 
