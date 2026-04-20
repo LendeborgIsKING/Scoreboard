@@ -11,8 +11,9 @@ import {
 import { formatSeconds } from "@/lib/format";
 import { useTimerDisplay } from "@/hooks/useTimerDisplay";
 import { SettingsModal } from "./SettingsModal";
+import { EditOverlay } from "./EditOverlay";
 import { SportLineIcon } from "./SportLineIcons";
-import { GearIcon, MenuIcon, PauseIcon, PlayIcon } from "./UiIcons";
+import { GearIcon, MenuIcon, PauseIcon, PencilIcon, PlayIcon } from "./UiIcons";
 
 type ScreenOrientationWithLock = ScreenOrientation & {
   lock?: (orientation: "portrait" | "landscape" | "any") => Promise<void>;
@@ -66,6 +67,7 @@ export function ScoreboardDisplay() {
   const toggleHalfInning = useGameStore((s) => s.toggleHalfInning);
 
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
 
   const cfg = resolveSportConfig(sportId, customSport);
   const activeVariant = resolveActiveVariant(cfg, timerVariantId);
@@ -247,15 +249,28 @@ export function ScoreboardDisplay() {
           {possession && <span className="ml-2 text-cyan-400">- Poss {possession === "a" ? "Home" : "Away"}</span>}
         </div>
 
-        <motion.button
-          type="button"
-          onClick={() => setSettingsOpen(true)}
-          whileTap={{ scale: 0.92 }}
-          className="absolute right-3 top-3 z-20 p-0 text-white"
-          aria-label="Open settings"
-        >
-          <GearIcon className="h-10 w-10" />
-        </motion.button>
+        <div className="absolute right-3 top-3 z-20 flex items-center gap-3">
+          <motion.button
+            type="button"
+            onClick={() => setEditOpen(true)}
+            whileTap={{ scale: 0.92 }}
+            whileHover={{ scale: 1.04 }}
+            className="flex h-16 w-16 items-center justify-center rounded-full bg-white text-black shadow"
+            aria-label="Edit scoreboard"
+          >
+            <PencilIcon className="h-8 w-8" />
+          </motion.button>
+          <motion.button
+            type="button"
+            onClick={() => setSettingsOpen(true)}
+            whileTap={{ scale: 0.92 }}
+            whileHover={{ scale: 1.04 }}
+            className="flex h-16 w-16 items-center justify-center rounded-full bg-white text-black shadow"
+            aria-label="Open settings"
+          >
+            <GearIcon className="h-8 w-8" />
+          </motion.button>
+        </div>
 
         {!settingsOpen && (
           <button
@@ -269,7 +284,19 @@ export function ScoreboardDisplay() {
       </div>
 
       <AnimatePresence>
-        {settingsOpen && <SettingsModal onClose={() => setSettingsOpen(false)} />}
+        {settingsOpen && (
+          <SettingsModal
+            onClose={() => setSettingsOpen(false)}
+            onEdit={() => {
+              setSettingsOpen(false);
+              setEditOpen(true);
+            }}
+          />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {editOpen && <EditOverlay onClose={() => setEditOpen(false)} />}
       </AnimatePresence>
     </div>
   );

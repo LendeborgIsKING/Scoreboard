@@ -30,3 +30,7 @@ body {
   background: rgba(34, 211, 238, 0.35);
   color: inherit;
 }
+
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+}

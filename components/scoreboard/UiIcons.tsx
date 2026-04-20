@@ -83,3 +83,43 @@ export function CheckIcon(props: IconProps) {
     </svg>
   );
 }
+
+export function StopwatchIcon(props: IconProps) {
+  return (
+    <svg {...base(props)}>
+      <path d="M9 1h6v2H9V1Zm10.03 5.39 1.41-1.41-1.42-1.42-1.44 1.44A9 9 0 1 0 19.03 6.4ZM12 20a7 7 0 1 1 0-14 7 7 0 0 1 0 14Zm1-11h-2v6h2V9Z" />
+    </svg>
+  );
+}
+
+export function BuzzerIcon(props: IconProps) {
+  return (
+    <svg {...base(props)}>
+      <path d="M3 19h18v2H3v-2Zm2-2h14v-2a7 7 0 0 0-14 0v2Zm6-11h2V3h-2v3ZM3.87 7.24l1.42-1.42 1.76 1.77-1.41 1.42-1.77-1.77Zm14.5.35 1.76-1.77 1.42 1.42-1.77 1.77-1.41-1.42Z" />
+    </svg>
+  );
+}
+
+export function WhistleIcon(props: IconProps) {
+  return (
+    <svg {...base(props)}>
+      <path d="M14 9c-1.1 0-2 .9-2 2 0 .41.13.8.35 1.13l-6.29 3.02A5.48 5.48 0 0 0 3 14.5C3 17.54 5.46 20 8.5 20S14 17.54 14 14.5c0-.36-.04-.71-.1-1.06l8.09-3.89C21.53 9.22 20.82 9 20 9h-6Zm-5.5 9.5A4 4 0 0 1 4.5 14.5a4 4 0 0 1 4-4 4 4 0 0 1 4 4 4 4 0 0 1-4 4Z" />
+    </svg>
+  );
+}
+
+export function TriangleLeftIcon(props: IconProps) {
+  return (
+    <svg {...base(props)}>
+      <path d="M15 4 6 12l9 8V4Z" />
+    </svg>
+  );
+}
+
+export function TriangleRightIcon(props: IconProps) {
+  return (
+    <svg {...base(props)}>
+      <path d="M9 4v16l9-8-9-8Z" />
+    </svg>
+  );
+}
