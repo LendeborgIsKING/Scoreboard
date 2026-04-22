@@ -78,6 +78,7 @@ export function ScoreboardDisplay() {
   const startTimer = useGameStore((s) => s.startTimer);
   const pauseTimer = useGameStore((s) => s.pauseTimer);
   const setUiPhase = useGameStore((s) => s.setUiPhase);
+  const setPossession = useGameStore((s) => s.setPossession);
   const setPresentation = useGameStore((s) => s.setPresentationMode);
   const nextPeriod = useGameStore((s) => s.nextPeriod);
   const adjustBSO = useGameStore((s) => s.adjustBSO);
@@ -321,10 +322,32 @@ export function ScoreboardDisplay() {
           <ActionColumn side="b" actions={scoreActions} onTap={onScore} />
         </div>
 
-        <div className="absolute bottom-3 left-1/2 -translate-x-1/2 text-[10px] uppercase tracking-[0.2em] text-zinc-500">
+        <button
+          type="button"
+          onClick={() => {
+            if (!editing) return;
+            const next =
+              possession === "a" ? "b" : possession === "b" ? null : "a";
+            setPossession(next);
+          }}
+          disabled={!editing}
+          className={`absolute bottom-3 left-1/2 -translate-x-1/2 text-[10px] uppercase tracking-[0.2em] text-zinc-500 ${
+            editing
+              ? "cursor-pointer rounded-md border border-dashed border-white/60 px-2 py-[2px] hover:text-white"
+              : "cursor-default"
+          }`}
+          aria-label="Cycle possession"
+        >
           {cfg.name}
-          {possession && <span className="ml-2 text-cyan-400">- Poss {possession === "a" ? "Home" : "Away"}</span>}
-        </div>
+          {possession && (
+            <span className="ml-2 text-cyan-400">
+              - Poss {possession === "a" ? "Home" : "Away"}
+            </span>
+          )}
+          {!possession && editing && (
+            <span className="ml-2 text-white/60">- Poss ?</span>
+          )}
+        </button>
 
         {!settingsOpen && !editing && (
           <button
