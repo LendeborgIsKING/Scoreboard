@@ -71,7 +71,6 @@ export function ScoreboardDisplay() {
 
   const addScore = useGameStore((s) => s.addScore);
   const adjustFouls = useGameStore((s) => s.adjustFouls);
-  const adjustTimeouts = useGameStore((s) => s.adjustTimeouts);
   const setCountdownDuration = useGameStore((s) => s.setCountdownDuration);
   const setClockSeconds = useGameStore((s) => s.setClockSeconds);
   const setPeriod = useGameStore((s) => s.setPeriod);
@@ -163,7 +162,6 @@ export function ScoreboardDisplay() {
   };
   const onTeamNameClick = (side: Side) => {
     if (editing) openTeamPicker(side);
-    else adjustTimeouts(side, 1);
   };
 
   const editDash = editing
@@ -260,10 +258,7 @@ export function ScoreboardDisplay() {
               onClick={() => onTeamNameClick("a")}
               className={`text-4xl font-black text-white ${editDash}`}
             >
-              {teamA.name}{" "}
-              {!editing && (
-                <span className="text-lg text-white/60">({teamA.timeouts})</span>
-              )}
+              {teamA.name}
             </button>
             <AnimatedScore value={teamA.score} colorClass="text-lime-400" />
           </section>
@@ -318,10 +313,7 @@ export function ScoreboardDisplay() {
               onClick={() => onTeamNameClick("b")}
               className={`text-4xl font-black text-white ${editDash}`}
             >
-              {teamB.name}{" "}
-              {!editing && (
-                <span className="text-lg text-white/60">({teamB.timeouts})</span>
-              )}
+              {teamB.name}
             </button>
             <AnimatedScore value={teamB.score} colorClass="text-lime-400" />
           </section>
