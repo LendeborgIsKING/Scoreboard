@@ -279,6 +279,7 @@ export function ScoreboardDisplay() {
               <FoulsBlock
                 aValue={teamA.fouls}
                 bValue={teamB.fouls}
+                editing={editing}
                 onA={(d) => adjustFouls("a", d)}
                 onB={(d) => adjustFouls("b", d)}
               />
@@ -513,14 +514,18 @@ function ActionColumn({
 function FoulsBlock({
   aValue,
   bValue,
+  editing,
   onA,
   onB,
 }: {
   aValue: number;
   bValue: number;
+  editing: boolean;
   onA: (delta: number) => void;
   onB: (delta: number) => void;
 }) {
+  const delta = editing ? -1 : 1;
+  const symbol = editing ? "-" : "+";
   return (
     <div className="flex flex-col items-center gap-1">
       <span className="text-[11px] font-bold uppercase tracking-[0.25em] text-white/70">
@@ -529,38 +534,22 @@ function FoulsBlock({
       <div className="flex items-center gap-3 text-white">
         <button
           type="button"
-          onClick={() => onA(-1)}
+          onClick={() => onA(delta)}
           className="h-7 w-7 rounded-full bg-white text-sm font-black text-black"
-          aria-label="Home foul -1"
+          aria-label={`Home foul ${symbol}1`}
         >
-          -
+          {symbol}
         </button>
         <span className="font-stencil text-3xl text-yellow-300">{aValue}</span>
         <span className="text-white/40">|</span>
         <span className="font-stencil text-3xl text-yellow-300">{bValue}</span>
         <button
           type="button"
-          onClick={() => onB(-1)}
+          onClick={() => onB(delta)}
           className="h-7 w-7 rounded-full bg-white text-sm font-black text-black"
-          aria-label="Away foul -1"
+          aria-label={`Away foul ${symbol}1`}
         >
-          -
-        </button>
-      </div>
-      <div className="flex items-center gap-2 text-[10px] uppercase tracking-widest text-white/60">
-        <button
-          type="button"
-          onClick={() => onA(1)}
-          className="rounded-full border border-white/30 px-2 py-[1px]"
-        >
-          + Home
-        </button>
-        <button
-          type="button"
-          onClick={() => onB(1)}
-          className="rounded-full border border-white/30 px-2 py-[1px]"
-        >
-          + Away
+          {symbol}
         </button>
       </div>
     </div>
