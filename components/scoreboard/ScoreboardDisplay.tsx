@@ -1,6 +1,11 @@
 "use client";
 
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import {
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useGameStore, playScoreChime } from "@/lib/gameStore";
 import {
@@ -11,9 +16,16 @@ import {
 import { formatSeconds } from "@/lib/format";
 import { useTimerDisplay } from "@/hooks/useTimerDisplay";
 import { SettingsModal } from "./SettingsModal";
-import { EditOverlay } from "./EditOverlay";
 import { SportLineIcon } from "./SportLineIcons";
-import { GearIcon, MenuIcon, PauseIcon, PencilIcon, PlayIcon } from "./UiIcons";
+import { PickerWheel } from "./PickerWheel";
+import {
+  CheckIcon,
+  GearIcon,
+  MenuIcon,
+  PauseIcon,
+  PencilIcon,
+  PlayIcon,
+} from "./UiIcons";
 
 type ScreenOrientationWithLock = ScreenOrientation & {
   lock?: (orientation: "portrait" | "landscape" | "any") => Promise<void>;
@@ -21,6 +33,11 @@ type ScreenOrientationWithLock = ScreenOrientation & {
 };
 
 type Side = "a" | "b";
+type Popover = null | "period" | "clock" | "teamA" | "teamB";
+
+const PERIOD_VALUES = Array.from({ length: 20 }, (_, i) => i + 1);
+const MIN_VALUES = Array.from({ length: 61 }, (_, i) => i);
+const SEC_VALUES = Array.from({ length: 60 }, (_, i) => i);
 
 function themeClass(theme: "dark" | "neon" | "classic"): string {
   switch (theme) {
@@ -56,18 +73,23 @@ export function ScoreboardDisplay() {
   const adjustFouls = useGameStore((s) => s.adjustFouls);
   const adjustTimeouts = useGameStore((s) => s.adjustTimeouts);
   const setCountdownDuration = useGameStore((s) => s.setCountdownDuration);
+  const setClockSeconds = useGameStore((s) => s.setClockSeconds);
+  const setPeriod = useGameStore((s) => s.setPeriod);
+  const setTeamName = useGameStore((s) => s.setTeamName);
   const startTimer = useGameStore((s) => s.startTimer);
   const pauseTimer = useGameStore((s) => s.pauseTimer);
-  const resetTimer = useGameStore((s) => s.resetTimer);
   const setUiPhase = useGameStore((s) => s.setUiPhase);
   const setPresentation = useGameStore((s) => s.setPresentationMode);
   const nextPeriod = useGameStore((s) => s.nextPeriod);
-  const prevPeriod = useGameStore((s) => s.prevPeriod);
   const adjustBSO = useGameStore((s) => s.adjustBSO);
   const toggleHalfInning = useGameStore((s) => s.toggleHalfInning);
 
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [editOpen, setEditOpen] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [popover, setPopover] = useState<Popover>(null);
+  const [teamDraft, setTeamDraft] = useState("");
+  const [minDraft, setMinDraft] = useState(0);
+  const [secDraft, setSecDraft] = useState(0);
 
   const cfg = resolveSportConfig(sportId, customSport);
   const activeVariant = resolveActiveVariant(cfg, timerVariantId);
@@ -104,13 +126,59 @@ export function ScoreboardDisplay() {
   const periodLabel = activeVariant?.periodLabel ?? cfg.periodLabel;
   const periodText = `${periodLabel} ${period}`;
   const lowTime = clockSec <= 60 && clockSec > 0;
+  const hasFouls = hasFeature(cfg, "fouls");
+
+  const openClockPicker = () => {
+    setMinDraft(Math.floor(timer.countdownFromSeconds / 60));
+    setSecDraft(timer.countdownFromSeconds % 60);
+    setPopover("clock");
+  };
+
+  const openTeamPicker = (side: Side) => {
+    setTeamDraft(side === "a" ? teamA.name : teamB.name);
+    setPopover(side === "a" ? "teamA" : "teamB");
+  };
+
+  const closePopover = () => {
+    if (popover === "clock") {
+      const total = Math.max(0, minDraft * 60 + secDraft);
+      if (total !== timer.countdownFromSeconds) setClockSeconds(total);
+    } else if (popover === "teamA") {
+      const next = teamDraft.trim() || "HOME";
+      if (next !== teamA.name) setTeamName("a", next);
+    } else if (popover === "teamB") {
+      const next = teamDraft.trim() || "AWAY";
+      if (next !== teamB.name) setTeamName("b", next);
+    }
+    setPopover(null);
+  };
+
+  const onClockClick = () => {
+    if (editing) openClockPicker();
+    else setCountdownDuration(timer.countdownFromSeconds);
+  };
+  const onPeriodClick = () => {
+    if (editing) setPopover("period");
+    else nextPeriod();
+  };
+  const onTeamNameClick = (side: Side) => {
+    if (editing) openTeamPicker(side);
+    else adjustTimeouts(side, 1);
+  };
+
+  const editDash = editing
+    ? "border-2 border-dashed border-white/60 rounded-lg px-3 py-1"
+    : "";
+  const editDashRed = editing
+    ? "border-2 border-dashed border-red-500/70 rounded-lg px-3 py-1"
+    : "";
 
   return (
     <div
       className={`relative flex min-h-full flex-1 flex-col items-center overflow-hidden ${themeClass(theme)}`}
     >
       <div className="absolute left-1/2 top-1/2 flex h-[390px] w-[844px] -translate-x-1/2 -translate-y-1/2 rotate-90 flex-col max-sm:landscape:static max-sm:landscape:h-full max-sm:landscape:w-full max-sm:landscape:translate-x-0 max-sm:landscape:translate-y-0 max-sm:landscape:rotate-0">
-        <div className="grid grid-cols-[auto_1fr_auto] items-center gap-2 px-6 pt-4 text-white">
+        <div className="grid grid-cols-[auto_1fr_auto] items-center gap-2 px-4 pt-2 text-white">
           <div className="flex items-center gap-2">
             <CircleBtn
               icon={<MenuIcon className="h-5 w-5" />}
@@ -134,10 +202,10 @@ export function ScoreboardDisplay() {
             {!cfg.noGameClock ? (
               <motion.button
                 type="button"
-                onClick={() => setCountdownDuration(timer.countdownFromSeconds)}
+                onClick={onClockClick}
                 className={`font-stencil text-6xl leading-none tracking-[0.08em] ${
                   lowTime ? "text-red-400" : "text-red-500"
-                }`}
+                } ${editDashRed}`}
                 animate={
                   lowTime
                     ? { opacity: [1, 0.5, 1], scale: [1, 1.02, 1] }
@@ -156,14 +224,31 @@ export function ScoreboardDisplay() {
             )}
             <button
               type="button"
-              onClick={() => nextPeriod()}
-              className="text-2xl font-black text-white"
+              onClick={onPeriodClick}
+              className={`text-2xl font-black text-white ${editDash}`}
             >
               {periodText}
             </button>
           </div>
 
-          <div className="h-12 w-12" aria-hidden />
+          <div className="flex items-center gap-2 justify-self-end">
+            <CircleBtn
+              icon={
+                editing ? (
+                  <CheckIcon className="h-5 w-5" />
+                ) : (
+                  <PencilIcon className="h-5 w-5" />
+                )
+              }
+              onClick={() => setEditing((v) => !v)}
+              ariaLabel={editing ? "Finish editing" : "Edit scoreboard"}
+            />
+            <CircleBtn
+              icon={<GearIcon className="h-5 w-5" />}
+              onClick={() => setSettingsOpen(true)}
+              ariaLabel="Open settings"
+            />
+          </div>
         </div>
 
         <div className="mt-2 grid flex-1 grid-cols-[auto_1fr_auto_1fr_auto] items-stretch gap-3 px-4 pb-2">
@@ -172,30 +257,37 @@ export function ScoreboardDisplay() {
           <section className="flex flex-col items-center justify-center gap-2">
             <button
               type="button"
-              onClick={() => adjustTimeouts("a", 1)}
-              className="text-4xl font-black text-white"
+              onClick={() => onTeamNameClick("a")}
+              className={`text-4xl font-black text-white ${editDash}`}
             >
-              {teamA.name} ({teamA.timeouts})
+              {teamA.name}{" "}
+              {!editing && (
+                <span className="text-lg text-white/60">({teamA.timeouts})</span>
+              )}
             </button>
             <AnimatedScore value={teamA.score} colorClass="text-lime-400" />
-            <MiniRow
-              enabled={hasFeature(cfg, "fouls")}
-              value={teamA.fouls}
-              onMinus={() => adjustFouls("a", -1)}
-              onPlus={() => adjustFouls("a", 1)}
-              title="Fouls"
-            />
           </section>
 
           <section className="flex flex-col items-center justify-center gap-3">
-            <div className="flex flex-col items-center gap-2 text-white/90">
-              <span className="h-14 w-px bg-white/15" aria-hidden />
-              <SportLineIcon sportId={cfg.id} className="h-10 w-10 text-white/80" />
-              <span className="h-14 w-px bg-white/15" aria-hidden />
+            <div className="flex flex-col items-center gap-1 text-white/90">
+              <span className="h-8 w-px bg-white/15" aria-hidden />
+              <SportLineIcon sportId={cfg.id} className="h-9 w-9 text-white/80" />
+              <span className="h-8 w-px bg-white/15" aria-hidden />
             </div>
+
+            {hasFouls && (
+              <FoulsBlock
+                aValue={teamA.fouls}
+                bValue={teamB.fouls}
+                onA={(d) => adjustFouls("a", d)}
+                onB={(d) => adjustFouls("b", d)}
+              />
+            )}
+
             {hasFeature(cfg, "downs") && (
               <StatPill label="Down" value={String(down)} />
             )}
+
             {hasFeature(cfg, "ballsStrikesOuts") && (
               <div className="flex items-center gap-2 text-sm text-yellow-300">
                 <button type="button" onClick={() => adjustBSO("balls", -1)} className="rounded-full border border-white/30 px-2">-</button>
@@ -211,34 +303,26 @@ export function ScoreboardDisplay() {
                 <button type="button" onClick={() => adjustBSO("outs", 1)} className="rounded-full border border-white/30 px-2">+</button>
               </div>
             )}
+
             {hasFeature(cfg, "halfInning") && (
               <button type="button" onClick={() => toggleHalfInning()} className="rounded-full bg-white/10 px-3 py-1 text-xs uppercase text-zinc-200">
                 Toggle Top/Bot
               </button>
             )}
-            <div className="flex gap-2">
-              <button type="button" onClick={() => prevPeriod()} className="rounded-full bg-white/10 px-3 py-1 text-xs uppercase">- {periodLabel}</button>
-              <button type="button" onClick={() => nextPeriod()} className="rounded-full bg-white/10 px-3 py-1 text-xs uppercase">+ {periodLabel}</button>
-              <button type="button" onClick={() => resetTimer()} className="rounded-full bg-white/10 px-3 py-1 text-xs uppercase">Reset Clock</button>
-            </div>
           </section>
 
           <section className="flex flex-col items-center justify-center gap-2">
             <button
               type="button"
-              onClick={() => adjustTimeouts("b", 1)}
-              className="text-4xl font-black text-white"
+              onClick={() => onTeamNameClick("b")}
+              className={`text-4xl font-black text-white ${editDash}`}
             >
-              {teamB.name} ({teamB.timeouts})
+              {teamB.name}{" "}
+              {!editing && (
+                <span className="text-lg text-white/60">({teamB.timeouts})</span>
+              )}
             </button>
             <AnimatedScore value={teamB.score} colorClass="text-lime-400" />
-            <MiniRow
-              enabled={hasFeature(cfg, "fouls")}
-              value={teamB.fouls}
-              onMinus={() => adjustFouls("b", -1)}
-              onPlus={() => adjustFouls("b", 1)}
-              title="Fouls"
-            />
           </section>
 
           <ActionColumn side="b" actions={scoreActions} onTap={onScore} />
@@ -249,30 +333,7 @@ export function ScoreboardDisplay() {
           {possession && <span className="ml-2 text-cyan-400">- Poss {possession === "a" ? "Home" : "Away"}</span>}
         </div>
 
-        <div className="absolute right-3 top-3 z-20 flex items-center gap-3">
-          <motion.button
-            type="button"
-            onClick={() => setEditOpen(true)}
-            whileTap={{ scale: 0.92 }}
-            whileHover={{ scale: 1.04 }}
-            className="flex h-16 w-16 items-center justify-center rounded-full bg-white text-black shadow"
-            aria-label="Edit scoreboard"
-          >
-            <PencilIcon className="h-8 w-8" />
-          </motion.button>
-          <motion.button
-            type="button"
-            onClick={() => setSettingsOpen(true)}
-            whileTap={{ scale: 0.92 }}
-            whileHover={{ scale: 1.04 }}
-            className="flex h-16 w-16 items-center justify-center rounded-full bg-white text-black shadow"
-            aria-label="Open settings"
-          >
-            <GearIcon className="h-8 w-8" />
-          </motion.button>
-        </div>
-
-        {!settingsOpen && (
+        {!settingsOpen && !editing && (
           <button
             type="button"
             onClick={() => setPresentation(!presentation)}
@@ -283,7 +344,82 @@ export function ScoreboardDisplay() {
         )}
 
         <AnimatePresence>
-          {editOpen && <EditOverlay onClose={() => setEditOpen(false)} />}
+          {popover && (
+            <motion.div
+              className="absolute inset-0 z-40 flex items-center justify-center bg-black/70 backdrop-blur-sm"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={closePopover}
+            >
+              <motion.div
+                initial={{ scale: 0.95, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.95, opacity: 0 }}
+                onClick={(e) => e.stopPropagation()}
+                className="rounded-2xl border border-white/20 bg-zinc-900/95 p-4 shadow-2xl"
+              >
+                {popover === "period" && (
+                  <PickerWheel
+                    values={PERIOD_VALUES}
+                    value={period}
+                    onChange={(v) => setPeriod(Number(v))}
+                    label={periodLabel}
+                  />
+                )}
+
+                {popover === "clock" && (
+                  <div className="flex items-end gap-2">
+                    <PickerWheel
+                      values={MIN_VALUES}
+                      value={minDraft}
+                      onChange={(v) => setMinDraft(Number(v))}
+                      label="MIN"
+                      width={64}
+                    />
+                    <span className="pb-[90px] font-stencil text-3xl text-white">
+                      :
+                    </span>
+                    <PickerWheel
+                      values={SEC_VALUES}
+                      value={secDraft}
+                      onChange={(v) => setSecDraft(Number(v))}
+                      label="SEC"
+                      width={64}
+                    />
+                  </div>
+                )}
+
+                {(popover === "teamA" || popover === "teamB") && (
+                  <div className="flex w-[320px] flex-col gap-2">
+                    <label className="text-xs font-bold uppercase tracking-widest text-zinc-400">
+                      {popover === "teamA" ? "Home" : "Away"}
+                    </label>
+                    <input
+                      autoFocus
+                      value={teamDraft}
+                      onChange={(e) => setTeamDraft(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") closePopover();
+                      }}
+                      className="rounded-lg border border-white/20 bg-black/40 px-3 py-2 text-xl font-black text-white outline-none focus:ring-2 focus:ring-white/30"
+                    />
+                  </div>
+                )}
+
+                <div className="mt-3 flex justify-end">
+                  <button
+                    type="button"
+                    onClick={closePopover}
+                    className="inline-flex items-center gap-2 rounded-full bg-white px-4 py-1.5 text-sm font-bold text-black"
+                  >
+                    <CheckIcon className="h-4 w-4" />
+                    Done
+                  </button>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
         </AnimatePresence>
       </div>
 
@@ -293,7 +429,7 @@ export function ScoreboardDisplay() {
             onClose={() => setSettingsOpen(false)}
             onEdit={() => {
               setSettingsOpen(false);
-              setEditOpen(true);
+              setEditing(true);
             }}
           />
         )}
@@ -374,26 +510,59 @@ function ActionColumn({
   );
 }
 
-function MiniRow({
-  enabled,
-  value,
-  onMinus,
-  onPlus,
-  title,
+function FoulsBlock({
+  aValue,
+  bValue,
+  onA,
+  onB,
 }: {
-  enabled: boolean;
-  value: number;
-  onMinus: () => void;
-  onPlus: () => void;
-  title: string;
+  aValue: number;
+  bValue: number;
+  onA: (delta: number) => void;
+  onB: (delta: number) => void;
 }) {
-  if (!enabled) return null;
   return (
-    <div className="flex items-center gap-2 text-white">
-      <button type="button" onClick={onMinus} className="h-10 w-10 rounded-full bg-white text-2xl font-black text-black">-</button>
-      <span className="font-stencil text-4xl text-yellow-300">{value}</span>
-      <button type="button" onClick={onPlus} className="h-10 w-10 rounded-full bg-white text-2xl font-black text-black">+</button>
-      <span className="ml-1 text-xs uppercase tracking-widest text-zinc-400">{title}</span>
+    <div className="flex flex-col items-center gap-1">
+      <span className="text-[11px] font-bold uppercase tracking-[0.25em] text-white/70">
+        Fouls
+      </span>
+      <div className="flex items-center gap-3 text-white">
+        <button
+          type="button"
+          onClick={() => onA(-1)}
+          className="h-7 w-7 rounded-full bg-white text-sm font-black text-black"
+          aria-label="Home foul -1"
+        >
+          -
+        </button>
+        <span className="font-stencil text-3xl text-yellow-300">{aValue}</span>
+        <span className="text-white/40">|</span>
+        <span className="font-stencil text-3xl text-yellow-300">{bValue}</span>
+        <button
+          type="button"
+          onClick={() => onB(-1)}
+          className="h-7 w-7 rounded-full bg-white text-sm font-black text-black"
+          aria-label="Away foul -1"
+        >
+          -
+        </button>
+      </div>
+      <div className="flex items-center gap-2 text-[10px] uppercase tracking-widest text-white/60">
+        <button
+          type="button"
+          onClick={() => onA(1)}
+          className="rounded-full border border-white/30 px-2 py-[1px]"
+        >
+          + Home
+        </button>
+        <button
+          type="button"
+          onClick={() => onB(1)}
+          className="rounded-full border border-white/30 px-2 py-[1px]"
+        >
+          + Away
+        </button>
+      </div>
     </div>
   );
 }
