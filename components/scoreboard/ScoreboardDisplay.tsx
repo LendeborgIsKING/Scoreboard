@@ -165,10 +165,10 @@ export function ScoreboardDisplay() {
   };
 
   const editDash = editing
-    ? "border-2 border-dashed border-white/60 rounded-lg px-3 py-1"
+    ? "border-2 border-dashed border-white rounded-lg px-3 py-1"
     : "";
   const editDashRed = editing
-    ? "border-2 border-dashed border-red-500/70 rounded-lg px-3 py-1"
+    ? "border-2 border-dashed border-red-500 rounded-lg px-3 py-1"
     : "";
 
   return (
@@ -176,7 +176,7 @@ export function ScoreboardDisplay() {
       className={`relative flex min-h-full flex-1 flex-col items-center overflow-hidden ${themeClass(theme)}`}
     >
       <div className="absolute left-1/2 top-1/2 flex h-[390px] w-[844px] -translate-x-1/2 -translate-y-1/2 rotate-90 flex-col max-sm:landscape:static max-sm:landscape:h-full max-sm:landscape:w-full max-sm:landscape:translate-x-0 max-sm:landscape:translate-y-0 max-sm:landscape:rotate-0">
-        <div className="grid grid-cols-[auto_1fr_auto] items-center gap-2 px-4 pt-2 text-white">
+        <div className="grid grid-cols-[auto_1fr_auto] items-start gap-2 px-4 pt-4 text-white">
           <div className="flex items-center gap-2">
             <CircleBtn
               icon={<MenuIcon className="h-5 w-5" />}
