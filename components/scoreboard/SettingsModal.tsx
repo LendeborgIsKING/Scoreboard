@@ -12,18 +12,20 @@ type Props = {
 export function SettingsModal({ onClose, onEdit }: Props) {
   return (
     <motion.div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm"
+      className="absolute inset-0 z-50 bg-black/75 backdrop-blur-sm"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       transition={{ duration: 0.18 }}
+      onClick={onClose}
     >
       <motion.div
-        initial={{ y: 16, opacity: 0, scale: 0.98 }}
-        animate={{ y: 0, opacity: 1, scale: 1 }}
-        exit={{ y: 12, opacity: 0, scale: 0.98 }}
+        initial={{ opacity: 0, scale: 0.98 }}
+        animate={{ opacity: 1, scale: 1 }}
+        exit={{ opacity: 0, scale: 0.98 }}
         transition={{ duration: 0.22, ease: "easeOut" }}
-        className="relative flex h-[390px] w-[844px] flex-col bg-black text-white"
+        onClick={(e) => e.stopPropagation()}
+        className="absolute left-1/2 top-1/2 flex h-[390px] w-[844px] -translate-x-1/2 -translate-y-1/2 rotate-90 flex-col bg-black text-white max-sm:landscape:static max-sm:landscape:h-full max-sm:landscape:w-full max-sm:landscape:translate-x-0 max-sm:landscape:translate-y-0 max-sm:landscape:rotate-0"
       >
         <button
           type="button"
