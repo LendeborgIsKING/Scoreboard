@@ -341,7 +341,7 @@ export function ScoreboardDisplay() {
           {cfg.name}
           {possession && (
             <span className="ml-2 text-cyan-400">
-              - Poss {possession === "a" ? "Home" : "Away"}
+              - Poss {possession === "a" ? teamA.name : teamB.name}
             </span>
           )}
           {!possession && editing && (
