@@ -17,7 +17,7 @@ export type SfxName =
   | "tada"
   | "click";
 
-export type MusicTrack = "none" | "ambient" | "hype" | "anthem";
+export type MusicTrack = "none" | "ambient" | "hype" | "hype2" | "anthem";
 
 let ctx: AudioContext | null = null;
 let masterSfxGain: GainNode | null = null;
@@ -268,40 +268,46 @@ function startAmbient(c: AudioContext, dest: AudioNode): { stop: () => void } {
 }
 
 /**
- * Hype music: plays the licensed Kernkraft 400 MP3 looped between 0:45 and 1:45.
- * Routed through the master music gain via a MediaElementAudioSourceNode so the
- * music volume slider controls it like the other tracks.
+ * File-based looping music. `src` is a static path; the track plays from
+ * `loopStart` and either snaps back at `loopEnd` (if provided) or restarts
+ * from `loopStart` once it ends. Routed through the master music gain via a
+ * MediaElementAudioSourceNode so the music volume slider applies.
  */
-const HYPE_LOOP_START = 45;
-const HYPE_LOOP_END = 105;
-
-function startHypeFromFile(
+function startTrackFromFile(
   c: AudioContext,
   dest: AudioNode,
+  src: string,
+  loopStart: number,
+  loopEnd?: number,
 ): { stop: () => void } {
-  const audio = new Audio("/music/kernkraft.mp3");
+  const audio = new Audio(src);
   audio.crossOrigin = "anonymous";
   audio.preload = "auto";
   audio.loop = false;
-  audio.currentTime = HYPE_LOOP_START;
+  audio.currentTime = loopStart;
 
   let source: MediaElementAudioSourceNode | null = null;
   try {
     source = c.createMediaElementSource(audio);
     source.connect(dest);
   } catch {
-    // Fallback: route through default destination if Web Audio routing fails
+    // Fallback: route through default destination if Web Audio routing fails.
   }
 
   const onTimeUpdate = () => {
-    if (audio.currentTime >= HYPE_LOOP_END) {
-      audio.currentTime = HYPE_LOOP_START;
+    if (loopEnd != null && audio.currentTime >= loopEnd) {
+      audio.currentTime = loopStart;
     }
   };
+  const onEnded = () => {
+    audio.currentTime = loopStart;
+    audio.play().catch(() => {});
+  };
   audio.addEventListener("timeupdate", onTimeUpdate);
+  audio.addEventListener("ended", onEnded);
 
   const onCanPlay = () => {
-    audio.currentTime = HYPE_LOOP_START;
+    audio.currentTime = loopStart;
     audio.play().catch(() => {});
   };
   if (audio.readyState >= 2) onCanPlay();
@@ -310,6 +316,7 @@ function startHypeFromFile(
   return {
     stop: () => {
       audio.removeEventListener("timeupdate", onTimeUpdate);
+      audio.removeEventListener("ended", onEnded);
       try {
         audio.pause();
       } catch {
@@ -379,7 +386,21 @@ export function setMusic(track: MusicTrack) {
   currentTrack = track;
   if (track === "none") return;
   if (track === "ambient") musicNodes = startAmbient(c, masterMusicGain);
-  if (track === "hype") musicNodes = startHypeFromFile(c, masterMusicGain);
+  if (track === "hype")
+    musicNodes = startTrackFromFile(
+      c,
+      masterMusicGain,
+      "/music/kernkraft.mp3",
+      45,
+      105,
+    );
+  if (track === "hype2")
+    musicNodes = startTrackFromFile(
+      c,
+      masterMusicGain,
+      "/music/hype2.mp3",
+      52,
+    );
   if (track === "anthem") musicNodes = startAnthem(c, masterMusicGain);
 }
 
