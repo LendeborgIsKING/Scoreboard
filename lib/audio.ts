@@ -267,46 +267,65 @@ function startAmbient(c: AudioContext, dest: AudioNode): { stop: () => void } {
   };
 }
 
-function startHype(c: AudioContext, dest: AudioNode): { stop: () => void } {
-  const tempo = 110;
-  const beat = 60 / tempo;
-  const pattern = [0, 3, 5, 7, 0, 3, 5, 10];
-  const baseFreq = 110;
-  const oscs: OscillatorNode[] = [];
-  let active = true;
+/**
+ * Hype music: plays the licensed Kernkraft 400 MP3 looped between 0:45 and 1:45.
+ * Routed through the master music gain via a MediaElementAudioSourceNode so the
+ * music volume slider controls it like the other tracks.
+ */
+const HYPE_LOOP_START = 45;
+const HYPE_LOOP_END = 105;
 
-  const schedule = (startTime: number) => {
-    if (!active) return;
-    pattern.forEach((semitone, i) => {
-      const t = startTime + i * beat * 0.5;
-      const freq = baseFreq * Math.pow(2, semitone / 12);
-      const o = c.createOscillator();
-      o.type = "sawtooth";
-      o.frequency.value = freq;
-      const g = c.createGain();
-      g.gain.setValueAtTime(0, t);
-      g.gain.linearRampToValueAtTime(0.08, t + 0.01);
-      g.gain.exponentialRampToValueAtTime(0.0001, t + beat * 0.45);
-      o.connect(g).connect(dest);
-      o.start(t);
-      o.stop(t + beat * 0.5);
-      oscs.push(o);
-    });
-    const next = startTime + pattern.length * beat * 0.5;
-    setTimeout(() => schedule(next), (pattern.length * beat * 0.5 - 0.1) * 1000);
+function startHypeFromFile(
+  c: AudioContext,
+  dest: AudioNode,
+): { stop: () => void } {
+  const audio = new Audio("/music/kernkraft.mp3");
+  audio.crossOrigin = "anonymous";
+  audio.preload = "auto";
+  audio.loop = false;
+  audio.currentTime = HYPE_LOOP_START;
+
+  let source: MediaElementAudioSourceNode | null = null;
+  try {
+    source = c.createMediaElementSource(audio);
+    source.connect(dest);
+  } catch {
+    // Fallback: route through default destination if Web Audio routing fails
+  }
+
+  const onTimeUpdate = () => {
+    if (audio.currentTime >= HYPE_LOOP_END) {
+      audio.currentTime = HYPE_LOOP_START;
+    }
   };
-  schedule(c.currentTime + 0.05);
+  audio.addEventListener("timeupdate", onTimeUpdate);
+
+  const onCanPlay = () => {
+    audio.currentTime = HYPE_LOOP_START;
+    audio.play().catch(() => {});
+  };
+  if (audio.readyState >= 2) onCanPlay();
+  else audio.addEventListener("canplay", onCanPlay, { once: true });
 
   return {
     stop: () => {
-      active = false;
-      oscs.forEach((o) => {
-        try {
-          o.stop();
-        } catch {
-          /* ignore */
-        }
-      });
+      audio.removeEventListener("timeupdate", onTimeUpdate);
+      try {
+        audio.pause();
+      } catch {
+        /* ignore */
+      }
+      try {
+        source?.disconnect();
+      } catch {
+        /* ignore */
+      }
+      audio.src = "";
+      try {
+        audio.load();
+      } catch {
+        /* ignore */
+      }
     },
   };
 }
@@ -360,7 +379,7 @@ export function setMusic(track: MusicTrack) {
   currentTrack = track;
   if (track === "none") return;
   if (track === "ambient") musicNodes = startAmbient(c, masterMusicGain);
-  if (track === "hype") musicNodes = startHype(c, masterMusicGain);
+  if (track === "hype") musicNodes = startHypeFromFile(c, masterMusicGain);
   if (track === "anthem") musicNodes = startAnthem(c, masterMusicGain);
 }
 
