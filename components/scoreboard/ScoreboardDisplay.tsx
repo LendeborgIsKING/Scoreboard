@@ -1,13 +1,9 @@
 "use client";
 
-import {
-  useEffect,
-  useMemo,
-  useState,
-  type ReactNode,
-} from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useGameStore, playScoreChime } from "@/lib/gameStore";
+import { useGameStore } from "@/lib/gameStore";
+import { setMusic as setAudioMusic } from "@/lib/audio";
 import {
   hasFeature,
   resolveActiveVariant,
@@ -15,9 +11,17 @@ import {
 } from "@/lib/sportRegistry";
 import { formatSeconds } from "@/lib/format";
 import { useTimerDisplay } from "@/hooks/useTimerDisplay";
+import { useCountdownTick } from "@/hooks/useCountdownTick";
+import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
 import { SettingsModal } from "./SettingsModal";
+import { StatsModal } from "./StatsModal";
+import { HistoryModal } from "./HistoryModal";
+import { SoundboardModal } from "./SoundboardModal";
 import { SportLineIcon } from "./SportLineIcons";
 import { PickerWheel } from "./PickerWheel";
+import { ShotClock } from "./ShotClock";
+import { BannerOverlay } from "./BannerOverlay";
+import { Confetti } from "./Confetti";
 import {
   CheckIcon,
   GearIcon,
@@ -33,18 +37,21 @@ type ScreenOrientationWithLock = ScreenOrientation & {
 };
 
 type Side = "a" | "b";
-type Popover = null | "period" | "clock" | "teamA" | "teamB";
+type Popover = null | "period" | "clock" | "teamA" | "teamB" | "shotclock";
 
 const PERIOD_VALUES = Array.from({ length: 20 }, (_, i) => i + 1);
 const MIN_VALUES = Array.from({ length: 61 }, (_, i) => i);
 const SEC_VALUES = Array.from({ length: 60 }, (_, i) => i);
+const SC_VALUES = Array.from({ length: 60 }, (_, i) => i + 1);
 
-function themeClass(theme: "dark" | "neon" | "classic"): string {
+function themeClass(theme: "dark" | "neon" | "classic" | "stadium"): string {
   switch (theme) {
     case "neon":
-      return "bg-black text-white";
+      return "bg-[radial-gradient(ellipse_at_center,_#1b0033_0%,_#000_70%)] text-white";
     case "classic":
-      return "bg-black text-white";
+      return "bg-[linear-gradient(180deg,_#1a1a1a,_#000)] text-white";
+    case "stadium":
+      return "bg-[radial-gradient(ellipse_at_top,_#003314_0%,_#000_70%)] text-white";
     default:
       return "bg-black text-white";
   }
@@ -58,10 +65,13 @@ export function ScoreboardDisplay() {
   const teamA = useGameStore((s) => s.teamA);
   const teamB = useGameStore((s) => s.teamB);
   const theme = useGameStore((s) => s.theme);
-  const hype = useGameStore((s) => s.hypeMode);
   const presentation = useGameStore((s) => s.presentationMode);
   const timer = useGameStore((s) => s.timer);
   const period = useGameStore((s) => s.period);
+  const shotClock = useGameStore((s) => s.shotClock);
+  const sfxEnabled = useGameStore((s) => s.sfxEnabled);
+  const musicEnabled = useGameStore((s) => s.musicEnabled);
+  const musicTrack = useGameStore((s) => s.musicTrack);
 
   const possession = useGameStore((s) => s.possession);
   const balls = useGameStore((s) => s.balls);
@@ -78,39 +88,53 @@ export function ScoreboardDisplay() {
   const startTimer = useGameStore((s) => s.startTimer);
   const pauseTimer = useGameStore((s) => s.pauseTimer);
   const setUiPhase = useGameStore((s) => s.setUiPhase);
-  const setPossession = useGameStore((s) => s.setPossession);
   const setPresentation = useGameStore((s) => s.setPresentationMode);
   const nextPeriod = useGameStore((s) => s.nextPeriod);
   const adjustBSO = useGameStore((s) => s.adjustBSO);
   const toggleHalfInning = useGameStore((s) => s.toggleHalfInning);
+  const setPossession = useGameStore((s) => s.setPossession);
+  const setSfxEnabled = useGameStore((s) => s.setSfxEnabled);
+  const startShotClock = useGameStore((s) => s.startShotClock);
+  const pauseShotClock = useGameStore((s) => s.pauseShotClock);
+  const resetShotClock = useGameStore((s) => s.resetShotClock);
+  const setShotClockDuration = useGameStore((s) => s.setShotClockDuration);
+  const confettiKey = useGameStore((s) => s.confettiKey);
 
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [statsOpen, setStatsOpen] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [soundboardOpen, setSoundboardOpen] = useState(false);
   const [editing, setEditing] = useState(false);
   const [popover, setPopover] = useState<Popover>(null);
   const [teamDraft, setTeamDraft] = useState("");
   const [minDraft, setMinDraft] = useState(0);
   const [secDraft, setSecDraft] = useState(0);
+  const [scDraft, setScDraft] = useState(shotClock.durationSeconds);
 
   const cfg = resolveSportConfig(sportId, customSport);
   const activeVariant = resolveActiveVariant(cfg, timerVariantId);
   const clockSec = useTimerDisplay();
+  useCountdownTick();
+  useKeyboardShortcuts(true);
+
+  // Auto-resume music when entering the game
+  useEffect(() => {
+    if (musicEnabled) setAudioMusic(musicTrack);
+    return () => setAudioMusic("none");
+  }, [musicEnabled, musicTrack]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-
     const orientation = window.screen.orientation as ScreenOrientationWithLock;
     if (orientation.lock) {
-      orientation.lock("landscape").catch(() => {
-        // Browser/OS may deny lock. CSS rotation fallback still applies.
-      });
+      orientation.lock("landscape").catch(() => {});
     }
-
     return () => {
       if (orientation.unlock) {
         try {
           orientation.unlock();
         } catch {
-          // ignore
+          /* ignore */
         }
       }
     };
@@ -118,22 +142,26 @@ export function ScoreboardDisplay() {
 
   const scoreActions = useMemo(() => cfg.scoring.slice(0, 4), [cfg.scoring]);
 
-  const onScore = (team: Side, actionId: string) => {
-    addScore(team, actionId);
-    playScoreChime(hype);
-  };
+  const onScore = (team: Side, actionId: string) => addScore(team, actionId);
 
   const periodLabel = activeVariant?.periodLabel ?? cfg.periodLabel;
   const periodText = `${periodLabel} ${period}`;
   const lowTime = clockSec <= 60 && clockSec > 0;
   const hasFouls = hasFeature(cfg, "fouls");
+  const showPossession = hasFeature(cfg, "possession");
+
+  const foulOutA = hasFouls && teamA.fouls >= 5;
+  const foulOutB = hasFouls && teamB.fouls >= 5;
 
   const openClockPicker = () => {
     setMinDraft(Math.floor(timer.countdownFromSeconds / 60));
     setSecDraft(timer.countdownFromSeconds % 60);
     setPopover("clock");
   };
-
+  const openShotClockPicker = () => {
+    setScDraft(shotClock.durationSeconds);
+    setPopover("shotclock");
+  };
   const openTeamPicker = (side: Side) => {
     setTeamDraft(side === "a" ? teamA.name : teamB.name);
     setPopover(side === "a" ? "teamA" : "teamB");
@@ -149,6 +177,8 @@ export function ScoreboardDisplay() {
     } else if (popover === "teamB") {
       const next = teamDraft.trim() || "AWAY";
       if (next !== teamB.name) setTeamName("b", next);
+    } else if (popover === "shotclock") {
+      if (scDraft !== shotClock.durationSeconds) setShotClockDuration(scDraft);
     }
     setPopover(null);
   };
@@ -163,6 +193,14 @@ export function ScoreboardDisplay() {
   };
   const onTeamNameClick = (side: Side) => {
     if (editing) openTeamPicker(side);
+  };
+  const onShotClockClick = () => {
+    if (editing) {
+      openShotClockPicker();
+      return;
+    }
+    if (shotClock.running) pauseShotClock();
+    else startShotClock();
   };
 
   const editDash = editing
@@ -195,10 +233,23 @@ export function ScoreboardDisplay() {
               onClick={() => (timer.running ? pauseTimer() : startTimer())}
               ariaLabel={timer.running ? "Pause clock" : "Start clock"}
             />
+            <button
+              type="button"
+              onClick={() => setSfxEnabled(!sfxEnabled)}
+              className={`flex h-12 w-12 items-center justify-center rounded-full text-xs font-black uppercase tracking-widest ${
+                sfxEnabled
+                  ? "bg-white text-black"
+                  : "bg-zinc-800 text-zinc-400"
+              }`}
+              aria-label={sfxEnabled ? "Mute SFX" : "Unmute SFX"}
+            >
+              {sfxEnabled ? "SFX" : "MUTE"}
+            </button>
           </div>
 
           <div className="flex flex-col items-center gap-1">
-            {!cfg.noGameClock ? (
+            <div className="flex items-center gap-2">
+              <ShotClock onClick={onShotClockClick} />
               <motion.button
                 type="button"
                 onClick={onClockClick}
@@ -216,11 +267,9 @@ export function ScoreboardDisplay() {
                     : { duration: 0.2 }
                 }
               >
-                {formatSeconds(clockSec)}
+                {!cfg.noGameClock ? formatSeconds(clockSec) : "--:--"}
               </motion.button>
-            ) : (
-              <div className="font-stencil text-4xl text-zinc-500">--:--</div>
-            )}
+            </div>
             <button
               type="button"
               onClick={onPeriodClick}
@@ -257,11 +306,26 @@ export function ScoreboardDisplay() {
             <button
               type="button"
               onClick={() => onTeamNameClick("a")}
-              className={`text-4xl font-black text-white ${editDash}`}
+              className={`flex items-center gap-2 text-4xl font-black text-white ${editDash}`}
+              style={{ color: teamA.color }}
             >
+              {showPossession && possession === "a" && (
+                <span className="text-cyan-400" aria-label="possession">
+                  {"\u25B6"}
+                </span>
+              )}
               {teamA.name}
+              {foulOutA && (
+                <span className="ml-1 rounded-md bg-red-600 px-2 py-0.5 text-xs uppercase text-white">
+                  Foul out
+                </span>
+              )}
             </button>
-            <AnimatedScore value={teamA.score} colorClass="text-lime-400" />
+            <AnimatedScore
+              value={teamA.score}
+              colorClass="text-lime-400"
+              tint={teamA.color}
+            />
           </section>
 
           <section className="flex flex-col items-center justify-center gap-3">
@@ -312,11 +376,26 @@ export function ScoreboardDisplay() {
             <button
               type="button"
               onClick={() => onTeamNameClick("b")}
-              className={`text-4xl font-black text-white ${editDash}`}
+              className={`flex items-center gap-2 text-4xl font-black text-white ${editDash}`}
+              style={{ color: teamB.color }}
             >
               {teamB.name}
+              {showPossession && possession === "b" && (
+                <span className="text-cyan-400" aria-label="possession">
+                  {"\u25C0"}
+                </span>
+              )}
+              {foulOutB && (
+                <span className="ml-1 rounded-md bg-red-600 px-2 py-0.5 text-xs uppercase text-white">
+                  Foul out
+                </span>
+              )}
             </button>
-            <AnimatedScore value={teamB.score} colorClass="text-lime-400" />
+            <AnimatedScore
+              value={teamB.score}
+              colorClass="text-lime-400"
+              tint={teamB.color}
+            />
           </section>
 
           <ActionColumn side="b" actions={scoreActions} onTap={onScore} />
@@ -358,6 +437,9 @@ export function ScoreboardDisplay() {
             {presentation ? "Exit present" : "Present"}
           </button>
         )}
+
+        <BannerOverlay />
+        <Confetti trigger={confettiKey} />
 
         <AnimatePresence>
           {popover && (
@@ -406,6 +488,15 @@ export function ScoreboardDisplay() {
                   </div>
                 )}
 
+                {popover === "shotclock" && (
+                  <PickerWheel
+                    values={SC_VALUES}
+                    value={scDraft}
+                    onChange={(v) => setScDraft(Number(v))}
+                    label="Shot clock"
+                  />
+                )}
+
                 {(popover === "teamA" || popover === "teamB") && (
                   <div className="flex w-[320px] flex-col gap-2">
                     <label className="text-xs font-bold uppercase tracking-widest text-zinc-400">
@@ -423,7 +514,18 @@ export function ScoreboardDisplay() {
                   </div>
                 )}
 
-                <div className="mt-3 flex justify-end">
+                <div className="mt-3 flex justify-end gap-2">
+                  {popover === "shotclock" && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        resetShotClock();
+                      }}
+                      className="rounded-full border border-white/20 px-4 py-1.5 text-sm text-zinc-300"
+                    >
+                      Reset
+                    </button>
+                  )}
                   <button
                     type="button"
                     onClick={closePopover}
@@ -447,14 +549,47 @@ export function ScoreboardDisplay() {
               setSettingsOpen(false);
               setEditing(true);
             }}
+            onStats={() => {
+              setSettingsOpen(false);
+              setStatsOpen(true);
+            }}
+            onHistory={() => {
+              setSettingsOpen(false);
+              setHistoryOpen(true);
+            }}
+            onSoundboard={() => {
+              setSettingsOpen(false);
+              setSoundboardOpen(true);
+            }}
           />
+        )}
+      </AnimatePresence>
+      <AnimatePresence>
+        {statsOpen && <StatsModal onClose={() => setStatsOpen(false)} />}
+      </AnimatePresence>
+      <AnimatePresence>
+        {historyOpen && (
+          <HistoryModal onClose={() => setHistoryOpen(false)} />
+        )}
+      </AnimatePresence>
+      <AnimatePresence>
+        {soundboardOpen && (
+          <SoundboardModal onClose={() => setSoundboardOpen(false)} />
         )}
       </AnimatePresence>
     </div>
   );
 }
 
-function AnimatedScore({ value, colorClass }: { value: number; colorClass: string }) {
+function AnimatedScore({
+  value,
+  colorClass,
+  tint,
+}: {
+  value: number;
+  colorClass: string;
+  tint?: string;
+}) {
   return (
     <div className="relative h-[130px] w-full overflow-hidden">
       <AnimatePresence mode="popLayout" initial={false}>
@@ -465,6 +600,7 @@ function AnimatedScore({ value, colorClass }: { value: number; colorClass: strin
           exit={{ scale: 0.85, opacity: 0, y: 12 }}
           transition={{ type: "spring", stiffness: 380, damping: 26 }}
           className={`absolute inset-0 flex items-center justify-center font-stencil text-[140px] leading-[0.9] tracking-tight ${colorClass}`}
+          style={tint ? { color: tint } : undefined}
         >
           {value}
         </motion.div>

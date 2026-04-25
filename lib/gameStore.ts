@@ -3,7 +3,11 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import type {
+  BannerMessage,
+  GameHistoryEntry,
   GameSnapshot,
+  MusicTrackId,
+  ShotClockState,
   SportConfig,
   TeamId,
   TeamState,
@@ -17,6 +21,7 @@ import {
   resolveActiveVariant,
   resolveSportConfig,
 } from "./sportRegistry";
+import { playSfx, setMusic as setAudioMusic, setSfxVolume, setMusicVolume } from "./audio";
 
 const UNDO_MAX = 40;
 
@@ -74,6 +79,16 @@ export interface GameState extends GameStateSlice {
   theme: import("./types").ThemeId;
   controlsCollapsed: boolean;
   uiPhase: UiPhase;
+  shotClock: ShotClockState;
+  sfxEnabled: boolean;
+  sfxVolume: number;
+  musicEnabled: boolean;
+  musicTrack: MusicTrackId;
+  musicVolume: number;
+  banner: BannerMessage | null;
+  history: GameHistoryEntry[];
+  periodScores: { a: number[]; b: number[] };
+  confettiKey: number;
 }
 
 interface GameStateSlice {
@@ -146,7 +161,55 @@ type GameStore = GameState & {
   applyOfficialPeriodTimer: () => void;
   applyOvertimeTimer: () => void;
   setUiPhase: (phase: UiPhase) => void;
+  setShotClockEnabled: (v: boolean) => void;
+  setShotClockDuration: (seconds: number) => void;
+  startShotClock: () => void;
+  pauseShotClock: () => void;
+  resetShotClock: () => void;
+  checkShotClockEnd: () => void;
+  setSfxEnabled: (v: boolean) => void;
+  setSfxVolumePref: (v: number) => void;
+  setMusicEnabled: (v: boolean) => void;
+  setMusicTrack: (t: MusicTrackId) => void;
+  setMusicVolumePref: (v: number) => void;
+  showBanner: (msg: Omit<BannerMessage, "id">) => void;
+  clearBanner: () => void;
+  finalizeGame: () => void;
+  clearHistory: () => void;
+  swapTeams: () => void;
 };
+
+const initialShotClock: ShotClockState = {
+  enabled: false,
+  running: false,
+  runStartedAt: null,
+  accumulatedMs: 0,
+  durationSeconds: 24,
+};
+
+let bannerCounter = 0;
+
+function bigPlayLabel(
+  delta: number,
+  sportId: string,
+  milestone: boolean,
+  newScore: number,
+): string {
+  if (milestone) return `${newScore}!`;
+  if (sportId === "basketball") {
+    if (delta >= 3) return "3 POINTS!";
+    if (delta === 2) return "BUCKET!";
+    return "+1";
+  }
+  if (sportId === "football") {
+    if (delta >= 6) return "TOUCHDOWN!";
+    if (delta === 3) return "FIELD GOAL!";
+    if (delta === 2) return "SAFETY!";
+    return "+1";
+  }
+  if (sportId === "soccer" || sportId === "hockey") return "GOAL!";
+  return `+${delta}`;
+}
 
 export const useGameStore = create<GameStore>()(
   persist(
@@ -158,6 +221,16 @@ export const useGameStore = create<GameStore>()(
       theme: "dark",
       controlsCollapsed: false,
       uiPhase: "menu",
+      shotClock: initialShotClock,
+      sfxEnabled: true,
+      sfxVolume: 0.6,
+      musicEnabled: false,
+      musicTrack: "none",
+      musicVolume: 0.3,
+      banner: null,
+      history: [],
+      periodScores: { a: [0], b: [0] },
+      confettiKey: 0,
 
       pushUndo: () => {
         const snap = snapshotFrom(get());
@@ -260,20 +333,53 @@ export const useGameStore = create<GameStore>()(
       },
 
       addScore: (team, actionId) => {
-        const { sportId, customSport } = get();
+        const { sportId, customSport, sfxEnabled, periodScores, period } =
+          get();
         const cfg = resolveSportConfig(sportId, customSport);
         const action = cfg.scoring.find((a) => a.id === actionId);
         if (!action) return;
         get().pushUndo();
         set((state) => {
           const key = team === "a" ? "teamA" : "teamB";
+          const updatedPeriodScores = {
+            a: [...periodScores.a],
+            b: [...periodScores.b],
+          };
+          while (updatedPeriodScores.a.length < period)
+            updatedPeriodScores.a.push(0);
+          while (updatedPeriodScores.b.length < period)
+            updatedPeriodScores.b.push(0);
+          const idx = period - 1;
+          updatedPeriodScores[team][idx] =
+            (updatedPeriodScores[team][idx] ?? 0) + action.value;
+          const newScore = state[key].score + action.value;
+          const milestone = newScore > 0 && newScore % 25 === 0;
+          const isBig = action.value >= 6 || milestone;
+          const isMid = action.value >= 3;
+          let banner = state.banner;
+          if (isBig || isMid) {
+            bannerCounter += 1;
+            banner = {
+              id: bannerCounter,
+              text: bigPlayLabel(action.value, cfg.id, milestone, newScore),
+              flavor: "score",
+            };
+          }
           return {
             [key]: {
               ...state[key],
-              score: state[key].score + action.value,
+              score: newScore,
             },
+            periodScores: updatedPeriodScores,
+            confettiKey: isBig ? state.confettiKey + 1 : state.confettiKey,
+            banner,
           };
         });
+        if (sfxEnabled) {
+          if (action.value >= 6) playSfx("tada");
+          else if (action.value >= 3) playSfx("swoosh");
+          else playSfx("chime");
+        }
       },
 
       adjustFouls: (team, delta) => {
@@ -309,11 +415,23 @@ export const useGameStore = create<GameStore>()(
 
       nextPeriod: () => {
         get().pushUndo();
-        const { sportId, customSport, period, timerVariantId } = get();
+        const {
+          sportId,
+          customSport,
+          period,
+          timerVariantId,
+          periodScores,
+        } = get();
         const cfg = resolveSportConfig(sportId, customSport);
         const max = effectiveMaxPeriods(cfg, timerVariantId) ?? cfg.maxPeriods;
+        const nextPeriodNum = max ? Math.min(period + 1, max) : period + 1;
+        const a = [...periodScores.a];
+        const b = [...periodScores.b];
+        while (a.length < nextPeriodNum) a.push(0);
+        while (b.length < nextPeriodNum) b.push(0);
         set({
-          period: max ? Math.min(period + 1, max) : period + 1,
+          period: nextPeriodNum,
+          periodScores: { a, b },
         });
       },
 
@@ -383,7 +501,7 @@ export const useGameStore = create<GameStore>()(
 
       resetGame: () => {
         get().pushUndo();
-        const { sportId, customSport } = get();
+        const { sportId, customSport, shotClock } = get();
         const cfg = resolveSportConfig(sportId, customSport);
         const vid = defaultVariantId(cfg);
         set({
@@ -400,6 +518,13 @@ export const useGameStore = create<GameStore>()(
           strikes: 0,
           outs: 0,
           down: 1,
+          periodScores: { a: [0], b: [0] },
+          shotClock: {
+            ...shotClock,
+            running: false,
+            runStartedAt: null,
+            accumulatedMs: 0,
+          },
         });
       },
 
@@ -480,7 +605,16 @@ export const useGameStore = create<GameStore>()(
       },
 
       checkCountdownEnd: () => {
-        const { timer } = get();
+        const {
+          timer,
+          sfxEnabled,
+          sportId,
+          customSport,
+          timerVariantId,
+          period,
+          teamA,
+          teamB,
+        } = get();
         if (!timer.running) return;
         const total = timer.countdownFromSeconds * 1000;
         const elapsed = getElapsedMs(timer);
@@ -493,7 +627,36 @@ export const useGameStore = create<GameStore>()(
               accumulatedMs: total,
             },
           });
-          playBuzzer();
+          if (sfxEnabled) playSfx("buzzer");
+          const cfg = resolveSportConfig(sportId, customSport);
+          const max =
+            effectiveMaxPeriods(cfg, timerVariantId) ?? cfg.maxPeriods;
+          if (max && period >= max && teamA.score !== teamB.score) {
+            const winnerName =
+              teamA.score > teamB.score ? teamA.name : teamB.name;
+            bannerCounter += 1;
+            set({
+              banner: {
+                id: bannerCounter,
+                text: `${winnerName} WINS!`,
+                subtext: `${teamA.name} ${teamA.score} - ${teamB.score} ${teamB.name}`,
+                flavor: "win",
+              },
+            });
+            if (sfxEnabled) {
+              setTimeout(() => playSfx("tada"), 200);
+              setTimeout(() => playSfx("cheer"), 400);
+            }
+          } else {
+            bannerCounter += 1;
+            set({
+              banner: {
+                id: bannerCounter,
+                text: "End of period",
+                flavor: "info",
+              },
+            });
+          }
         }
       },
 
@@ -502,6 +665,171 @@ export const useGameStore = create<GameStore>()(
       setTheme: (t) => set({ theme: t }),
       setControlsCollapsed: (v) => set({ controlsCollapsed: v }),
       setUiPhase: (phase) => set({ uiPhase: phase }),
+
+      setShotClockEnabled: (v) =>
+        set((state) => ({
+          shotClock: { ...state.shotClock, enabled: v },
+        })),
+
+      setShotClockDuration: (seconds) =>
+        set((state) => ({
+          shotClock: {
+            ...state.shotClock,
+            durationSeconds: Math.max(1, Math.floor(seconds)),
+            accumulatedMs: 0,
+            running: false,
+            runStartedAt: null,
+          },
+        })),
+
+      startShotClock: () =>
+        set((state) => ({
+          shotClock: {
+            ...state.shotClock,
+            running: true,
+            runStartedAt: Date.now(),
+          },
+        })),
+
+      pauseShotClock: () =>
+        set((state) => {
+          const sc = state.shotClock;
+          if (!sc.running || sc.runStartedAt == null) {
+            return {
+              shotClock: { ...sc, running: false, runStartedAt: null },
+            };
+          }
+          const segment = Date.now() - sc.runStartedAt;
+          return {
+            shotClock: {
+              ...sc,
+              running: false,
+              runStartedAt: null,
+              accumulatedMs: sc.accumulatedMs + segment,
+            },
+          };
+        }),
+
+      resetShotClock: () =>
+        set((state) => ({
+          shotClock: {
+            ...state.shotClock,
+            running: false,
+            runStartedAt: null,
+            accumulatedMs: 0,
+          },
+        })),
+
+      checkShotClockEnd: () => {
+        const { shotClock, sfxEnabled } = get();
+        if (!shotClock.enabled || !shotClock.running) return;
+        const total = shotClock.durationSeconds * 1000;
+        const elapsed = getShotClockElapsed(shotClock);
+        if (elapsed >= total) {
+          set({
+            shotClock: {
+              ...shotClock,
+              running: false,
+              runStartedAt: null,
+              accumulatedMs: total,
+            },
+          });
+          if (sfxEnabled) playSfx("buzzer");
+        }
+      },
+
+      setSfxEnabled: (v) => {
+        set({ sfxEnabled: v });
+        if (!v) setSfxVolume(0);
+        else setSfxVolume(get().sfxVolume);
+      },
+
+      setSfxVolumePref: (v) => {
+        const clamped = Math.max(0, Math.min(1, v));
+        set({ sfxVolume: clamped });
+        if (get().sfxEnabled) setSfxVolume(clamped);
+      },
+
+      setMusicEnabled: (v) => {
+        set({ musicEnabled: v });
+        if (v) {
+          setMusicVolume(get().musicVolume);
+          setAudioMusic(get().musicTrack);
+        } else {
+          setAudioMusic("none");
+        }
+      },
+
+      setMusicTrack: (t) => {
+        set({ musicTrack: t });
+        if (get().musicEnabled) setAudioMusic(t);
+      },
+
+      setMusicVolumePref: (v) => {
+        const clamped = Math.max(0, Math.min(1, v));
+        set({ musicVolume: clamped });
+        setMusicVolume(clamped);
+      },
+
+      showBanner: (msg) => {
+        bannerCounter += 1;
+        set({ banner: { id: bannerCounter, ...msg } });
+      },
+
+      clearBanner: () => set({ banner: null }),
+
+      finalizeGame: () => {
+        const {
+          sportId,
+          customSport,
+          teamA,
+          teamB,
+          period,
+          history,
+          timerVariantId,
+        } = get();
+        const cfg = resolveSportConfig(sportId, customSport);
+        const variant = resolveActiveVariant(cfg, timerVariantId);
+        const periodLabel = variant?.periodLabel ?? cfg.periodLabel;
+        const winner: "a" | "b" | "tie" =
+          teamA.score === teamB.score
+            ? "tie"
+            : teamA.score > teamB.score
+              ? "a"
+              : "b";
+        const entry: GameHistoryEntry = {
+          id: `g${Date.now()}`,
+          finishedAt: Date.now(),
+          sportId,
+          sportName: cfg.name,
+          periodLabel,
+          finalPeriod: period,
+          teamA: { name: teamA.name, score: teamA.score },
+          teamB: { name: teamB.name, score: teamB.score },
+          winner,
+        };
+        set({ history: [entry, ...history].slice(0, 20) });
+      },
+
+      clearHistory: () => set({ history: [] }),
+
+      swapTeams: () => {
+        get().pushUndo();
+        set((state) => ({
+          teamA: state.teamB,
+          teamB: state.teamA,
+          periodScores: {
+            a: [...state.periodScores.b],
+            b: [...state.periodScores.a],
+          },
+          possession:
+            state.possession === "a"
+              ? "b"
+              : state.possession === "b"
+                ? "a"
+                : null,
+        }));
+      },
     }),
     {
       name: "scoreboard-game-v1",
@@ -522,6 +850,14 @@ export const useGameStore = create<GameStore>()(
         timer: state.timer,
         hypeMode: state.hypeMode,
         theme: state.theme,
+        shotClock: state.shotClock,
+        sfxEnabled: state.sfxEnabled,
+        sfxVolume: state.sfxVolume,
+        musicEnabled: state.musicEnabled,
+        musicTrack: state.musicTrack,
+        musicVolume: state.musicVolume,
+        history: state.history,
+        periodScores: state.periodScores,
       }),
       skipHydration: true,
       merge: (persisted, current) => {
@@ -536,6 +872,23 @@ export const useGameStore = create<GameStore>()(
         if (merged.timer && "mode" in merged.timer) {
           delete (merged.timer as { mode?: unknown }).mode;
         }
+        if (!merged.shotClock) merged.shotClock = initialShotClock;
+        else
+          merged.shotClock = {
+            ...merged.shotClock,
+            running: false,
+            runStartedAt: null,
+          };
+        if (typeof merged.sfxEnabled !== "boolean") merged.sfxEnabled = true;
+        if (typeof merged.sfxVolume !== "number") merged.sfxVolume = 0.6;
+        if (typeof merged.musicEnabled !== "boolean")
+          merged.musicEnabled = false;
+        if (!merged.musicTrack) merged.musicTrack = "none";
+        if (typeof merged.musicVolume !== "number") merged.musicVolume = 0.3;
+        if (!merged.periodScores) merged.periodScores = { a: [0], b: [0] };
+        if (!merged.history) merged.history = [];
+        merged.banner = null;
+        if (typeof merged.confettiKey !== "number") merged.confettiKey = 0;
         return merged;
       },
     },
@@ -546,6 +899,18 @@ export function getElapsedMs(timer: TimerState): number {
   const base = timer.accumulatedMs;
   if (!timer.running || timer.runStartedAt == null) return base;
   return base + (Date.now() - timer.runStartedAt);
+}
+
+export function getShotClockElapsed(sc: ShotClockState): number {
+  const base = sc.accumulatedMs;
+  if (!sc.running || sc.runStartedAt == null) return base;
+  return base + (Date.now() - sc.runStartedAt);
+}
+
+export function getShotClockSeconds(sc: ShotClockState): number {
+  const total = sc.durationSeconds * 1000;
+  const rem = Math.max(0, total - getShotClockElapsed(sc));
+  return Math.ceil(rem / 1000);
 }
 
 export function formatClockFromMs(ms: number): string {
@@ -561,42 +926,7 @@ export function getDisplaySeconds(timer: TimerState): number {
   return Math.ceil(rem / 1000);
 }
 
-function playBuzzer() {
-  if (typeof window === "undefined") return;
-  try {
-    const ctx = new AudioContext();
-    const o = ctx.createOscillator();
-    const g = ctx.createGain();
-    o.connect(g);
-    g.connect(ctx.destination);
-    o.frequency.value = 880;
-    g.gain.value = 0.15;
-    o.start();
-    setTimeout(() => {
-      o.stop();
-      ctx.close();
-    }, 400);
-  } catch {
-    /* ignore */
-  }
-}
-
-export function playScoreChime(hype: boolean) {
-  if (typeof window === "undefined") return;
-  try {
-    const ctx = new AudioContext();
-    const o = ctx.createOscillator();
-    const g = ctx.createGain();
-    o.connect(g);
-    g.connect(ctx.destination);
-    o.frequency.value = hype ? 660 : 440;
-    g.gain.value = hype ? 0.08 : 0.05;
-    o.start();
-    setTimeout(() => {
-      o.stop();
-      ctx.close();
-    }, hype ? 120 : 80);
-  } catch {
-    /* ignore */
-  }
+/** @deprecated kept for compatibility — audio engine now handles SFX via store actions */
+export function playScoreChime(_hype: boolean) {
+  void _hype;
 }

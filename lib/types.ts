@@ -53,7 +53,36 @@ export type SportConfig = {
   noGameClock?: boolean;
 };
 
-export type ThemeId = "dark" | "neon" | "classic";
+export type ThemeId = "dark" | "neon" | "classic" | "stadium";
+
+export type MusicTrackId = "none" | "ambient" | "hype" | "anthem";
+
+export interface ShotClockState {
+  enabled: boolean;
+  running: boolean;
+  runStartedAt: number | null;
+  accumulatedMs: number;
+  durationSeconds: number;
+}
+
+export interface BannerMessage {
+  id: number;
+  text: string;
+  subtext?: string;
+  flavor?: "score" | "win" | "info" | "warn";
+}
+
+export interface GameHistoryEntry {
+  id: string;
+  finishedAt: number;
+  sportId: string;
+  sportName: string;
+  periodLabel: string;
+  finalPeriod: number;
+  teamA: { name: string; score: number };
+  teamB: { name: string; score: number };
+  winner: "a" | "b" | "tie";
+}
 
 export interface TeamState {
   name: string;
