@@ -38,13 +38,12 @@ const THEMES: { id: "dark" | "neon" | "classic" | "stadium"; label: string; chip
 ];
 
 const TRACKS: {
-  id: "none" | "ambient" | "hype" | "hype2" | "anthem";
+  id: "none" | "ambient" | "hype" | "anthem";
   label: string;
 }[] = [
   { id: "none", label: "Off" },
   { id: "ambient", label: "Ambient pad" },
-  { id: "hype", label: "Hype 1 (Kernkraft)" },
-  { id: "hype2", label: "Hype 2" },
+  { id: "hype", label: "Hype (Kernkraft)" },
   { id: "anthem", label: "Anthem" },
 ];
 

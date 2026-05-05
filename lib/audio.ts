@@ -17,7 +17,7 @@ export type SfxName =
   | "tada"
   | "click";
 
-export type MusicTrack = "none" | "ambient" | "hype" | "hype2" | "anthem";
+export type MusicTrack = "none" | "ambient" | "hype" | "anthem";
 
 let ctx: AudioContext | null = null;
 let masterSfxGain: GainNode | null = null;
@@ -393,13 +393,6 @@ export function setMusic(track: MusicTrack) {
       "/music/kernkraft.mp3",
       45,
       105,
-    );
-  if (track === "hype2")
-    musicNodes = startTrackFromFile(
-      c,
-      masterMusicGain,
-      "/music/hype2.mp3",
-      52,
     );
   if (track === "anthem") musicNodes = startAnthem(c, masterMusicGain);
 }

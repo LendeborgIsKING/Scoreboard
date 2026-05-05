@@ -55,7 +55,7 @@ export type SportConfig = {
 
 export type ThemeId = "dark" | "neon" | "classic" | "stadium";
 
-export type MusicTrackId = "none" | "ambient" | "hype" | "hype2" | "anthem";
+export type MusicTrackId = "none" | "ambient" | "hype" | "anthem";
 
 export interface ShotClockState {
   enabled: boolean;

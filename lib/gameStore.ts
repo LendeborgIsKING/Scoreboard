@@ -884,6 +884,9 @@ export const useGameStore = create<GameStore>()(
         if (typeof merged.musicEnabled !== "boolean")
           merged.musicEnabled = false;
         if (!merged.musicTrack) merged.musicTrack = "none";
+        const rawTrack = (persisted as { musicTrack?: unknown } | undefined)
+          ?.musicTrack;
+        if (rawTrack === "hype2") merged.musicTrack = "hype";
         if (typeof merged.musicVolume !== "number") merged.musicVolume = 0.3;
         if (!merged.periodScores) merged.periodScores = { a: [0], b: [0] };
         if (!merged.history) merged.history = [];
