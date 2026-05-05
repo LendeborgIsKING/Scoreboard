@@ -337,42 +337,8 @@ function startTrackFromFile(
   };
 }
 
-function startAnthem(c: AudioContext, dest: AudioNode): { stop: () => void } {
-  const oscs: OscillatorNode[] = [];
-  const gain = c.createGain();
-  gain.gain.value = 0.07;
-  gain.connect(dest);
-  const chord = [261.63, 329.63, 392.0, 523.25];
-  chord.forEach((freq) => {
-    const o = c.createOscillator();
-    o.type = "triangle";
-    o.frequency.value = freq;
-    const lfo = c.createOscillator();
-    lfo.type = "sine";
-    lfo.frequency.value = 0.18;
-    const lfoGain = c.createGain();
-    lfoGain.gain.value = 4;
-    lfo.connect(lfoGain).connect(o.frequency);
-    o.connect(gain);
-    o.start();
-    lfo.start();
-    oscs.push(o, lfo);
-  });
-  return {
-    stop: () => {
-      const t = c.currentTime;
-      gain.gain.cancelScheduledValues(t);
-      gain.gain.linearRampToValueAtTime(0, t + 0.3);
-      oscs.forEach((o) => {
-        try {
-          o.stop(t + 0.4);
-        } catch {
-          /* ignore */
-        }
-      });
-    },
-  };
-}
+/** PD US Gov — Army Field Band; source .oga: https://commons.wikimedia.org/wiki/File:%22The_Star-Spangled_Banner%22_-_Choral_with_band_accompaniment_-_United_States_Army_Field_Band.oga */
+const ANTHEM_MP3 = "/music/star-spangled-banner-anthem.mp3";
 
 export function setMusic(track: MusicTrack) {
   const c = ensureCtx();
@@ -394,7 +360,8 @@ export function setMusic(track: MusicTrack) {
       45,
       105,
     );
-  if (track === "anthem") musicNodes = startAnthem(c, masterMusicGain);
+  if (track === "anthem")
+    musicNodes = startTrackFromFile(c, masterMusicGain, ANTHEM_MP3, 0);
 }
 
 export function getCurrentTrack(): MusicTrack {

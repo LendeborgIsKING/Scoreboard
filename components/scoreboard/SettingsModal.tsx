@@ -44,7 +44,7 @@ const TRACKS: {
   { id: "none", label: "Off" },
   { id: "ambient", label: "Ambient pad" },
   { id: "hype", label: "Hype (Kernkraft)" },
-  { id: "anthem", label: "Anthem" },
+  { id: "anthem", label: "Anthem (Star-Spangled Banner)" },
 ];
 
 const SC_PRESETS = [10, 14, 24, 30, 35, 45];
