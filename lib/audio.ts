@@ -17,7 +17,7 @@ export type SfxName =
   | "tada"
   | "click";
 
-export type MusicTrack = "none" | "ambient" | "hype" | "anthem";
+export type MusicTrack = "none" | "hype" | "anthem";
 
 let ctx: AudioContext | null = null;
 let masterSfxGain: GainNode | null = null;
@@ -239,34 +239,6 @@ export function playSfx(name: SfxName) {
   }
 }
 
-function startAmbient(c: AudioContext, dest: AudioNode): { stop: () => void } {
-  const oscs: OscillatorNode[] = [];
-  const gains: GainNode[] = [];
-  const chord = [220, 277.18, 329.63, 415.3];
-  chord.forEach((freq, i) => {
-    const o = c.createOscillator();
-    o.type = "sine";
-    o.frequency.value = freq;
-    const g = c.createGain();
-    g.gain.value = 0;
-    g.gain.linearRampToValueAtTime(0.06, c.currentTime + 1 + i * 0.2);
-    o.connect(g).connect(dest);
-    o.start();
-    oscs.push(o);
-    gains.push(g);
-  });
-  return {
-    stop: () => {
-      const t = c.currentTime;
-      gains.forEach((g) => {
-        g.gain.cancelScheduledValues(t);
-        g.gain.linearRampToValueAtTime(0, t + 0.3);
-      });
-      oscs.forEach((o) => o.stop(t + 0.4));
-    },
-  };
-}
-
 /**
  * File-based looping music. `src` is a static path; the track plays from
  * `loopStart` and either snaps back at `loopEnd` (if provided) or restarts
@@ -351,7 +323,6 @@ export function setMusic(track: MusicTrack) {
   }
   currentTrack = track;
   if (track === "none") return;
-  if (track === "ambient") musicNodes = startAmbient(c, masterMusicGain);
   if (track === "hype")
     musicNodes = startTrackFromFile(
       c,
