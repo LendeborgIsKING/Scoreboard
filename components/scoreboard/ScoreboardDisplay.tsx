@@ -389,10 +389,10 @@ export function ScoreboardDisplay() {
           </div>
         </div>
 
-        <div className="mt-2 grid flex-1 grid-cols-[auto_1fr_auto_1fr_auto] items-stretch gap-3 px-4 pb-2">
+        <div className="mt-0 grid flex-1 grid-cols-[auto_1fr_auto_1fr_auto] items-start gap-x-3 gap-y-2 px-4 pb-2 pt-1">
           <ActionColumn side="a" actions={scoreActions} onTap={onScore} />
 
-          <section className="flex flex-col items-center justify-center gap-2">
+          <section className="flex flex-col items-center justify-center gap-1.5">
             <button
               type="button"
               onClick={() => onTeamNameClick("a")}
@@ -413,11 +413,11 @@ export function ScoreboardDisplay() {
             />
           </section>
 
-          <section className="flex flex-col items-center justify-center gap-3">
-            <div className="flex flex-col items-center gap-1 text-white/90">
-              <span className="h-8 w-px bg-white/15" aria-hidden />
+          <section className="flex flex-col items-center justify-center gap-1.5">
+            <div className="flex flex-col items-center gap-0.5 text-white/90">
+              <span className="h-5 w-px bg-white/15" aria-hidden />
               <SportLineIcon sportId={cfg.id} className="h-9 w-9 text-white/80" />
-              <span className="h-8 w-px bg-white/15" aria-hidden />
+              <span className="h-5 w-px bg-white/15" aria-hidden />
             </div>
 
             {hasFouls && (
@@ -457,7 +457,7 @@ export function ScoreboardDisplay() {
             )}
           </section>
 
-          <section className="flex flex-col items-center justify-center gap-2">
+          <section className="flex flex-col items-center justify-center gap-1.5">
             <button
               type="button"
               onClick={() => onTeamNameClick("b")}
@@ -724,7 +724,7 @@ function ActionColumn({
   onTap: (side: "a" | "b", actionId: string) => void;
 }) {
   return (
-    <div className="flex flex-col items-center justify-center gap-2 py-2">
+    <div className="flex flex-col items-center justify-center gap-2 py-1">
       {actions.map((a) => (
         <motion.button
           key={`${side}-${a.id}`}
