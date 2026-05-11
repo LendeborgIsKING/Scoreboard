@@ -230,23 +230,12 @@ export function ScoreboardDisplay() {
       className={`relative flex min-h-full flex-1 flex-col items-center overflow-hidden ${themeClass(theme)}`}
     >
       <div className="absolute left-1/2 top-1/2 flex h-[390px] w-[844px] -translate-x-1/2 -translate-y-1/2 rotate-90 flex-col max-sm:landscape:static max-sm:landscape:h-full max-sm:landscape:w-full max-sm:landscape:translate-x-0 max-sm:landscape:translate-y-0 max-sm:landscape:rotate-0">
-        <div className="grid grid-cols-[auto_1fr_auto] items-start gap-2 px-4 pt-4 text-white">
-          <div className="flex items-center gap-2">
+        <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 px-4 pt-4 text-white">
+          <div className="flex items-center justify-start gap-2">
             <CircleBtn
               icon={<MenuIcon className="h-5 w-5" />}
               onClick={() => setUiPhase("menu")}
               ariaLabel="Exit to menu"
-            />
-            <CircleBtn
-              icon={
-                timer.running ? (
-                  <PauseIcon className="h-5 w-5" />
-                ) : (
-                  <PlayIcon className="h-5 w-5" />
-                )
-              }
-              onClick={() => (timer.running ? pauseTimer() : startTimer())}
-              ariaLabel={timer.running ? "Pause clock" : "Start clock"}
             />
             <div className="relative" ref={audioMenuRef}>
               <motion.button
@@ -335,39 +324,52 @@ export function ScoreboardDisplay() {
             </div>
           </div>
 
-          <div className="flex flex-col items-center gap-1">
-            <div className="flex items-center gap-2">
+          <div className="flex flex-col items-center justify-center gap-1">
+            <div className="flex items-center justify-center gap-2">
               <ShotClock onClick={onShotClockClick} />
-              <motion.button
-                type="button"
-                onClick={onClockClick}
-                className={`font-stencil text-6xl leading-none tracking-[0.08em] ${
-                  lowTime ? "text-red-400" : "text-red-500"
-                } ${editDashRed}`}
-                animate={
-                  lowTime
-                    ? { opacity: [1, 0.5, 1], scale: [1, 1.02, 1] }
-                    : { opacity: 1, scale: 1 }
-                }
-                transition={
-                  lowTime
-                    ? { duration: 1, repeat: Infinity, ease: "easeInOut" }
-                    : { duration: 0.2 }
-                }
-              >
-                {!cfg.noGameClock ? formatSeconds(clockSec) : "--:--"}
-              </motion.button>
+              <div className="flex items-center gap-1">
+                <CircleBtn
+                  icon={
+                    timer.running ? (
+                      <PauseIcon className="h-5 w-5" />
+                    ) : (
+                      <PlayIcon className="h-5 w-5" />
+                    )
+                  }
+                  onClick={() => (timer.running ? pauseTimer() : startTimer())}
+                  ariaLabel={timer.running ? "Pause clock" : "Start clock"}
+                />
+                <motion.button
+                  type="button"
+                  onClick={onClockClick}
+                  className={`font-stencil text-6xl leading-none tracking-[0.08em] ${
+                    lowTime ? "text-red-400" : "text-red-500"
+                  } ${editDashRed}`}
+                  animate={
+                    lowTime
+                      ? { opacity: [1, 0.5, 1], scale: [1, 1.02, 1] }
+                      : { opacity: 1, scale: 1 }
+                  }
+                  transition={
+                    lowTime
+                      ? { duration: 1, repeat: Infinity, ease: "easeInOut" }
+                      : { duration: 0.2 }
+                  }
+                >
+                  {!cfg.noGameClock ? formatSeconds(clockSec) : "--:--"}
+                </motion.button>
+              </div>
             </div>
             <button
               type="button"
               onClick={onPeriodClick}
-              className={`text-2xl font-black text-white ${editDash}`}
+              className={`text-center text-2xl font-black text-white ${editDash}`}
             >
               {periodText}
             </button>
           </div>
 
-          <div className="flex items-center gap-2 justify-self-end">
+          <div className="flex items-center justify-end gap-2">
             <CircleBtn
               icon={
                 editing ? (
