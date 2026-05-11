@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useGameStore } from "@/lib/gameStore";
 import { setMusic as setAudioMusic } from "@/lib/audio";
@@ -26,6 +26,8 @@ import {
   CheckIcon,
   GearIcon,
   MenuIcon,
+  MicSlashIcon,
+  MicrophoneIcon,
   PauseIcon,
   PencilIcon,
   PlayIcon,
@@ -94,6 +96,7 @@ export function ScoreboardDisplay() {
   const toggleHalfInning = useGameStore((s) => s.toggleHalfInning);
   const setPossession = useGameStore((s) => s.setPossession);
   const setSfxEnabled = useGameStore((s) => s.setSfxEnabled);
+  const setMusicEnabled = useGameStore((s) => s.setMusicEnabled);
   const startShotClock = useGameStore((s) => s.startShotClock);
   const pauseShotClock = useGameStore((s) => s.pauseShotClock);
   const resetShotClock = useGameStore((s) => s.resetShotClock);
@@ -110,6 +113,21 @@ export function ScoreboardDisplay() {
   const [minDraft, setMinDraft] = useState(0);
   const [secDraft, setSecDraft] = useState(0);
   const [scDraft, setScDraft] = useState(shotClock.durationSeconds);
+  const [audioMenuOpen, setAudioMenuOpen] = useState(false);
+  const audioMenuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!audioMenuOpen) return;
+    const close = (e: MouseEvent) => {
+      if (
+        audioMenuRef.current &&
+        !audioMenuRef.current.contains(e.target as Node)
+      )
+        setAudioMenuOpen(false);
+    };
+    document.addEventListener("mousedown", close);
+    return () => document.removeEventListener("mousedown", close);
+  }, [audioMenuOpen]);
 
   const cfg = resolveSportConfig(sportId, customSport);
   const activeVariant = resolveActiveVariant(cfg, timerVariantId);
@@ -230,18 +248,91 @@ export function ScoreboardDisplay() {
               onClick={() => (timer.running ? pauseTimer() : startTimer())}
               ariaLabel={timer.running ? "Pause clock" : "Start clock"}
             />
-            <button
-              type="button"
-              onClick={() => setSfxEnabled(!sfxEnabled)}
-              className={`flex h-12 w-12 items-center justify-center rounded-full text-xs font-black uppercase tracking-widest ${
-                sfxEnabled
-                  ? "bg-white text-black"
-                  : "bg-zinc-800 text-zinc-400"
-              }`}
-              aria-label={sfxEnabled ? "Mute SFX" : "Unmute SFX"}
-            >
-              {sfxEnabled ? "SFX" : "MUTE"}
-            </button>
+            <div className="relative" ref={audioMenuRef}>
+              <motion.button
+                type="button"
+                whileTap={{ scale: 0.92 }}
+                whileHover={{ scale: 1.04 }}
+                aria-label="Mute or restore music and sound effects"
+                aria-expanded={audioMenuOpen}
+                aria-haspopup="menu"
+                onClick={() => setAudioMenuOpen((open) => !open)}
+                className={`flex h-12 w-12 items-center justify-center rounded-full shadow transition ${
+                  musicEnabled || sfxEnabled
+                    ? "bg-white text-black hover:bg-white/90"
+                    : "bg-zinc-800 text-zinc-400 hover:bg-zinc-700"
+                }`}
+              >
+                {musicEnabled ? (
+                  <MicSlashIcon className="h-6 w-6" aria-hidden />
+                ) : (
+                  <MicrophoneIcon className="h-6 w-6" aria-hidden />
+                )}
+              </motion.button>
+              {audioMenuOpen && (
+                <div
+                  role="menu"
+                  className="absolute left-0 z-[120] mt-2 w-52 rounded-xl border border-white/20 bg-zinc-900 py-2 shadow-2xl"
+                >
+                  <p className="px-3 pb-1 pt-1 text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-500">
+                    Mute audio
+                  </p>
+                  {musicEnabled ? (
+                    <button
+                      role="menuitem"
+                      type="button"
+                      className="w-full px-3 py-2.5 text-left text-sm font-medium text-white hover:bg-white/10"
+                      onClick={() => {
+                        setMusicEnabled(false);
+                        setAudioMenuOpen(false);
+                      }}
+                    >
+                      Turn off music
+                    </button>
+                  ) : (
+                    <button
+                      role="menuitem"
+                      type="button"
+                      className="w-full px-3 py-2.5 text-left text-sm font-medium text-white hover:bg-white/10"
+                      onClick={() => {
+                        setMusicEnabled(true);
+                        setAudioMenuOpen(false);
+                      }}
+                    >
+                      Turn on music
+                    </button>
+                  )}
+                  {sfxEnabled ? (
+                    <button
+                      role="menuitem"
+                      type="button"
+                      className="w-full px-3 py-2.5 text-left text-sm font-medium text-white hover:bg-white/10"
+                      onClick={() => {
+                        setSfxEnabled(false);
+                        setAudioMenuOpen(false);
+                      }}
+                    >
+                      Turn off sound effects
+                    </button>
+                  ) : (
+                    <button
+                      role="menuitem"
+                      type="button"
+                      className="w-full px-3 py-2.5 text-left text-sm font-medium text-white hover:bg-white/10"
+                      onClick={() => {
+                        setSfxEnabled(true);
+                        setAudioMenuOpen(false);
+                      }}
+                    >
+                      Turn on sound effects
+                    </button>
+                  )}
+                  <p className="mx-3 mt-1 border-t border-white/10 pt-2 text-[10px] text-zinc-500">
+                    Finer volumes and tracks are in Settings.
+                  </p>
+                </div>
+              )}
+            </div>
           </div>
 
           <div className="flex flex-col items-center gap-1">
