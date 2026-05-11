@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useGameStore } from "@/lib/gameStore";
-import { setMusic as setAudioMusic } from "@/lib/audio";
+import { setMusic as setAudioMusic, playSfxClip } from "@/lib/audio";
 import {
   hasFeature,
   resolveActiveVariant,
@@ -472,6 +472,22 @@ export function ScoreboardDisplay() {
               colorClass="text-lime-400"
               tint={teamB.color}
             />
+            <div className="mt-1 flex gap-2">
+              <button
+                type="button"
+                onClick={() => playSfxClip("/sfx/horn.mp3")}
+                className="rounded-full bg-zinc-800 px-3 py-1 text-xs font-bold uppercase tracking-widest text-white shadow transition hover:bg-zinc-700"
+              >
+                Horn
+              </button>
+              <button
+                type="button"
+                onClick={() => playSfxClip("/sfx/whistle.mp3")}
+                className="rounded-full bg-zinc-800 px-3 py-1 text-xs font-bold uppercase tracking-widest text-white shadow transition hover:bg-zinc-700"
+              >
+                Whistle
+              </button>
+            </div>
           </section>
 
           <ActionColumn side="b" actions={scoreActions} onTap={onScore} />
