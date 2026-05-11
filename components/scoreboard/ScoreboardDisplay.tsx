@@ -475,22 +475,16 @@ export function ScoreboardDisplay() {
               tint={teamB.color}
             />
             <div className="mt-1 flex gap-2">
-              <button
-                type="button"
+              <CircleBtn
+                icon={<BuzzerIcon className="h-5 w-5" />}
                 onClick={() => playSfxClip("/sfx/horn.mp3")}
-                aria-label="Horn"
-                className="flex h-8 w-12 items-center justify-center rounded-full bg-zinc-800 text-white shadow transition hover:bg-zinc-700"
-              >
-                <BuzzerIcon className="h-5 w-5" />
-              </button>
-              <button
-                type="button"
+                ariaLabel="Horn"
+              />
+              <CircleBtn
+                icon={<WhistleIcon className="h-5 w-5" />}
                 onClick={() => playSfxClip("/sfx/whistle.mp3")}
-                aria-label="Whistle"
-                className="flex h-8 w-12 items-center justify-center rounded-full bg-zinc-800 text-white shadow transition hover:bg-zinc-700"
-              >
-                <WhistleIcon className="h-5 w-5" />
-              </button>
+                ariaLabel="Whistle"
+              />
             </div>
           </section>
 
