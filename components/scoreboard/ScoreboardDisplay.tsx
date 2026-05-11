@@ -230,8 +230,8 @@ export function ScoreboardDisplay() {
       className={`relative flex min-h-full flex-1 flex-col items-center overflow-hidden ${themeClass(theme)}`}
     >
       <div className="absolute left-1/2 top-1/2 flex h-[390px] w-[844px] -translate-x-1/2 -translate-y-1/2 rotate-90 flex-col max-sm:landscape:static max-sm:landscape:h-full max-sm:landscape:w-full max-sm:landscape:translate-x-0 max-sm:landscape:translate-y-0 max-sm:landscape:rotate-0">
-        <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 px-4 pt-4 text-white">
-          <div className="flex items-center justify-start gap-2">
+        <div className="grid grid-cols-[1fr_auto_1fr] items-start gap-2 px-4 pt-4 text-white">
+          <div className="flex items-center justify-start gap-2 pt-1.5">
             <CircleBtn
               icon={<MenuIcon className="h-5 w-5" />}
               onClick={() => setUiPhase("menu")}
@@ -252,11 +252,7 @@ export function ScoreboardDisplay() {
                     : "bg-zinc-800 text-zinc-400 hover:bg-zinc-700"
                 }`}
               >
-                {musicEnabled ? (
-                  <MicSlashIcon className="h-6 w-6" aria-hidden />
-                ) : (
-                  <MicrophoneIcon className="h-6 w-6" aria-hidden />
-                )}
+                <MicrophoneIcon className="h-6 w-6" aria-hidden />
               </motion.button>
               {audioMenuOpen && (
                 <div
@@ -369,7 +365,7 @@ export function ScoreboardDisplay() {
             </button>
           </div>
 
-          <div className="flex items-center justify-end gap-2">
+          <div className="flex items-center justify-end gap-2 pt-1.5">
             <CircleBtn
               icon={
                 editing ? (
