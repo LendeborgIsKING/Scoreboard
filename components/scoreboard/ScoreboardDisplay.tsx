@@ -150,9 +150,6 @@ export function ScoreboardDisplay() {
   const hasFouls = hasFeature(cfg, "fouls");
   const showPossession = hasFeature(cfg, "possession");
 
-  const foulOutA = hasFouls && teamA.fouls >= 5;
-  const foulOutB = hasFouls && teamB.fouls >= 5;
-
   const openClockPicker = () => {
     setMinDraft(Math.floor(timer.countdownFromSeconds / 60));
     setSecDraft(timer.countdownFromSeconds % 60);
@@ -315,11 +312,6 @@ export function ScoreboardDisplay() {
                 </span>
               )}
               {teamA.name}
-              {foulOutA && (
-                <span className="ml-1 rounded-md bg-red-600 px-2 py-0.5 text-xs uppercase text-white">
-                  Foul out
-                </span>
-              )}
             </button>
             <AnimatedScore
               value={teamA.score}
@@ -383,11 +375,6 @@ export function ScoreboardDisplay() {
               {showPossession && possession === "b" && (
                 <span className="text-cyan-400" aria-label="possession">
                   {"\u25C0"}
-                </span>
-              )}
-              {foulOutB && (
-                <span className="ml-1 rounded-md bg-red-600 px-2 py-0.5 text-xs uppercase text-white">
-                  Foul out
                 </span>
               )}
             </button>

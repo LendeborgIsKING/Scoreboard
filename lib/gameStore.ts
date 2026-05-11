@@ -21,7 +21,14 @@ import {
   resolveActiveVariant,
   resolveSportConfig,
 } from "./sportRegistry";
-import { playSfx, setMusic as setAudioMusic, setSfxVolume, setMusicVolume } from "./audio";
+import {
+  BASKETBALL_SCORE_SFX_SRC,
+  playSfx,
+  playSfxClip,
+  setMusic as setAudioMusic,
+  setMusicVolume,
+  setSfxVolume,
+} from "./audio";
 
 const UNDO_MAX = 40;
 
@@ -375,8 +382,10 @@ export const useGameStore = create<GameStore>()(
             banner,
           };
         });
-        if (sfxEnabled) {
-          if (action.value >= 6) playSfx("tada");
+        if (sfxEnabled && action.value > 0) {
+          if (sportId === "basketball")
+            playSfxClip(BASKETBALL_SCORE_SFX_SRC);
+          else if (action.value >= 6) playSfx("tada");
           else if (action.value >= 3) playSfx("swoosh");
           else playSfx("chime");
         }

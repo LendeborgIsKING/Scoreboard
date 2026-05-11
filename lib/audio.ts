@@ -239,6 +239,60 @@ export function playSfx(name: SfxName) {
   }
 }
 
+/** Basketball shot sample — routed through master SFX gain with other effects. */
+export const BASKETBALL_SCORE_SFX_SRC = "/sfx/basketball-swish.mp3";
+
+/** One-shot sampled SFX (mono/stereo clips) via Web Audio gain graph. */
+export function playSfxClip(src: string) {
+  const c = ensureCtx();
+  if (!c || !masterSfxGain) return;
+  if (c.state === "suspended") c.resume().catch(() => {});
+
+  const audio = new Audio(src);
+  audio.preload = "auto";
+
+  let source: MediaElementAudioSourceNode | null = null;
+  try {
+    source = c.createMediaElementSource(audio);
+    source.connect(masterSfxGain);
+  } catch {
+    audio.volume = Math.min(1, Math.max(0, masterSfxGain.gain.value));
+  }
+
+  function cleanup() {
+    audio.removeEventListener("ended", onEnded);
+    audio.removeEventListener("error", onErr);
+    try {
+      audio.pause();
+    } catch {
+      /* ignore */
+    }
+    try {
+      source?.disconnect();
+    } catch {
+      /* ignore */
+    }
+    audio.removeAttribute("src");
+    try {
+      audio.load();
+    } catch {
+      /* ignore */
+    }
+  }
+
+  function onEnded() {
+    cleanup();
+  }
+  function onErr() {
+    cleanup();
+  }
+
+  audio.addEventListener("ended", onEnded);
+  audio.addEventListener("error", onErr, { once: true });
+
+  audio.play().catch(() => cleanup());
+}
+
 /**
  * File-based looping music. `src` is a static path; the track plays from
  * `loopStart` and either snaps back at `loopEnd` (if provided) or restarts
