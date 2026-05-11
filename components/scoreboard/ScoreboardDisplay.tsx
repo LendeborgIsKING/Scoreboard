@@ -23,6 +23,7 @@ import { ShotClock } from "./ShotClock";
 import { BannerOverlay } from "./BannerOverlay";
 import { Confetti } from "./Confetti";
 import {
+  BuzzerIcon,
   CheckIcon,
   GearIcon,
   MenuIcon,
@@ -31,6 +32,7 @@ import {
   PauseIcon,
   PencilIcon,
   PlayIcon,
+  WhistleIcon,
 } from "./UiIcons";
 
 type ScreenOrientationWithLock = ScreenOrientation & {
@@ -476,16 +478,18 @@ export function ScoreboardDisplay() {
               <button
                 type="button"
                 onClick={() => playSfxClip("/sfx/horn.mp3")}
-                className="rounded-full bg-zinc-800 px-3 py-1 text-xs font-bold uppercase tracking-widest text-white shadow transition hover:bg-zinc-700"
+                aria-label="Horn"
+                className="flex h-8 w-12 items-center justify-center rounded-full bg-zinc-800 text-white shadow transition hover:bg-zinc-700"
               >
-                Horn
+                <BuzzerIcon className="h-5 w-5" />
               </button>
               <button
                 type="button"
                 onClick={() => playSfxClip("/sfx/whistle.mp3")}
-                className="rounded-full bg-zinc-800 px-3 py-1 text-xs font-bold uppercase tracking-widest text-white shadow transition hover:bg-zinc-700"
+                aria-label="Whistle"
+                className="flex h-8 w-12 items-center justify-center rounded-full bg-zinc-800 text-white shadow transition hover:bg-zinc-700"
               >
-                Whistle
+                <WhistleIcon className="h-5 w-5" />
               </button>
             </div>
           </section>
