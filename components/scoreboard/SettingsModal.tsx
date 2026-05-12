@@ -241,10 +241,10 @@ function MusicPanel() {
             key={t.id}
             type="button"
             onClick={() => setTrack(t.id)}
-            className={`rounded-full px-3 py-1.5 text-sm font-bold ${
+            className={`rounded-full border-2 border-white/50 px-3 py-1.5 text-sm font-bold transition ${
               track === t.id
-                ? "bg-white text-black"
-                : "border border-white/20 text-zinc-300 hover:bg-white/5"
+                ? "bg-white/20 text-white"
+                : "bg-transparent text-zinc-300 hover:border-white hover:bg-white/10 hover:text-white"
             }`}
           >
             {t.label}
@@ -306,10 +306,10 @@ function ShotClockPanel() {
             key={s}
             type="button"
             onClick={() => setDuration(s)}
-            className={`rounded-full px-3 py-1.5 text-sm font-bold ${
+            className={`rounded-full border-2 border-white/50 px-3 py-1.5 text-sm font-bold transition ${
               sc.durationSeconds === s
-                ? "bg-white text-black"
-                : "border border-white/20 text-zinc-300 hover:bg-white/5"
+                ? "bg-white/20 text-white"
+                : "bg-transparent text-zinc-300 hover:border-white hover:bg-white/10 hover:text-white"
             }`}
           >
             {s}s
@@ -357,7 +357,7 @@ function TeamColorsPanel() {
       <button
         type="button"
         onClick={swap}
-        className="mt-3 inline-flex items-center gap-2 self-start rounded-full bg-white px-4 py-1.5 text-sm font-bold text-black"
+        className="mt-3 inline-flex items-center gap-2 self-start rounded-full border-2 border-white/50 bg-transparent px-4 py-1.5 text-sm font-bold text-white transition hover:border-white hover:bg-white/10"
       >
         <CheckIcon className="h-4 w-4" />
         Swap home / away
@@ -484,7 +484,7 @@ function PanelShell({
 
 function CircleShell({ children }: { children: ReactNode }) {
   return (
-    <span className="flex h-14 w-14 items-center justify-center rounded-full bg-white text-black shadow">
+    <span className="flex h-14 w-14 items-center justify-center rounded-full border-2 border-white/50 bg-transparent text-white shadow transition hover:bg-white/10 hover:border-white">
       {children}
     </span>
   );

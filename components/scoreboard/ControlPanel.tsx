@@ -75,7 +75,7 @@ export function ControlPanel({ collapsed, onToggleCollapse }: Props) {
           <button
             type="button"
             onClick={undo}
-            className="rounded-lg bg-white/10 px-3 py-1.5 text-xs font-bold uppercase text-white hover:bg-white/20"
+            className="rounded-lg border-2 border-white/50 bg-transparent px-3 py-1.5 text-xs font-bold uppercase text-white transition hover:border-white hover:bg-white/10"
           >
             Undo
           </button>
@@ -130,7 +130,7 @@ export function ControlPanel({ collapsed, onToggleCollapse }: Props) {
                 Fouls
                 <button
                   type="button"
-                  className="rounded bg-white/10 px-2 py-1"
+                  className="rounded border border-white/50 bg-transparent px-2 py-1 text-white transition hover:border-white hover:bg-white/10"
                   onClick={() => adjustFouls(side, -1)}
                 >
                   −
@@ -140,7 +140,7 @@ export function ControlPanel({ collapsed, onToggleCollapse }: Props) {
                 </span>
                 <button
                   type="button"
-                  className="rounded bg-white/10 px-2 py-1"
+                  className="rounded border border-white/50 bg-transparent px-2 py-1 text-white transition hover:border-white hover:bg-white/10"
                   onClick={() => adjustFouls(side, 1)}
                 >
                   +
@@ -153,7 +153,7 @@ export function ControlPanel({ collapsed, onToggleCollapse }: Props) {
                 TO
                 <button
                   type="button"
-                  className="rounded bg-white/10 px-2 py-1"
+                  className="rounded border border-white/50 bg-transparent px-2 py-1 text-white transition hover:border-white hover:bg-white/10"
                   onClick={() => adjustTimeouts(side, -1)}
                 >
                   −
@@ -163,7 +163,7 @@ export function ControlPanel({ collapsed, onToggleCollapse }: Props) {
                 </span>
                 <button
                   type="button"
-                  className="rounded bg-white/10 px-2 py-1"
+                  className="rounded border border-white/50 bg-transparent px-2 py-1 text-white transition hover:border-white hover:bg-white/10"
                   onClick={() => adjustTimeouts(side, 1)}
                 >
                   +
@@ -180,14 +180,14 @@ export function ControlPanel({ collapsed, onToggleCollapse }: Props) {
             <button
               type="button"
               onClick={() => prevPeriod()}
-              className="rounded-lg bg-white/5 px-3 py-1.5 text-xs text-zinc-300"
+              className="rounded-lg border border-white/50 bg-transparent px-3 py-1.5 text-xs text-zinc-300 transition hover:border-white hover:bg-white/10 hover:text-white"
             >
               − {cfg.periodLabel}
             </button>
             <button
               type="button"
               onClick={() => nextPeriod()}
-              className="rounded-lg bg-white/5 px-3 py-1.5 text-xs text-zinc-300"
+              className="rounded-lg border border-white/50 bg-transparent px-3 py-1.5 text-xs text-zinc-300 transition hover:border-white hover:bg-white/10 hover:text-white"
             >
               + {cfg.periodLabel}
             </button>
@@ -207,7 +207,7 @@ export function ControlPanel({ collapsed, onToggleCollapse }: Props) {
             Down
             <button
               type="button"
-              className="rounded bg-white/10 px-2 py-1"
+              className="rounded border border-white/50 bg-transparent px-2 py-1 text-white transition hover:border-white hover:bg-white/10"
               onClick={() => adjustDown(-1)}
             >
               −
@@ -215,7 +215,7 @@ export function ControlPanel({ collapsed, onToggleCollapse }: Props) {
             <span className="font-mono text-white">{downVal}</span>
             <button
               type="button"
-              className="rounded bg-white/10 px-2 py-1"
+              className="rounded border border-white/50 bg-transparent px-2 py-1 text-white transition hover:border-white hover:bg-white/10"
               onClick={() => adjustDown(1)}
             >
               +
@@ -229,7 +229,7 @@ export function ControlPanel({ collapsed, onToggleCollapse }: Props) {
                 <span className="uppercase">{k.slice(0, 1)}</span>
                 <button
                   type="button"
-                  className="rounded bg-white/10 px-2 py-0.5"
+                  className="rounded border border-white/50 bg-transparent px-2 py-0.5 text-white transition hover:border-white hover:bg-white/10"
                   onClick={() => adjustBSO(k, -1)}
                 >
                   −
@@ -239,7 +239,7 @@ export function ControlPanel({ collapsed, onToggleCollapse }: Props) {
                 </span>
                 <button
                   type="button"
-                  className="rounded bg-white/10 px-2 py-0.5"
+                  className="rounded border border-white/50 bg-transparent px-2 py-0.5 text-white transition hover:border-white hover:bg-white/10"
                   onClick={() => adjustBSO(k, 1)}
                 >
                   +
@@ -260,14 +260,14 @@ export function ControlPanel({ collapsed, onToggleCollapse }: Props) {
             <span className="text-zinc-500">Poss</span>
             <button
               type="button"
-              className={`rounded px-2 py-1 ${possession === "a" ? "bg-cyan-600 text-white" : "bg-white/5"}`}
+              className={`rounded border transition px-2 py-1 ${possession === "a" ? "border-cyan-400 bg-cyan-600/30 text-white" : "border-white/50 bg-transparent hover:border-white hover:bg-white/10"}`}
               onClick={() => setPossession("a")}
             >
               H
             </button>
             <button
               type="button"
-              className={`rounded px-2 py-1 ${possession === "b" ? "bg-cyan-600 text-white" : "bg-white/5"}`}
+              className={`rounded border transition px-2 py-1 ${possession === "b" ? "border-cyan-400 bg-cyan-600/30 text-white" : "border-white/50 bg-transparent hover:border-white hover:bg-white/10"}`}
               onClick={() => setPossession("b")}
             >
               A

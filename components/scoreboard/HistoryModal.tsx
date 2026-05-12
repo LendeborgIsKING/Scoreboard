@@ -32,7 +32,7 @@ export function HistoryModal({ onClose }: Props) {
             <button
               type="button"
               onClick={() => finalize()}
-              className="rounded-full bg-white/10 px-3 py-1 text-xs uppercase tracking-widest text-white hover:bg-white/20"
+              className="rounded-full border border-white/50 bg-transparent px-3 py-1 text-xs uppercase tracking-widest text-white transition hover:border-white hover:bg-white/10"
             >
               Save current game
             </button>
