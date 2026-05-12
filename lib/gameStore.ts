@@ -657,9 +657,11 @@ export const useGameStore = create<GameStore>()(
               setTimeout(() => playSfx("cheer"), 400);
             }
           } else {
-            // Automatically advance period and reset the clock for the next one.
-            get().nextPeriod();
-            get().applyOfficialPeriodTimer();
+            // Automatically advance period and reset the clock for the next one after a 3 second delay.
+            setTimeout(() => {
+              get().nextPeriod();
+              get().applyOfficialPeriodTimer();
+            }, 3000);
           }
         }
       },
