@@ -4,7 +4,8 @@ import { useState, type ReactNode } from "react";
 import { motion } from "framer-motion";
 import { useGameStore } from "@/lib/gameStore";
 import { resolveSportConfig } from "@/lib/sportRegistry";
-import { playSfx } from "@/lib/audio";
+import { playSfx, playSfxClip } from "@/lib/audio";
+import { NHL_TEAMS, NHL_HORN_SRC } from "@/lib/nhlTeams";
 import {
   BuzzerIcon,
   CheckIcon,
@@ -28,7 +29,8 @@ type Panel =
   | "music"
   | "theme"
   | "shotclock"
-  | "team-colors";
+  | "team-colors"
+  | "hockey-horn";
 
 const THEMES: { id: "dark" | "neon" | "classic" | "stadium"; label: string; chip: string }[] = [
   { id: "dark", label: "Dark", chip: "bg-zinc-900" },
@@ -108,6 +110,7 @@ export function SettingsModal({
             onTheme={() => setPanel("theme")}
             onShotClock={() => setPanel("shotclock")}
             onTeamColors={() => setPanel("team-colors")}
+            onHockeyHorn={() => setPanel("hockey-horn")}
             onStats={onStats}
             onHistory={onHistory}
             onSoundboard={onSoundboard}
@@ -118,6 +121,7 @@ export function SettingsModal({
         {panel === "theme" && <ThemePanel />}
         {panel === "shotclock" && <ShotClockPanel />}
         {panel === "team-colors" && <TeamColorsPanel />}
+        {panel === "hockey-horn" && <HockeyHornPanel />}
       </motion.div>
     </motion.div>
   );
@@ -130,6 +134,7 @@ function MenuView({
   onTheme,
   onShotClock,
   onTeamColors,
+  onHockeyHorn,
   onStats,
   onHistory,
   onSoundboard,
@@ -140,10 +145,13 @@ function MenuView({
   onTheme: () => void;
   onShotClock: () => void;
   onTeamColors: () => void;
+  onHockeyHorn: () => void;
   onStats: () => void;
   onHistory: () => void;
   onSoundboard: () => void;
 }) {
+  const sportId = useGameStore((s) => s.sportId);
+  const isHockey = sportId === "hockey";
   return (
     <div className="mx-auto mt-20 grid grid-cols-5 gap-x-6 gap-y-4 px-10">
       <Tile label="Edit" icon={<PencilIcon className="h-7 w-7" />} onClick={onEdit} />
@@ -160,6 +168,9 @@ function MenuView({
         icon={<GearIcon className="h-7 w-7" />}
         onClick={onSoundboard}
       />
+      {isHockey && (
+        <Tile label="Goal Horns" icon={<HornGlyph />} onClick={onHockeyHorn} />
+      )}
     </div>
   );
 }
@@ -535,5 +546,118 @@ function ListGlyph() {
     <svg viewBox="0 0 24 24" className="h-7 w-7" fill="currentColor">
       <path d="M4 5h16v2H4V5Zm0 6h16v2H4v-2Zm0 6h16v2H4v-2Z" />
     </svg>
+  );
+}
+
+function HornGlyph() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-7 w-7" fill="currentColor">
+      <path d="M3 9v6h4l5 5V4L7 9H3Zm13.5 3A4.5 4.5 0 0 0 14 7.97v8.05c1.48-.73 2.5-2.25 2.5-4.02ZM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77Z" />
+    </svg>
+  );
+}
+
+function HockeyHornPanel() {
+  const teamId = useGameStore((s) => s.hockeyGoalHornTeamId);
+  const offsets = useGameStore((s) => s.nhlHornOffsets);
+  const setTeamId = useGameStore((s) => s.setHockeyGoalHornTeamId);
+  const setOffset = useGameStore((s) => s.setNhlHornOffset);
+  const [editing, setEditing] = useState<string | null>(null);
+  const [draftVal, setDraftVal] = useState("");
+
+  const preview = (id: string) => {
+    const team = NHL_TEAMS.find((t) => t.id === id);
+    if (!team) return;
+    const start = offsets[id] ?? team.defaultStart;
+    const end = start + team.defaultDuration;
+    playSfxClip(NHL_HORN_SRC, start, end);
+  };
+
+  const commitEdit = (id: string) => {
+    const num = parseFloat(draftVal);
+    if (!isNaN(num) && num >= 0) setOffset(id, num);
+    setEditing(null);
+  };
+
+  return (
+    <PanelShell title="Goal Horns">
+      <p className="text-xs text-zinc-500">
+        Select your team — their horn plays on every goal. Tap a start-time to
+        calibrate it to the exact second in the file.
+      </p>
+      <button
+        type="button"
+        onClick={() => setTeamId(null)}
+        className={`rounded-full border-2 border-white/50 px-3 py-1.5 text-sm font-bold transition ${
+          teamId === null
+            ? "bg-white/20 text-white"
+            : "bg-transparent text-zinc-300 hover:border-white hover:bg-white/10"
+        }`}
+      >
+        Default horn
+      </button>
+      <div className="mt-1 flex-1 overflow-y-auto pr-1">
+        {NHL_TEAMS.map((team) => {
+          const start = offsets[team.id] ?? team.defaultStart;
+          const isSelected = teamId === team.id;
+          const isEditingThis = editing === team.id;
+          return (
+            <div
+              key={team.id}
+              className={`mb-1 flex items-center gap-2 rounded-xl border px-3 py-1.5 transition ${
+                isSelected
+                  ? "border-white/60 bg-white/10"
+                  : "border-white/10 hover:border-white/30"
+              }`}
+            >
+              <button
+                type="button"
+                onClick={() => setTeamId(team.id)}
+                className="flex-1 text-left text-sm font-bold"
+              >
+                {team.name}
+              </button>
+              {isEditingThis ? (
+                <div className="flex items-center gap-1">
+                  <input
+                    type="number"
+                    className="w-16 rounded border border-white/30 bg-transparent px-1 py-0.5 text-center text-xs text-white outline-none focus:border-white"
+                    value={draftVal}
+                    autoFocus
+                    onChange={(e) => setDraftVal(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") commitEdit(team.id);
+                      if (e.key === "Escape") setEditing(null);
+                    }}
+                    onBlur={() => commitEdit(team.id)}
+                  />
+                  <span className="text-[10px] text-zinc-400">s</span>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEditing(team.id);
+                    setDraftVal(String(start));
+                  }}
+                  className="w-12 rounded border border-white/20 bg-transparent text-center text-xs text-zinc-400 hover:border-white hover:text-white"
+                  title="Tap to edit start time"
+                >
+                  {start}s
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => preview(team.id)}
+                className="rounded-full border border-white/50 bg-transparent px-2 py-0.5 text-xs text-white transition hover:border-white hover:bg-white/10"
+                aria-label={`Preview ${team.name}`}
+              >
+                ▶
+              </button>
+            </div>
+          );
+        })}
+      </div>
+    </PanelShell>
   );
 }

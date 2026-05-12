@@ -242,8 +242,10 @@ export function playSfx(name: SfxName) {
 /** Basketball shot sample — routed through master SFX gain with other effects. */
 export const BASKETBALL_SCORE_SFX_SRC = "/sfx/basketball-swish.mp3";
 
-/** One-shot sampled SFX (mono/stereo clips) via Web Audio gain graph. */
-export function playSfxClip(src: string) {
+/** One-shot sampled SFX (mono/stereo clips) via Web Audio gain graph.
+ *  Optional `startSec` / `endSec` let you play a sub-clip from a longer file.
+ */
+export function playSfxClip(src: string, startSec = 0, endSec?: number) {
   const c = ensureCtx();
   if (!c || !masterSfxGain) return;
   if (c.state === "suspended") c.resume().catch(() => {});
@@ -261,36 +263,39 @@ export function playSfxClip(src: string) {
 
   function cleanup() {
     audio.removeEventListener("ended", onEnded);
+    audio.removeEventListener("timeupdate", onTimeUpdate);
     audio.removeEventListener("error", onErr);
-    try {
-      audio.pause();
-    } catch {
-      /* ignore */
-    }
-    try {
-      source?.disconnect();
-    } catch {
-      /* ignore */
-    }
+    try { audio.pause(); } catch { /* ignore */ }
+    try { source?.disconnect(); } catch { /* ignore */ }
     audio.removeAttribute("src");
-    try {
-      audio.load();
-    } catch {
-      /* ignore */
-    }
+    try { audio.load(); } catch { /* ignore */ }
   }
 
-  function onEnded() {
-    cleanup();
+  function onTimeUpdate() {
+    if (endSec != null && audio.currentTime >= endSec) cleanup();
   }
-  function onErr() {
-    cleanup();
-  }
+  function onEnded() { cleanup(); }
+  function onErr() { cleanup(); }
 
+  if (endSec != null) audio.addEventListener("timeupdate", onTimeUpdate);
   audio.addEventListener("ended", onEnded);
   audio.addEventListener("error", onErr, { once: true });
 
-  audio.play().catch(() => cleanup());
+  const startPlayback = () => {
+    audio.currentTime = startSec;
+    audio.play().catch(() => cleanup());
+  };
+
+  if (startSec > 0) {
+    if (audio.readyState >= 2) {
+      startPlayback();
+    } else {
+      audio.addEventListener("canplay", startPlayback, { once: true });
+      audio.load();
+    }
+  } else {
+    audio.play().catch(() => cleanup());
+  }
 }
 
 /**
