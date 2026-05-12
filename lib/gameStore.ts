@@ -636,7 +636,7 @@ export const useGameStore = create<GameStore>()(
               accumulatedMs: total,
             },
           });
-          if (sfxEnabled) playSfx("buzzer");
+          if (sfxEnabled) playSfxClip("/sfx/horn.mp3");
           const cfg = resolveSportConfig(sportId, customSport);
           const max =
             effectiveMaxPeriods(cfg, timerVariantId) ?? cfg.maxPeriods;
@@ -657,14 +657,9 @@ export const useGameStore = create<GameStore>()(
               setTimeout(() => playSfx("cheer"), 400);
             }
           } else {
-            bannerCounter += 1;
-            set({
-              banner: {
-                id: bannerCounter,
-                text: "End of period",
-                flavor: "info",
-              },
-            });
+            // Automatically advance period and reset the clock for the next one.
+            get().nextPeriod();
+            get().applyOfficialPeriodTimer();
           }
         }
       },
