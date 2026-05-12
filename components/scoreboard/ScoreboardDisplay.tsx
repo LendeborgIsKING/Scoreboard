@@ -479,11 +479,13 @@ export function ScoreboardDisplay() {
                 icon={<BuzzerIcon className="h-5 w-5" />}
                 onClick={() => playSfxClip("/sfx/horn.mp3")}
                 ariaLabel="Horn"
+                outline
               />
               <CircleBtn
                 icon={<WhistleIcon className="h-5 w-5" />}
                 onClick={() => playSfxClip("/sfx/whistle.mp3")}
                 ariaLabel="Whistle"
+                outline
               />
             </div>
           </section>
@@ -704,11 +706,13 @@ function CircleBtn({
   icon,
   onClick,
   ariaLabel,
+  outline,
 }: {
   label?: string;
   icon?: ReactNode;
   onClick: () => void;
   ariaLabel?: string;
+  outline?: boolean;
 }) {
   return (
     <motion.button
@@ -717,7 +721,11 @@ function CircleBtn({
       whileTap={{ scale: 0.92 }}
       whileHover={{ scale: 1.04 }}
       aria-label={ariaLabel ?? label}
-      className="flex h-12 w-12 items-center justify-center rounded-full bg-white text-black shadow transition hover:bg-white/90"
+      className={`flex h-12 w-12 items-center justify-center rounded-full shadow transition ${
+        outline
+          ? "border-2 border-white/50 bg-transparent text-white hover:bg-white/10 hover:border-white"
+          : "bg-white text-black hover:bg-white/90"
+      }`}
     >
       {icon ?? <span className="text-2xl font-black">{label}</span>}
     </motion.button>
