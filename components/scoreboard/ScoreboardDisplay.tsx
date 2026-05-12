@@ -248,11 +248,7 @@ export function ScoreboardDisplay() {
                 aria-expanded={audioMenuOpen}
                 aria-haspopup="menu"
                 onClick={() => setAudioMenuOpen((open) => !open)}
-                className={`flex h-12 w-12 items-center justify-center rounded-full shadow transition ${
-                  musicEnabled || sfxEnabled
-                    ? "bg-white text-black hover:bg-white/90"
-                    : "bg-zinc-800 text-zinc-400 hover:bg-zinc-700"
-                }`}
+                className="flex h-12 w-12 items-center justify-center rounded-full border-2 border-white/50 bg-transparent text-white shadow transition hover:bg-white/10 hover:border-white"
               >
                 <MicrophoneIcon className="h-6 w-6" aria-hidden />
               </motion.button>
@@ -434,22 +430,22 @@ export function ScoreboardDisplay() {
 
             {hasFeature(cfg, "ballsStrikesOuts") && (
               <div className="flex items-center gap-2 text-sm text-yellow-300">
-                <button type="button" onClick={() => adjustBSO("balls", -1)} className="rounded-full border border-white/30 px-2">-</button>
+                <button type="button" onClick={() => adjustBSO("balls", -1)} className="flex h-5 w-5 items-center justify-center rounded-full border border-white/50 bg-transparent text-white transition hover:bg-white/10 hover:border-white">-</button>
                 B {balls}
-                <button type="button" onClick={() => adjustBSO("balls", 1)} className="rounded-full border border-white/30 px-2">+</button>
+                <button type="button" onClick={() => adjustBSO("balls", 1)} className="flex h-5 w-5 items-center justify-center rounded-full border border-white/50 bg-transparent text-white transition hover:bg-white/10 hover:border-white">+</button>
                 <span className="mx-1">|</span>
-                <button type="button" onClick={() => adjustBSO("strikes", -1)} className="rounded-full border border-white/30 px-2">-</button>
+                <button type="button" onClick={() => adjustBSO("strikes", -1)} className="flex h-5 w-5 items-center justify-center rounded-full border border-white/50 bg-transparent text-white transition hover:bg-white/10 hover:border-white">-</button>
                 S {strikes}
-                <button type="button" onClick={() => adjustBSO("strikes", 1)} className="rounded-full border border-white/30 px-2">+</button>
+                <button type="button" onClick={() => adjustBSO("strikes", 1)} className="flex h-5 w-5 items-center justify-center rounded-full border border-white/50 bg-transparent text-white transition hover:bg-white/10 hover:border-white">+</button>
                 <span className="mx-1">|</span>
-                <button type="button" onClick={() => adjustBSO("outs", -1)} className="rounded-full border border-white/30 px-2">-</button>
+                <button type="button" onClick={() => adjustBSO("outs", -1)} className="flex h-5 w-5 items-center justify-center rounded-full border border-white/50 bg-transparent text-white transition hover:bg-white/10 hover:border-white">-</button>
                 O {outs}
-                <button type="button" onClick={() => adjustBSO("outs", 1)} className="rounded-full border border-white/30 px-2">+</button>
+                <button type="button" onClick={() => adjustBSO("outs", 1)} className="flex h-5 w-5 items-center justify-center rounded-full border border-white/50 bg-transparent text-white transition hover:bg-white/10 hover:border-white">+</button>
               </div>
             )}
 
             {hasFeature(cfg, "halfInning") && (
-              <button type="button" onClick={() => toggleHalfInning()} className="rounded-full bg-white/10 px-3 py-1 text-xs uppercase text-zinc-200">
+              <button type="button" onClick={() => toggleHalfInning()} className="rounded-full border border-white/50 bg-transparent px-3 py-1 text-xs uppercase text-white transition hover:bg-white/10 hover:border-white">
                 Toggle Top/Bot
               </button>
             )}
@@ -479,13 +475,11 @@ export function ScoreboardDisplay() {
                 icon={<BuzzerIcon className="h-5 w-5" />}
                 onClick={() => playSfxClip("/sfx/horn.mp3")}
                 ariaLabel="Horn"
-                outline
               />
               <CircleBtn
                 icon={<WhistleIcon className="h-5 w-5" />}
                 onClick={() => playSfxClip("/sfx/whistle.mp3")}
                 ariaLabel="Whistle"
-                outline
               />
             </div>
           </section>
@@ -621,7 +615,7 @@ export function ScoreboardDisplay() {
                   <button
                     type="button"
                     onClick={closePopover}
-                    className="inline-flex items-center gap-2 rounded-full bg-white px-4 py-1.5 text-sm font-bold text-black"
+                    className="inline-flex items-center gap-2 rounded-full border-2 border-white/50 bg-transparent px-4 py-1.5 text-sm font-bold text-white transition hover:bg-white/10 hover:border-white"
                   >
                     <CheckIcon className="h-4 w-4" />
                     Done
@@ -706,13 +700,11 @@ function CircleBtn({
   icon,
   onClick,
   ariaLabel,
-  outline,
 }: {
   label?: string;
   icon?: ReactNode;
   onClick: () => void;
   ariaLabel?: string;
-  outline?: boolean;
 }) {
   return (
     <motion.button
@@ -721,11 +713,7 @@ function CircleBtn({
       whileTap={{ scale: 0.92 }}
       whileHover={{ scale: 1.04 }}
       aria-label={ariaLabel ?? label}
-      className={`flex h-12 w-12 items-center justify-center rounded-full shadow transition ${
-        outline
-          ? "border-2 border-white/50 bg-transparent text-white hover:bg-white/10 hover:border-white"
-          : "bg-white text-black hover:bg-white/90"
-      }`}
+      className="flex h-12 w-12 items-center justify-center rounded-full border-2 border-white/50 bg-transparent text-white shadow transition hover:bg-white/10 hover:border-white"
     >
       {icon ?? <span className="text-2xl font-black">{label}</span>}
     </motion.button>
@@ -750,7 +738,7 @@ function ActionColumn({
           onClick={() => onTap(side, a.id)}
           whileTap={{ scale: 0.9 }}
           whileHover={{ scale: 1.05 }}
-          className="flex h-14 w-14 items-center justify-center rounded-full bg-white text-xl font-black text-black shadow"
+          className="flex h-14 w-14 items-center justify-center rounded-full border-2 border-white/50 bg-transparent text-xl font-black text-white shadow transition hover:bg-white/10 hover:border-white"
           title={`${a.label} (${a.value})`}
         >
           {a.label}
@@ -784,7 +772,7 @@ function FoulsBlock({
         <button
           type="button"
           onClick={() => onA(delta)}
-          className="h-7 w-7 rounded-full bg-white text-sm font-black text-black"
+          className="flex h-7 w-7 items-center justify-center rounded-full border border-white/50 bg-transparent text-sm font-black text-white transition hover:bg-white/10 hover:border-white"
           aria-label={`Home foul ${symbol}1`}
         >
           {symbol}
@@ -795,7 +783,7 @@ function FoulsBlock({
         <button
           type="button"
           onClick={() => onB(delta)}
-          className="h-7 w-7 rounded-full bg-white text-sm font-black text-black"
+          className="flex h-7 w-7 items-center justify-center rounded-full border border-white/50 bg-transparent text-sm font-black text-white transition hover:bg-white/10 hover:border-white"
           aria-label={`Away foul ${symbol}1`}
         >
           {symbol}
