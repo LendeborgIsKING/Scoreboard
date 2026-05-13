@@ -410,3 +410,39 @@ export function setMusic(track: MusicTrack) {
 export function getCurrentTrack(): MusicTrack {
   return currentTrack;
 }
+
+// ---------------------------------------------------------------------------
+// Theme ambient layer — separate from the music track, plays low-level
+// background audio tied to the selected visual theme.
+// ---------------------------------------------------------------------------
+
+let themeAmbientNodes: { stop: () => void } | null = null;
+let currentThemeAmbient: string = "none";
+
+/** Theme → ambient config. `loopEnd` = 0 means full file. */
+const THEME_AMBIENTS: Record<string, { src: string; loopStart: number; loopEnd: number }> = {
+  stadium: { src: "/sfx/stadium-roar.mp3", loopStart: 0, loopEnd: 22 },
+};
+
+export function setThemeAmbient(themeId: string) {
+  if (themeId === currentThemeAmbient) return;
+  if (themeAmbientNodes) {
+    themeAmbientNodes.stop();
+    themeAmbientNodes = null;
+  }
+  currentThemeAmbient = themeId;
+  const cfg = THEME_AMBIENTS[themeId];
+  if (!cfg) return;
+  const c = ensureCtx();
+  if (!c || !masterMusicGain) return;
+  if (c.state === "suspended") c.resume().catch(() => {});
+  themeAmbientNodes = startTrackFromFile(c, masterMusicGain, cfg.src, cfg.loopStart, cfg.loopEnd);
+}
+
+export function stopThemeAmbient() {
+  if (themeAmbientNodes) {
+    themeAmbientNodes.stop();
+    themeAmbientNodes = null;
+  }
+  currentThemeAmbient = "none";
+}

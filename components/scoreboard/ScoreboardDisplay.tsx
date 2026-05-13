@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useGameStore } from "@/lib/gameStore";
-import { setMusic as setAudioMusic, playSfxClip } from "@/lib/audio";
+import { setMusic as setAudioMusic, playSfxClip, setThemeAmbient, stopThemeAmbient } from "@/lib/audio";
 import {
   hasFeature,
   resolveActiveVariant,
@@ -48,16 +48,71 @@ const MIN_VALUES = Array.from({ length: 61 }, (_, i) => i);
 const SEC_VALUES = Array.from({ length: 60 }, (_, i) => i);
 const SC_VALUES = Array.from({ length: 60 }, (_, i) => i + 1);
 
-function themeClass(theme: "dark" | "neon" | "classic" | "stadium"): string {
+interface ThemeTokens {
+  bg: string;
+  scoreColor: string;
+  clockColor: string;
+  lowTimeColor: string;
+}
+
+function themeTokens(theme: string): ThemeTokens {
   switch (theme) {
     case "neon":
-      return "bg-[radial-gradient(ellipse_at_center,_#1b0033_0%,_#000_70%)] text-white";
+      return {
+        bg: "bg-[radial-gradient(ellipse_at_center,_#1b0033_0%,_#000_70%)] text-white",
+        scoreColor: "text-fuchsia-400",
+        clockColor: "text-fuchsia-500",
+        lowTimeColor: "text-pink-400",
+      };
     case "classic":
-      return "bg-[linear-gradient(180deg,_#1a1a1a,_#000)] text-white";
+      return {
+        bg: "bg-[linear-gradient(180deg,_#1a1a1a,_#000)] text-white",
+        scoreColor: "text-amber-300",
+        clockColor: "text-red-500",
+        lowTimeColor: "text-red-400",
+      };
     case "stadium":
-      return "bg-[radial-gradient(ellipse_at_top,_#003314_0%,_#000_70%)] text-white";
-    default:
-      return "bg-black text-white";
+      return {
+        bg: "bg-[radial-gradient(ellipse_at_top,_#003314_0%,_#000_70%)] text-white",
+        scoreColor: "text-green-400",
+        clockColor: "text-red-500",
+        lowTimeColor: "text-red-400",
+      };
+    case "fire":
+      return {
+        bg: "bg-[radial-gradient(ellipse_at_center,_#3d0a00_0%,_#000_70%)] text-white",
+        scoreColor: "text-orange-400",
+        clockColor: "text-orange-500",
+        lowTimeColor: "text-red-400",
+      };
+    case "ice":
+      return {
+        bg: "bg-[radial-gradient(ellipse_at_top,_#001833_0%,_#000_70%)] text-white",
+        scoreColor: "text-sky-300",
+        clockColor: "text-sky-400",
+        lowTimeColor: "text-cyan-300",
+      };
+    case "midnight":
+      return {
+        bg: "bg-[linear-gradient(160deg,_#0a0020_0%,_#000_60%)] text-white",
+        scoreColor: "text-violet-400",
+        clockColor: "text-indigo-400",
+        lowTimeColor: "text-purple-400",
+      };
+    case "gold":
+      return {
+        bg: "bg-[radial-gradient(ellipse_at_top,_#2a1a00_0%,_#000_70%)] text-white",
+        scoreColor: "text-yellow-400",
+        clockColor: "text-yellow-500",
+        lowTimeColor: "text-amber-400",
+      };
+    default: // dark
+      return {
+        bg: "bg-black text-white",
+        scoreColor: "text-lime-400",
+        clockColor: "text-red-500",
+        lowTimeColor: "text-red-400",
+      };
   }
 }
 
@@ -133,6 +188,7 @@ export function ScoreboardDisplay() {
 
   const cfg = resolveSportConfig(sportId, customSport);
   const activeVariant = resolveActiveVariant(cfg, timerVariantId);
+  const tokens = themeTokens(theme);
   const clockSec = useTimerDisplay();
   useCountdownTick();
   useKeyboardShortcuts(true);
@@ -142,6 +198,12 @@ export function ScoreboardDisplay() {
     if (musicEnabled) setAudioMusic(musicTrack);
     return () => setAudioMusic("none");
   }, [musicEnabled, musicTrack]);
+
+  // Theme ambient audio (e.g. stadium roar)
+  useEffect(() => {
+    setThemeAmbient(theme);
+    return () => stopThemeAmbient();
+  }, [theme]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -229,7 +291,7 @@ export function ScoreboardDisplay() {
 
   return (
     <div
-      className={`relative flex min-h-full flex-1 flex-col items-center overflow-hidden ${themeClass(theme)}`}
+      className={`relative flex min-h-full flex-1 flex-col items-center overflow-hidden ${tokens.bg}`}
     >
       <div className="absolute left-1/2 top-1/2 flex h-[390px] w-[844px] -translate-x-1/2 -translate-y-1/2 rotate-90 flex-col max-sm:landscape:static max-sm:landscape:h-full max-sm:landscape:w-full max-sm:landscape:translate-x-0 max-sm:landscape:translate-y-0 max-sm:landscape:rotate-0">
         <div className="grid grid-cols-[1fr_auto_1fr] items-start gap-2 px-4 pt-4 text-white">
@@ -337,7 +399,7 @@ export function ScoreboardDisplay() {
                   type="button"
                   onClick={onClockClick}
                   className={`font-stencil text-6xl leading-none tracking-[0.08em] ${
-                    lowTime ? "text-red-400" : "text-red-500"
+                    lowTime ? tokens.lowTimeColor : tokens.clockColor
                   } ${editDashRed}`}
                   animate={
                     lowTime
@@ -403,7 +465,7 @@ export function ScoreboardDisplay() {
             </button>
             <AnimatedScore
               value={teamB.score}
-              colorClass="text-lime-400"
+              colorClass={tokens.scoreColor}
               tint={teamB.color}
             />
             <div className="mt-1 flex gap-2 pl-6">
@@ -482,7 +544,7 @@ export function ScoreboardDisplay() {
             </button>
             <AnimatedScore
               value={teamA.score}
-              colorClass="text-lime-400"
+              colorClass={tokens.scoreColor}
               tint={teamA.color}
             />
           </section>

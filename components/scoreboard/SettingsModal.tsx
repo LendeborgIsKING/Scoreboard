@@ -32,11 +32,15 @@ type Panel =
   | "team-colors"
   | "hockey-horn";
 
-const THEMES: { id: "dark" | "neon" | "classic" | "stadium"; label: string; chip: string }[] = [
-  { id: "dark", label: "Dark", chip: "bg-zinc-900" },
-  { id: "neon", label: "Neon", chip: "bg-fuchsia-600" },
-  { id: "classic", label: "Classic", chip: "bg-stone-700" },
-  { id: "stadium", label: "Stadium", chip: "bg-emerald-700" },
+const THEMES: { id: import("@/lib/types").ThemeId; label: string; chip: string }[] = [
+  { id: "dark",     label: "Dark",     chip: "bg-zinc-900" },
+  { id: "classic",  label: "Classic",  chip: "bg-stone-700" },
+  { id: "neon",     label: "Neon",     chip: "bg-fuchsia-600" },
+  { id: "stadium",  label: "Stadium",  chip: "bg-emerald-700" },
+  { id: "fire",     label: "Fire",     chip: "bg-gradient-to-br from-red-700 to-orange-500" },
+  { id: "ice",      label: "Ice",      chip: "bg-gradient-to-br from-sky-700 to-cyan-400" },
+  { id: "midnight", label: "Midnight", chip: "bg-gradient-to-br from-indigo-900 to-violet-700" },
+  { id: "gold",     label: "Gold",     chip: "bg-gradient-to-br from-yellow-600 to-amber-400" },
 ];
 
 const TRACKS: {
@@ -274,7 +278,7 @@ function ThemePanel() {
   const setTheme = useGameStore((s) => s.setTheme);
   return (
     <PanelShell title="Theme">
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-4 gap-3">
         {THEMES.map((t) => (
           <button
             key={t.id}
