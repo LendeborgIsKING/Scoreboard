@@ -468,7 +468,7 @@ export function ScoreboardDisplay() {
               colorClass={tokens.scoreColor}
               tint={teamB.color}
             />
-            <div className="mt-1 flex justify-end gap-2 pr-4">
+            <div className="mt-1 flex w-full justify-end gap-2">
               <CircleBtn
                 icon={<BuzzerIcon className="h-5 w-5" />}
                 onClick={() => playSfxClip("/sfx/horn.mp3")}
