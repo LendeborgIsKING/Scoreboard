@@ -445,9 +445,10 @@ export function ScoreboardDisplay() {
           </div>
         </div>
 
-        <div className="mt-0 grid flex-1 grid-cols-[auto_1fr_auto_1fr_auto] items-start gap-x-3 gap-y-2 px-4 pb-2 pt-1">
-          {/* Away (B) on the left */}
-          <ActionColumn side="b" actions={scoreActions} onTap={onScore} />
+        <div className="relative mt-0 flex-1">
+          <div className="grid grid-cols-[auto_1fr_auto_1fr_auto] items-start gap-x-3 gap-y-2 px-4 pb-2 pt-1">
+            {/* Away (B) on the left */}
+            <ActionColumn side="b" actions={scoreActions} onTap={onScore} />
 
           <section className="flex flex-col items-center justify-center gap-1.5">
             <button
@@ -468,18 +469,6 @@ export function ScoreboardDisplay() {
               colorClass={tokens.scoreColor}
               tint={teamB.color}
             />
-            <div className="mt-1 flex w-full justify-end gap-2">
-              <CircleBtn
-                icon={<BuzzerIcon className="h-5 w-5" />}
-                onClick={() => playSfxClip("/sfx/horn.mp3")}
-                ariaLabel="Horn"
-              />
-              <CircleBtn
-                icon={<WhistleIcon className="h-5 w-5" />}
-                onClick={() => playSfxClip("/sfx/whistle.mp3")}
-                ariaLabel="Whistle"
-              />
-            </div>
           </section>
 
           {/* Center panel */}
@@ -549,7 +538,22 @@ export function ScoreboardDisplay() {
             />
           </section>
 
-          <ActionColumn side="a" actions={scoreActions} onTap={onScore} />
+            <ActionColumn side="a" actions={scoreActions} onTap={onScore} />
+          </div>
+
+          {/* Full padded right edge of score row; wrapper spans full board width (not just the away column) */}
+          <div className="pointer-events-auto absolute right-4 top-[11.25rem] z-20 flex gap-2 max-sm:landscape:top-[10.75rem]">
+            <CircleBtn
+              icon={<BuzzerIcon className="h-5 w-5" />}
+              onClick={() => playSfxClip("/sfx/horn.mp3")}
+              ariaLabel="Horn"
+            />
+            <CircleBtn
+              icon={<WhistleIcon className="h-5 w-5" />}
+              onClick={() => playSfxClip("/sfx/whistle.mp3")}
+              ariaLabel="Whistle"
+            />
+          </div>
         </div>
 
         <button
@@ -795,7 +799,7 @@ function ActionColumn({
   onTap: (side: "a" | "b", actionId: string) => void;
 }) {
   return (
-    <div className="flex flex-col items-center justify-center gap-2 py-1">
+    <div className="relative z-30 flex flex-col items-center justify-center gap-2 py-1">
       {actions.map((a) => (
         <motion.button
           key={`${side}-${a.id}`}
