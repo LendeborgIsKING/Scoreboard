@@ -242,10 +242,19 @@ export function playSfx(name: SfxName) {
 /** Basketball shot sample — routed through master SFX gain with other effects. */
 export const BASKETBALL_SCORE_SFX_SRC = "/sfx/basketball-swish.mp3";
 
+/** Tracks the currently-playing SFX clip so we can stop it before the next. */
+let activeClip: { stop: () => void } | null = null;
+
 /** One-shot sampled SFX (mono/stereo clips) via Web Audio gain graph.
  *  Optional `startSec` / `endSec` let you play a sub-clip from a longer file.
+ *  Calling this while a clip is already playing stops the previous one first.
  */
 export function playSfxClip(src: string, startSec = 0, endSec?: number) {
+  // Stop any currently playing clip
+  if (activeClip) {
+    activeClip.stop();
+    activeClip = null;
+  }
   const c = ensureCtx();
   if (!c || !masterSfxGain) return;
   if (c.state === "suspended") c.resume().catch(() => {});
@@ -262,6 +271,7 @@ export function playSfxClip(src: string, startSec = 0, endSec?: number) {
   }
 
   function cleanup() {
+    if (activeClip === handle) activeClip = null;
     audio.removeEventListener("ended", onEnded);
     audio.removeEventListener("timeupdate", onTimeUpdate);
     audio.removeEventListener("error", onErr);
@@ -270,6 +280,9 @@ export function playSfxClip(src: string, startSec = 0, endSec?: number) {
     audio.removeAttribute("src");
     try { audio.load(); } catch { /* ignore */ }
   }
+
+  const handle = { stop: cleanup };
+  activeClip = handle;
 
   function onTimeUpdate() {
     if (endSec != null && audio.currentTime >= endSec) cleanup();

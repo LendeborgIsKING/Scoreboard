@@ -97,8 +97,10 @@ export interface GameState extends GameStateSlice {
   history: GameHistoryEntry[];
   periodScores: { a: number[]; b: number[] };
   confettiKey: number;
-  /** Selected NHL team ID for the hockey goal horn (null = use default horn) */
-  hockeyGoalHornTeamId: string | null;
+  /** Selected NHL team ID for the home team goal horn (null = default horn) */
+  hockeyGoalHornHome: string | null;
+  /** Selected NHL team ID for the away team goal horn (null = default horn) */
+  hockeyGoalHornAway: string | null;
   /** User-adjusted start timestamps (seconds) keyed by NHL team id */
   nhlHornOffsets: Record<string, number>;
 }
@@ -184,7 +186,8 @@ type GameStore = GameState & {
   setMusicEnabled: (v: boolean) => void;
   setMusicTrack: (t: MusicTrackId) => void;
   setMusicVolumePref: (v: number) => void;
-  setHockeyGoalHornTeamId: (id: string | null) => void;
+  setHockeyGoalHornHome: (id: string | null) => void;
+  setHockeyGoalHornAway: (id: string | null) => void;
   setNhlHornOffset: (teamId: string, startSec: number) => void;
   showBanner: (msg: Omit<BannerMessage, "id">) => void;
   clearBanner: () => void;
@@ -245,7 +248,8 @@ export const useGameStore = create<GameStore>()(
       history: [],
       periodScores: { a: [0], b: [0] },
       confettiKey: 0,
-      hockeyGoalHornTeamId: null,
+      hockeyGoalHornHome: null,
+      hockeyGoalHornAway: null,
       nhlHornOffsets: {},
 
       pushUndo: () => {
@@ -395,12 +399,13 @@ export const useGameStore = create<GameStore>()(
           if (sportId === "basketball") {
             playSfxClip(BASKETBALL_SCORE_SFX_SRC);
           } else if (sportId === "hockey") {
-            const { hockeyGoalHornTeamId, nhlHornOffsets } = get();
-            if (hockeyGoalHornTeamId) {
-              const team = NHL_TEAMS.find((t) => t.id === hockeyGoalHornTeamId);
-              if (team) {
-                const start = nhlHornOffsets[hockeyGoalHornTeamId] ?? team.defaultStart;
-                const end = start + team.defaultDuration;
+            const { hockeyGoalHornHome, hockeyGoalHornAway, nhlHornOffsets } = get();
+            const hornTeamId = team === "a" ? hockeyGoalHornHome : hockeyGoalHornAway;
+            if (hornTeamId) {
+              const hornTeam = NHL_TEAMS.find((t) => t.id === hornTeamId);
+              if (hornTeam) {
+                const start = nhlHornOffsets[hornTeamId] ?? hornTeam.defaultStart;
+                const end = start + hornTeam.defaultDuration;
                 playSfxClip(NHL_HORN_SRC, start, end);
               } else {
                 playSfxClip("/sfx/horn.mp3");
@@ -800,7 +805,8 @@ export const useGameStore = create<GameStore>()(
         setMusicVolume(clamped);
       },
 
-      setHockeyGoalHornTeamId: (id) => set({ hockeyGoalHornTeamId: id }),
+      setHockeyGoalHornHome: (id) => set({ hockeyGoalHornHome: id }),
+      setHockeyGoalHornAway: (id) => set({ hockeyGoalHornAway: id }),
 
       setNhlHornOffset: (teamId, startSec) =>
         set((state) => ({
@@ -894,7 +900,8 @@ export const useGameStore = create<GameStore>()(
         musicVolume: state.musicVolume,
         history: state.history,
         periodScores: state.periodScores,
-        hockeyGoalHornTeamId: state.hockeyGoalHornTeamId,
+        hockeyGoalHornHome: state.hockeyGoalHornHome,
+        hockeyGoalHornAway: state.hockeyGoalHornAway,
         nhlHornOffsets: state.nhlHornOffsets,
       }),
       skipHydration: true,
@@ -931,7 +938,8 @@ export const useGameStore = create<GameStore>()(
         if (!merged.history) merged.history = [];
         merged.banner = null;
         if (typeof merged.confettiKey !== "number") merged.confettiKey = 0;
-        if (merged.hockeyGoalHornTeamId === undefined) merged.hockeyGoalHornTeamId = null;
+        if (merged.hockeyGoalHornHome === undefined) merged.hockeyGoalHornHome = null;
+        if (merged.hockeyGoalHornAway === undefined) merged.hockeyGoalHornAway = null;
         if (!merged.nhlHornOffsets) merged.nhlHornOffsets = {};
         return merged;
       },
