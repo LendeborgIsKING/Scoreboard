@@ -406,7 +406,7 @@ export function ScoreboardDisplay() {
               colorClass="text-lime-400"
               tint={teamB.color}
             />
-            <div className="mt-1 flex gap-2">
+            <div className="mt-1 flex gap-2 pl-6">
               <CircleBtn
                 icon={<BuzzerIcon className="h-5 w-5" />}
                 onClick={() => playSfxClip("/sfx/horn.mp3")}
