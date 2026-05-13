@@ -384,29 +384,43 @@ export function ScoreboardDisplay() {
         </div>
 
         <div className="mt-0 grid flex-1 grid-cols-[auto_1fr_auto_1fr_auto] items-start gap-x-3 gap-y-2 px-4 pb-2 pt-1">
-          <ActionColumn side="a" actions={scoreActions} onTap={onScore} />
+          {/* Away (B) on the left */}
+          <ActionColumn side="b" actions={scoreActions} onTap={onScore} />
 
           <section className="flex flex-col items-center justify-center gap-1.5">
             <button
               type="button"
-              onClick={() => onTeamNameClick("a")}
+              onClick={() => onTeamNameClick("b")}
               className={`flex items-center gap-2 text-4xl font-black text-white ${editDash}`}
-              style={{ color: teamA.color }}
+              style={{ color: teamB.color }}
             >
-              {showPossession && possession === "a" && (
+              {showPossession && possession === "b" && (
                 <span className="text-cyan-400" aria-label="possession">
                   {"\u25B6"}
                 </span>
               )}
-              {teamA.name}
+              {teamB.name}
             </button>
             <AnimatedScore
-              value={teamA.score}
+              value={teamB.score}
               colorClass="text-lime-400"
-              tint={teamA.color}
+              tint={teamB.color}
             />
+            <div className="mt-1 flex gap-2">
+              <CircleBtn
+                icon={<BuzzerIcon className="h-5 w-5" />}
+                onClick={() => playSfxClip("/sfx/horn.mp3")}
+                ariaLabel="Horn"
+              />
+              <CircleBtn
+                icon={<WhistleIcon className="h-5 w-5" />}
+                onClick={() => playSfxClip("/sfx/whistle.mp3")}
+                ariaLabel="Whistle"
+              />
+            </div>
           </section>
 
+          {/* Center panel */}
           <section className="flex flex-col items-center justify-center gap-1.5">
             <div className="flex flex-col items-center gap-0.5 text-white/90">
               <span className="h-5 w-px bg-white/15" aria-hidden />
@@ -416,11 +430,11 @@ export function ScoreboardDisplay() {
 
             {hasFouls && (
               <FoulsBlock
-                aValue={teamA.fouls}
-                bValue={teamB.fouls}
+                aValue={teamB.fouls}
+                bValue={teamA.fouls}
                 editing={editing}
-                onA={(d) => adjustFouls("a", d)}
-                onB={(d) => adjustFouls("b", d)}
+                onA={(d) => adjustFouls("b", d)}
+                onB={(d) => adjustFouls("a", d)}
               />
             )}
 
@@ -451,40 +465,29 @@ export function ScoreboardDisplay() {
             )}
           </section>
 
+          {/* Home (A) on the right */}
           <section className="flex flex-col items-center justify-center gap-1.5">
             <button
               type="button"
-              onClick={() => onTeamNameClick("b")}
+              onClick={() => onTeamNameClick("a")}
               className={`flex items-center gap-2 text-4xl font-black text-white ${editDash}`}
-              style={{ color: teamB.color }}
+              style={{ color: teamA.color }}
             >
-              {teamB.name}
-              {showPossession && possession === "b" && (
+              {teamA.name}
+              {showPossession && possession === "a" && (
                 <span className="text-cyan-400" aria-label="possession">
                   {"\u25C0"}
                 </span>
               )}
             </button>
             <AnimatedScore
-              value={teamB.score}
+              value={teamA.score}
               colorClass="text-lime-400"
-              tint={teamB.color}
+              tint={teamA.color}
             />
-            <div className="mt-1 flex gap-2">
-              <CircleBtn
-                icon={<BuzzerIcon className="h-5 w-5" />}
-                onClick={() => playSfxClip("/sfx/horn.mp3")}
-                ariaLabel="Horn"
-              />
-              <CircleBtn
-                icon={<WhistleIcon className="h-5 w-5" />}
-                onClick={() => playSfxClip("/sfx/whistle.mp3")}
-                ariaLabel="Whistle"
-              />
-            </div>
           </section>
 
-          <ActionColumn side="b" actions={scoreActions} onTap={onScore} />
+          <ActionColumn side="a" actions={scoreActions} onTap={onScore} />
         </div>
 
         <button
