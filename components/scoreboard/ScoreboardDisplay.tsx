@@ -16,7 +16,8 @@ import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
 import { SettingsModal } from "./SettingsModal";
 import { StatsModal } from "./StatsModal";
 import { HistoryModal } from "./HistoryModal";
-import { SoundboardModal } from "./SoundboardModal";
+import { ThemeAmbience } from "./ThemeAmbience";
+import { scoreFontClass } from "@/lib/themeDisplayFont";
 import { SportLineIcon } from "./SportLineIcons";
 import { PickerWheel } from "./PickerWheel";
 import { ShotClock } from "./ShotClock";
@@ -53,9 +54,11 @@ interface ThemeTokens {
   scoreColor: string;
   clockColor: string;
   lowTimeColor: string;
+  displayFont: string;
 }
 
 function themeTokens(theme: string): ThemeTokens {
+  const displayFont = scoreFontClass(theme);
   switch (theme) {
     case "neon":
       return {
@@ -63,6 +66,7 @@ function themeTokens(theme: string): ThemeTokens {
         scoreColor: "text-fuchsia-400",
         clockColor: "text-fuchsia-500",
         lowTimeColor: "text-pink-400",
+        displayFont,
       };
     case "classic":
       return {
@@ -70,6 +74,7 @@ function themeTokens(theme: string): ThemeTokens {
         scoreColor: "text-amber-300",
         clockColor: "text-red-500",
         lowTimeColor: "text-red-400",
+        displayFont,
       };
     case "stadium":
       return {
@@ -77,6 +82,7 @@ function themeTokens(theme: string): ThemeTokens {
         scoreColor: "text-green-400",
         clockColor: "text-red-500",
         lowTimeColor: "text-red-400",
+        displayFont,
       };
     case "fire":
       return {
@@ -84,6 +90,7 @@ function themeTokens(theme: string): ThemeTokens {
         scoreColor: "text-orange-400",
         clockColor: "text-orange-500",
         lowTimeColor: "text-red-400",
+        displayFont,
       };
     case "ice":
       return {
@@ -91,6 +98,7 @@ function themeTokens(theme: string): ThemeTokens {
         scoreColor: "text-sky-300",
         clockColor: "text-sky-400",
         lowTimeColor: "text-cyan-300",
+        displayFont,
       };
     case "midnight":
       return {
@@ -98,6 +106,7 @@ function themeTokens(theme: string): ThemeTokens {
         scoreColor: "text-violet-400",
         clockColor: "text-indigo-400",
         lowTimeColor: "text-purple-400",
+        displayFont,
       };
     case "gold":
       return {
@@ -105,6 +114,7 @@ function themeTokens(theme: string): ThemeTokens {
         scoreColor: "text-yellow-400",
         clockColor: "text-yellow-500",
         lowTimeColor: "text-amber-400",
+        displayFont,
       };
     default: // dark
       return {
@@ -112,6 +122,7 @@ function themeTokens(theme: string): ThemeTokens {
         scoreColor: "text-lime-400",
         clockColor: "text-red-500",
         lowTimeColor: "text-red-400",
+        displayFont,
       };
   }
 }
@@ -163,7 +174,6 @@ export function ScoreboardDisplay() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [statsOpen, setStatsOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
-  const [soundboardOpen, setSoundboardOpen] = useState(false);
   const [editing, setEditing] = useState(false);
   const [popover, setPopover] = useState<Popover>(null);
   const [teamDraft, setTeamDraft] = useState("");
@@ -293,6 +303,8 @@ export function ScoreboardDisplay() {
     <div
       className={`relative flex min-h-full flex-1 flex-col items-center overflow-hidden ${tokens.bg}`}
     >
+      <ThemeAmbience theme={theme} />
+      <div className="relative z-10 flex w-full min-h-full flex-1 flex-col items-center">
       <div className="absolute left-1/2 top-1/2 flex h-[390px] w-[844px] -translate-x-1/2 -translate-y-1/2 rotate-90 flex-col max-sm:landscape:static max-sm:landscape:h-full max-sm:landscape:w-full max-sm:landscape:translate-x-0 max-sm:landscape:translate-y-0 max-sm:landscape:rotate-0">
         <div className="grid grid-cols-[1fr_auto_1fr] items-start gap-2 px-4 pt-4 text-white">
           <div className="flex items-center justify-start gap-2 pt-1.5">
@@ -382,7 +394,7 @@ export function ScoreboardDisplay() {
 
           <div className="flex flex-col items-center justify-center gap-1">
             <div className="flex items-center justify-center gap-2">
-              <ShotClock onClick={onShotClockClick} />
+              <ShotClock onClick={onShotClockClick} fontClass={tokens.displayFont} />
               <div className="flex items-center gap-1">
                 <CircleBtn
                   icon={
@@ -398,7 +410,7 @@ export function ScoreboardDisplay() {
                 <motion.button
                   type="button"
                   onClick={onClockClick}
-                  className={`font-stencil text-6xl leading-none tracking-[0.08em] ${
+                  className={`${tokens.displayFont} text-6xl leading-none tracking-[0.08em] ${
                     lowTime ? tokens.lowTimeColor : tokens.clockColor
                   } ${editDashRed}`}
                   animate={
@@ -468,6 +480,7 @@ export function ScoreboardDisplay() {
               value={teamB.score}
               colorClass={tokens.scoreColor}
               tint={teamB.color}
+              displayFont={tokens.displayFont}
             />
           </section>
 
@@ -486,6 +499,7 @@ export function ScoreboardDisplay() {
                 editing={editing}
                 onA={(d) => adjustFouls("b", d)}
                 onB={(d) => adjustFouls("a", d)}
+                displayFont={tokens.displayFont}
               />
             )}
 
@@ -535,6 +549,7 @@ export function ScoreboardDisplay() {
               value={teamA.score}
               colorClass={tokens.scoreColor}
               tint={teamA.color}
+              displayFont={tokens.displayFont}
             />
           </section>
 
@@ -630,7 +645,7 @@ export function ScoreboardDisplay() {
                       label="MIN"
                       width={64}
                     />
-                    <span className="pb-[90px] font-stencil text-3xl text-white">
+                    <span className={`pb-[90px] ${tokens.displayFont} text-3xl text-white`}>
                       :
                     </span>
                     <PickerWheel
@@ -695,6 +710,7 @@ export function ScoreboardDisplay() {
           )}
         </AnimatePresence>
       </div>
+      </div>
 
       <AnimatePresence>
         {settingsOpen && (
@@ -712,10 +728,6 @@ export function ScoreboardDisplay() {
               setSettingsOpen(false);
               setHistoryOpen(true);
             }}
-            onSoundboard={() => {
-              setSettingsOpen(false);
-              setSoundboardOpen(true);
-            }}
           />
         )}
       </AnimatePresence>
@@ -727,11 +739,6 @@ export function ScoreboardDisplay() {
           <HistoryModal onClose={() => setHistoryOpen(false)} />
         )}
       </AnimatePresence>
-      <AnimatePresence>
-        {soundboardOpen && (
-          <SoundboardModal onClose={() => setSoundboardOpen(false)} />
-        )}
-      </AnimatePresence>
     </div>
   );
 }
@@ -740,10 +747,12 @@ function AnimatedScore({
   value,
   colorClass,
   tint,
+  displayFont,
 }: {
   value: number;
   colorClass: string;
   tint?: string;
+  displayFont: string;
 }) {
   return (
     <div className="relative h-[130px] w-full overflow-hidden">
@@ -754,7 +763,7 @@ function AnimatedScore({
           animate={{ scale: 1, opacity: 1, y: 0 }}
           exit={{ scale: 0.85, opacity: 0, y: 12 }}
           transition={{ type: "spring", stiffness: 380, damping: 26 }}
-          className={`absolute inset-0 flex items-center justify-center font-stencil text-[140px] leading-[0.9] tracking-tight ${colorClass}`}
+          className={`absolute inset-0 flex items-center justify-center ${displayFont} text-[140px] leading-[0.9] tracking-tight ${colorClass}`}
           style={tint ? { color: tint } : undefined}
         >
           {value}
@@ -823,12 +832,14 @@ function FoulsBlock({
   editing,
   onA,
   onB,
+  displayFont,
 }: {
   aValue: number;
   bValue: number;
   editing: boolean;
   onA: (delta: number) => void;
   onB: (delta: number) => void;
+  displayFont: string;
 }) {
   const delta = editing ? -1 : 1;
   const symbol = editing ? "-" : "+";
@@ -846,9 +857,9 @@ function FoulsBlock({
         >
           {symbol}
         </button>
-        <span className="font-stencil text-3xl text-yellow-300">{aValue}</span>
+        <span className={`${displayFont} text-3xl text-yellow-300`}>{aValue}</span>
         <span className="text-white/40">|</span>
-        <span className="font-stencil text-3xl text-yellow-300">{bValue}</span>
+        <span className={`${displayFont} text-3xl text-yellow-300`}>{bValue}</span>
         <button
           type="button"
           onClick={() => onB(delta)}

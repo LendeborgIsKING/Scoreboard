@@ -11,6 +11,15 @@
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
   --font-stencil: var(--font-saira-stencil);
+  /* Theme scoreboard numerals (see lib/themeDisplayFont.ts) */
+  --font-display-dark: var(--font-rajdhani), ui-sans-serif, system-ui, sans-serif;
+  --font-display-neon: var(--font-audiowide), ui-sans-serif, sans-serif;
+  --font-display-classic: var(--font-playfair-sc), ui-serif, Georgia, serif;
+  --font-display-stadium: var(--font-saira-stencil), ui-sans-serif, sans-serif;
+  --font-display-fire: var(--font-bungee), ui-sans-serif, sans-serif;
+  --font-display-ice: var(--font-iceberg), ui-sans-serif, sans-serif;
+  --font-display-midnight: var(--font-cinzel), ui-serif, serif;
+  --font-display-gold: var(--font-cormorant), ui-serif, Georgia, serif;
 }
 
 @media (prefers-color-scheme: dark) {

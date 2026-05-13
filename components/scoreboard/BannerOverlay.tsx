@@ -3,10 +3,13 @@
 import { useEffect } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useGameStore } from "@/lib/gameStore";
+import { scoreFontClass } from "@/lib/themeDisplayFont";
 
 export function BannerOverlay() {
   const banner = useGameStore((s) => s.banner);
+  const theme = useGameStore((s) => s.theme);
   const clearBanner = useGameStore((s) => s.clearBanner);
+  const displayFont = scoreFontClass(theme);
 
   useEffect(() => {
     if (!banner) return;
@@ -27,7 +30,7 @@ export function BannerOverlay() {
           className="pointer-events-none absolute left-1/2 top-1/2 z-30 flex -translate-x-1/2 -translate-y-1/2 flex-col items-center"
         >
           <div
-            className={`font-stencil text-7xl tracking-[0.06em] drop-shadow-2xl ${flavorClass(
+            className={`${displayFont} text-7xl tracking-[0.06em] drop-shadow-2xl ${flavorClass(
               banner.flavor,
             )}`}
           >

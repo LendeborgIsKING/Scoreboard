@@ -5,7 +5,14 @@ import { useGameStore } from "@/lib/gameStore";
 import { useShotClockDisplay } from "@/hooks/useShotClockDisplay";
 import { useShotClockTick } from "@/hooks/useShotClockTick";
 
-export function ShotClock({ onClick }: { onClick: () => void }) {
+export function ShotClock({
+  onClick,
+  fontClass = "font-display-stadium",
+}: {
+  onClick: () => void;
+  /** Theme score font (see lib/themeDisplayFont.ts); defaults to stadium stencil */
+  fontClass?: string;
+}) {
   const sc = useGameStore((s) => s.shotClock);
   useShotClockTick();
   const seconds = useShotClockDisplay();
@@ -27,7 +34,7 @@ export function ShotClock({ onClick }: { onClick: () => void }) {
           ? { duration: 0.6, repeat: Infinity, ease: "easeInOut" }
           : { duration: 0.2 }
       }
-      className={`flex h-10 min-w-[68px] items-center justify-center rounded-md border-2 px-2 font-stencil text-3xl leading-none tracking-[0.1em] ${
+      className={`flex h-10 min-w-[68px] items-center justify-center rounded-md border-2 px-2 ${fontClass} text-3xl leading-none tracking-[0.1em] ${
         low
           ? "border-red-500 bg-red-500/10 text-red-300"
           : "border-orange-400/70 bg-orange-400/5 text-orange-300"

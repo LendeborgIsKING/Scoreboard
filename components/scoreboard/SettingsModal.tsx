@@ -10,7 +10,6 @@ import {
   BuzzerIcon,
   CheckIcon,
   CloseIcon,
-  GearIcon,
   MenuIcon,
   PencilIcon,
 } from "./UiIcons";
@@ -20,7 +19,6 @@ type Props = {
   onEdit: () => void;
   onStats: () => void;
   onHistory: () => void;
-  onSoundboard: () => void;
 };
 
 type Panel =
@@ -59,7 +57,6 @@ export function SettingsModal({
   onEdit,
   onStats,
   onHistory,
-  onSoundboard,
 }: Props) {
   const [panel, setPanel] = useState<Panel>("menu");
 
@@ -117,7 +114,6 @@ export function SettingsModal({
             onHockeyHorn={() => setPanel("hockey-horn")}
             onStats={onStats}
             onHistory={onHistory}
-            onSoundboard={onSoundboard}
           />
         )}
         {panel === "sound" && <SoundPanel />}
@@ -141,7 +137,6 @@ function MenuView({
   onHockeyHorn,
   onStats,
   onHistory,
-  onSoundboard,
 }: {
   onEdit: () => void;
   onSound: () => void;
@@ -152,7 +147,6 @@ function MenuView({
   onHockeyHorn: () => void;
   onStats: () => void;
   onHistory: () => void;
-  onSoundboard: () => void;
 }) {
   const sportId = useGameStore((s) => s.sportId);
   const isHockey = sportId === "hockey";
@@ -167,11 +161,6 @@ function MenuView({
       <Tile label="Colors" icon={<DropGlyph />} onClick={onTeamColors} />
       <Tile label="Stats" icon={<BarGlyph />} onClick={onStats} />
       <Tile label="History" icon={<ListGlyph />} onClick={onHistory} />
-      <Tile
-        label="Soundboard"
-        icon={<GearIcon className="h-7 w-7" />}
-        onClick={onSoundboard}
-      />
       {isHockey && (
         <Tile label="Goal Horns" icon={<HornGlyph />} onClick={onHockeyHorn} />
       )}
@@ -228,8 +217,7 @@ function SoundPanel() {
         }}
       />
       <p className="text-xs text-zinc-500">
-        Score chimes, period buzzers, win fanfare and the soundboard pads all
-        use this volume.
+        Score chimes, period buzzers, and win fanfare use this volume.
       </p>
     </PanelShell>
   );
