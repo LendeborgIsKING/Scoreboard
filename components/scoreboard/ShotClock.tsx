@@ -34,7 +34,7 @@ export function ShotClock({
           ? { duration: 0.6, repeat: Infinity, ease: "easeInOut" }
           : { duration: 0.2 }
       }
-      className={`flex h-10 min-w-[68px] items-center justify-center rounded-md border-2 px-2 ${fontClass} text-3xl leading-none tracking-[0.1em] ${
+      className={`flex h-10 min-h-[44px] min-w-[60px] items-center justify-center rounded-md border-2 px-2 sm:min-w-[68px] ${fontClass} text-3xl leading-none tracking-[0.1em] max-sm:h-9 max-sm:text-2xl ${
         low
           ? "border-red-500 bg-red-500/10 text-red-300"
           : "border-orange-400/70 bg-orange-400/5 text-orange-300"

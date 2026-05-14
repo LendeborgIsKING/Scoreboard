@@ -13,6 +13,7 @@ import {
   MenuIcon,
   PencilIcon,
 } from "./UiIcons";
+import { MOBILE_SCOREBOARD_SHELL } from "@/lib/mobileClasses";
 
 type Props = {
   onClose: () => void;
@@ -75,12 +76,12 @@ export function SettingsModal({
         exit={{ opacity: 0, scale: 0.98 }}
         transition={{ duration: 0.22, ease: "easeOut" }}
         onClick={(e) => e.stopPropagation()}
-        className="absolute left-1/2 top-1/2 flex h-[390px] w-[844px] -translate-x-1/2 -translate-y-1/2 rotate-90 flex-col bg-black text-white max-sm:landscape:static max-sm:landscape:h-full max-sm:landscape:w-full max-sm:landscape:translate-x-0 max-sm:landscape:translate-y-0 max-sm:landscape:rotate-0"
+        className={`absolute left-1/2 top-1/2 flex h-[390px] w-[844px] min-h-0 -translate-x-1/2 -translate-y-1/2 rotate-90 flex-col bg-black text-white ${MOBILE_SCOREBOARD_SHELL}`}
       >
         <button
           type="button"
           onClick={panel === "menu" ? onClose : () => setPanel("menu")}
-          className="absolute left-6 top-4 flex flex-col items-center text-white"
+          className="absolute left-[max(1.5rem,env(safe-area-inset-left))] top-[max(1rem,env(safe-area-inset-top))] flex flex-col items-center text-white"
           aria-label={panel === "menu" ? "Exit settings" : "Back"}
         >
           <CircleShell>
@@ -94,7 +95,7 @@ export function SettingsModal({
         <button
           type="button"
           onClick={onClose}
-          className="absolute right-6 top-4 flex flex-col items-center text-white"
+          className="absolute right-[max(1.5rem,env(safe-area-inset-right))] top-[max(1rem,env(safe-area-inset-top))] flex flex-col items-center text-white"
           aria-label="Close settings"
         >
           <CircleShell>
@@ -151,7 +152,7 @@ function MenuView({
   const sportId = useGameStore((s) => s.sportId);
   const isHockey = sportId === "hockey";
   return (
-    <div className="mx-auto mt-20 grid grid-cols-5 gap-x-6 gap-y-4 px-10">
+    <div className="mx-auto mt-16 grid max-w-full grid-cols-3 gap-x-4 gap-y-5 px-5 max-sm:mt-14 max-sm:gap-x-3 max-sm:gap-y-4 max-sm:px-4 sm:mt-20 sm:grid-cols-5 sm:gap-x-6 sm:gap-y-4 sm:px-10">
       <Tile label="Edit" icon={<PencilIcon className="h-7 w-7" />} onClick={onEdit} />
       <Tile label="Sound" icon={<BuzzerIcon className="h-7 w-7" />} onClick={onSound} />
       <Tile label="Music" icon={<NoteGlyph />} onClick={onMusic} />
@@ -186,7 +187,7 @@ function Tile({
       }}
       whileTap={{ scale: 0.94 }}
       whileHover={{ scale: 1.04 }}
-      className="flex flex-col items-center text-white"
+      className="flex flex-col items-center text-white touch-manipulation"
     >
       <CircleShell>{icon}</CircleShell>
       <span className="mt-1 text-base font-black uppercase tracking-wider">
@@ -266,13 +267,13 @@ function ThemePanel() {
   const setTheme = useGameStore((s) => s.setTheme);
   return (
     <PanelShell title="Theme">
-      <div className="grid grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-3">
         {THEMES.map((t) => (
           <button
             key={t.id}
             type="button"
             onClick={() => setTheme(t.id)}
-            className={`flex items-center gap-3 rounded-xl border-2 p-3 transition ${
+            className={`flex flex-col items-start gap-2 rounded-xl border-2 p-3 transition max-sm:p-2.5 sm:flex-row sm:items-center sm:gap-3 ${
               theme === t.id
                 ? "border-white bg-white/10"
                 : "border-white/10 hover:border-white/30"
@@ -452,8 +453,8 @@ function SliderRow({
   onChange: (v: number) => void;
 }) {
   return (
-    <div className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/5 px-3 py-2">
-      <span className="w-16 text-sm font-bold">{label}</span>
+    <div className="flex flex-col gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2 sm:flex-row sm:items-center sm:gap-3">
+      <span className="w-full text-sm font-bold sm:w-16">{label}</span>
       <input
         type="range"
         min={0}
@@ -478,7 +479,7 @@ function PanelShell({
   children: ReactNode;
 }) {
   return (
-    <div className="mt-20 flex flex-1 flex-col gap-3 overflow-auto px-12 pb-4">
+    <div className="mt-16 flex min-h-0 flex-1 flex-col gap-3 overflow-auto px-5 pb-[max(1rem,env(safe-area-inset-bottom))] max-sm:mt-14 sm:mt-20 sm:px-12">
       <h3 className="text-center font-stencil text-3xl">{title}</h3>
       {children}
     </div>

@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import { useGameStore } from "@/lib/gameStore";
 import { resolveActiveVariant, resolveSportConfig } from "@/lib/sportRegistry";
 import { CloseIcon } from "./UiIcons";
+import { MOBILE_SCOREBOARD_SHELL } from "@/lib/mobileClasses";
 
 type Props = { onClose: () => void };
 
@@ -36,7 +37,7 @@ export function StatsModal({ onClose }: Props) {
 
   return (
     <ModalShell onClose={onClose} title="Stats">
-      <div className="grid grid-cols-2 gap-4 text-white">
+      <div className="grid grid-cols-1 gap-4 text-white max-sm:gap-3 sm:grid-cols-2">
         <Stat label="Score" value={`${teamA.score} - ${teamB.score}`} />
         <Stat
           label="Biggest lead"
@@ -126,7 +127,7 @@ function ModalShell({
         animate={{ opacity: 1, scale: 1 }}
         exit={{ opacity: 0, scale: 0.97 }}
         onClick={(e) => e.stopPropagation()}
-        className="absolute left-1/2 top-1/2 flex h-[390px] w-[844px] -translate-x-1/2 -translate-y-1/2 rotate-90 flex-col bg-black p-5 text-white max-sm:landscape:static max-sm:landscape:h-full max-sm:landscape:w-full max-sm:landscape:translate-x-0 max-sm:landscape:translate-y-0 max-sm:landscape:rotate-0"
+        className={`absolute left-1/2 top-1/2 flex h-[390px] w-[844px] min-h-0 -translate-x-1/2 -translate-y-1/2 rotate-90 flex-col bg-black p-5 text-white ${MOBILE_SCOREBOARD_SHELL}`}
       >
         <div className="mb-3 flex items-center justify-between">
           <h2 className="font-stencil text-3xl">{title}</h2>
@@ -139,7 +140,9 @@ function ModalShell({
             <CloseIcon className="h-5 w-5" />
           </button>
         </div>
-        {children}
+        <div className="flex min-h-0 flex-1 flex-col overflow-auto pb-[env(safe-area-inset-bottom)]">
+          {children}
+        </div>
       </motion.div>
     </motion.div>
   );

@@ -24,7 +24,7 @@ export function SportSetup() {
   const active = resolveActiveVariant(cfg, timerVariantId);
 
   return (
-    <div className="flex min-h-full flex-1 flex-col bg-black px-5 pb-10 pt-2 text-white">
+    <div className="flex min-h-full flex-1 flex-col bg-black px-5 pb-[max(2.5rem,env(safe-area-inset-bottom))] pt-2 text-white">
       <button
         type="button"
         onClick={() => setUiPhase("menu")}

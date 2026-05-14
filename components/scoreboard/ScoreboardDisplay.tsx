@@ -18,6 +18,7 @@ import { StatsModal } from "./StatsModal";
 import { HistoryModal } from "./HistoryModal";
 import { ThemeAmbience } from "./ThemeAmbience";
 import { scoreFontClass } from "@/lib/themeDisplayFont";
+import { MOBILE_SCOREBOARD_SHELL } from "@/lib/mobileClasses";
 import { SportLineIcon } from "./SportLineIcons";
 import { PickerWheel } from "./PickerWheel";
 import { ShotClock } from "./ShotClock";
@@ -305,8 +306,8 @@ export function ScoreboardDisplay() {
     >
       <ThemeAmbience theme={theme} />
       <div className="relative z-10 flex w-full min-h-full flex-1 flex-col items-center">
-      <div className="absolute left-1/2 top-1/2 flex h-[390px] w-[844px] -translate-x-1/2 -translate-y-1/2 rotate-90 flex-col max-sm:landscape:static max-sm:landscape:h-full max-sm:landscape:w-full max-sm:landscape:translate-x-0 max-sm:landscape:translate-y-0 max-sm:landscape:rotate-0">
-        <div className="grid grid-cols-[1fr_auto_1fr] items-start gap-2 px-4 pt-4 text-white">
+      <div className={`absolute left-1/2 top-1/2 flex h-[390px] w-[844px] -translate-x-1/2 -translate-y-1/2 rotate-90 flex-col ${MOBILE_SCOREBOARD_SHELL}`}>
+        <div className="grid grid-cols-[1fr_auto_1fr] items-start gap-2 px-4 pt-4 text-white max-sm:px-2 max-sm:pt-2">
           <div className="flex items-center justify-start gap-2 pt-1.5">
             <CircleBtn
               icon={<MenuIcon className="h-5 w-5" />}
@@ -322,7 +323,7 @@ export function ScoreboardDisplay() {
                 aria-expanded={audioMenuOpen}
                 aria-haspopup="menu"
                 onClick={() => setAudioMenuOpen((open) => !open)}
-                className="flex h-12 w-12 items-center justify-center rounded-full border-2 border-white/50 bg-transparent text-white shadow transition hover:bg-white/10 hover:border-white"
+                className="flex h-12 w-12 min-h-[44px] min-w-[44px] touch-manipulation items-center justify-center rounded-full border-2 border-white/50 bg-transparent text-white shadow transition hover:bg-white/10 hover:border-white"
               >
                 <MicrophoneIcon className="h-6 w-6" aria-hidden />
               </motion.button>
@@ -410,7 +411,7 @@ export function ScoreboardDisplay() {
                 <motion.button
                   type="button"
                   onClick={onClockClick}
-                  className={`${tokens.displayFont} text-6xl leading-none tracking-[0.08em] ${
+                  className={`${tokens.displayFont} text-6xl leading-none tracking-[0.08em] max-sm:text-[2.65rem] ${
                     lowTime ? tokens.lowTimeColor : tokens.clockColor
                   } ${editDashRed}`}
                   animate={
@@ -431,7 +432,7 @@ export function ScoreboardDisplay() {
             <button
               type="button"
               onClick={onPeriodClick}
-              className={`text-center text-2xl font-black text-white ${editDash}`}
+              className={`text-center text-2xl font-black text-white max-sm:text-xl ${editDash}`}
             >
               {periodText}
             </button>
@@ -458,7 +459,7 @@ export function ScoreboardDisplay() {
         </div>
 
         <div className="relative mt-0 flex-1">
-          <div className="grid grid-cols-[auto_1fr_auto_1fr_auto] items-start gap-x-3 gap-y-2 px-4 pb-2 pt-1">
+          <div className="grid grid-cols-[auto_1fr_auto_1fr_auto] items-start gap-x-3 gap-y-2 px-4 pb-2 pt-1 max-sm:gap-x-1 max-sm:gap-y-1 max-sm:px-2 max-sm:pb-[max(0.5rem,env(safe-area-inset-bottom))]">
             {/* Away (B) on the left */}
             <ActionColumn side="b" actions={scoreActions} onTap={onScore} />
 
@@ -466,7 +467,7 @@ export function ScoreboardDisplay() {
             <button
               type="button"
               onClick={() => onTeamNameClick("b")}
-              className={`flex items-center gap-2 text-4xl font-black text-white ${editDash}`}
+              className={`flex max-w-full items-center gap-2 break-words text-4xl font-black leading-tight text-white max-sm:max-w-[36vw] max-sm:text-xl ${editDash}`}
               style={{ color: teamB.color }}
             >
               {showPossession && possession === "b" && (
@@ -508,7 +509,7 @@ export function ScoreboardDisplay() {
             )}
 
             {hasFeature(cfg, "ballsStrikesOuts") && (
-              <div className="flex items-center gap-2 text-sm text-yellow-300">
+              <div className="flex max-w-[min(100%,280px)] flex-wrap items-center justify-center gap-x-2 gap-y-1 text-xs text-yellow-300 max-sm:text-[11px]">
                 <button type="button" onClick={() => adjustBSO("balls", -1)} className="flex h-5 w-5 items-center justify-center rounded-full border border-white/50 bg-transparent text-white transition hover:bg-white/10 hover:border-white">-</button>
                 B {balls}
                 <button type="button" onClick={() => adjustBSO("balls", 1)} className="flex h-5 w-5 items-center justify-center rounded-full border border-white/50 bg-transparent text-white transition hover:bg-white/10 hover:border-white">+</button>
@@ -535,7 +536,7 @@ export function ScoreboardDisplay() {
             <button
               type="button"
               onClick={() => onTeamNameClick("a")}
-              className={`flex items-center gap-2 text-4xl font-black text-white ${editDash}`}
+              className={`flex max-w-full items-center gap-2 break-words text-4xl font-black leading-tight text-white max-sm:max-w-[36vw] max-sm:text-xl ${editDash}`}
               style={{ color: teamA.color }}
             >
               {teamA.name}
@@ -557,7 +558,7 @@ export function ScoreboardDisplay() {
           </div>
 
           {/* Full padded right edge of score row; wrapper spans full board width (not just the away column) */}
-          <div className="pointer-events-auto absolute right-4 top-[11.25rem] z-20 flex gap-2 max-sm:landscape:top-[10.75rem]">
+          <div className="pointer-events-auto absolute right-4 top-[11.25rem] z-20 flex gap-2 max-sm:right-[max(1rem,env(safe-area-inset-right))] max-sm:top-[9.25rem] max-sm:landscape:top-[10.75rem] max-sm:portrait:top-[9.25rem]">
             <CircleBtn
               icon={<BuzzerIcon className="h-5 w-5" />}
               onClick={() => playSfxClip("/sfx/horn.mp3")}
@@ -580,7 +581,7 @@ export function ScoreboardDisplay() {
             setPossession(next);
           }}
           disabled={!editing}
-          className={`absolute bottom-3 left-1/2 -translate-x-1/2 text-[10px] uppercase tracking-[0.2em] text-zinc-500 ${
+          className={`absolute bottom-3 left-1/2 max-sm:bottom-[max(0.75rem,env(safe-area-inset-bottom))] -translate-x-1/2 text-[10px] uppercase tracking-[0.2em] text-zinc-500 ${
             editing
               ? "cursor-pointer rounded-md border border-dashed border-white/60 px-2 py-[2px] hover:text-white"
               : "cursor-default"
@@ -602,7 +603,7 @@ export function ScoreboardDisplay() {
           <button
             type="button"
             onClick={() => setPresentation(!presentation)}
-            className="absolute bottom-3 right-4 text-[10px] uppercase tracking-[0.2em] text-zinc-500 hover:text-zinc-200"
+            className="absolute bottom-3 right-4 max-sm:bottom-[max(0.75rem,env(safe-area-inset-bottom))] max-sm:right-[max(1rem,env(safe-area-inset-right))] text-[10px] uppercase tracking-[0.2em] text-zinc-500 hover:text-zinc-200"
           >
             {presentation ? "Exit present" : "Present"}
           </button>
@@ -625,7 +626,7 @@ export function ScoreboardDisplay() {
                 animate={{ scale: 1, opacity: 1 }}
                 exit={{ scale: 0.95, opacity: 0 }}
                 onClick={(e) => e.stopPropagation()}
-                className="rounded-2xl border border-white/20 bg-zinc-900/95 p-4 shadow-2xl"
+                className="mx-auto max-w-[calc(100vw-2rem)] rounded-2xl border border-white/20 bg-zinc-900/95 p-4 shadow-2xl max-sm:p-3"
               >
                 {popover === "period" && (
                   <PickerWheel
@@ -645,7 +646,7 @@ export function ScoreboardDisplay() {
                       label="MIN"
                       width={64}
                     />
-                    <span className={`pb-[90px] ${tokens.displayFont} text-3xl text-white`}>
+                    <span className={`pb-[90px] max-sm:pb-[72px] ${tokens.displayFont} text-3xl text-white max-sm:text-2xl`}>
                       :
                     </span>
                     <PickerWheel
@@ -668,7 +669,7 @@ export function ScoreboardDisplay() {
                 )}
 
                 {(popover === "teamA" || popover === "teamB") && (
-                  <div className="flex w-[320px] flex-col gap-2">
+                  <div className="flex w-full max-w-[min(320px,calc(100vw-2rem))] flex-col gap-2">
                     <label className="text-xs font-bold uppercase tracking-widest text-zinc-400">
                       {popover === "teamA" ? "Home" : "Away"}
                     </label>
@@ -755,7 +756,7 @@ function AnimatedScore({
   displayFont: string;
 }) {
   return (
-    <div className="relative h-[130px] w-full overflow-hidden">
+    <div className="relative h-[130px] w-full overflow-hidden max-sm:h-[92px]">
       <AnimatePresence mode="popLayout" initial={false}>
         <motion.div
           key={value}
@@ -763,7 +764,7 @@ function AnimatedScore({
           animate={{ scale: 1, opacity: 1, y: 0 }}
           exit={{ scale: 0.85, opacity: 0, y: 12 }}
           transition={{ type: "spring", stiffness: 380, damping: 26 }}
-          className={`absolute inset-0 flex items-center justify-center ${displayFont} text-[140px] leading-[0.9] tracking-tight ${colorClass}`}
+          className={`absolute inset-0 flex items-center justify-center ${displayFont} text-[140px] leading-[0.9] tracking-tight max-sm:text-[5rem] ${colorClass}`}
           style={tint ? { color: tint } : undefined}
         >
           {value}
@@ -791,7 +792,7 @@ function CircleBtn({
       whileTap={{ scale: 0.92 }}
       whileHover={{ scale: 1.04 }}
       aria-label={ariaLabel ?? label}
-      className="flex h-12 w-12 items-center justify-center rounded-full border-2 border-white/50 bg-transparent text-white shadow transition hover:bg-white/10 hover:border-white"
+      className="flex h-12 w-12 min-h-[44px] min-w-[44px] touch-manipulation items-center justify-center rounded-full border-2 border-white/50 bg-transparent text-white shadow transition hover:bg-white/10 hover:border-white"
     >
       {icon ?? <span className="text-2xl font-black">{label}</span>}
     </motion.button>
@@ -808,7 +809,7 @@ function ActionColumn({
   onTap: (side: "a" | "b", actionId: string) => void;
 }) {
   return (
-    <div className="relative z-30 flex flex-col items-center justify-center gap-2 py-1">
+    <div className="relative z-30 flex flex-col items-center justify-center gap-2 py-1 max-sm:gap-1.5">
       {actions.map((a) => (
         <motion.button
           key={`${side}-${a.id}`}
@@ -816,7 +817,7 @@ function ActionColumn({
           onClick={() => onTap(side, a.id)}
           whileTap={{ scale: 0.9 }}
           whileHover={{ scale: 1.05 }}
-          className="flex h-14 w-14 items-center justify-center rounded-full border-2 border-white/50 bg-transparent text-xl font-black text-white shadow transition hover:bg-white/10 hover:border-white"
+          className="flex h-14 w-14 min-h-[44px] min-w-[44px] items-center justify-center rounded-full border-2 border-white/50 bg-transparent text-xl font-black text-white shadow transition hover:bg-white/10 hover:border-white max-sm:h-[52px] max-sm:w-[52px] max-sm:text-lg"
           title={`${a.label} (${a.value})`}
         >
           {a.label}
@@ -857,9 +858,9 @@ function FoulsBlock({
         >
           {symbol}
         </button>
-        <span className={`${displayFont} text-3xl text-yellow-300`}>{aValue}</span>
+        <span className={`${displayFont} text-3xl text-yellow-300 max-sm:text-2xl`}>{aValue}</span>
         <span className="text-white/40">|</span>
-        <span className={`${displayFont} text-3xl text-yellow-300`}>{bValue}</span>
+        <span className={`${displayFont} text-3xl text-yellow-300 max-sm:text-2xl`}>{bValue}</span>
         <button
           type="button"
           onClick={() => onB(delta)}
