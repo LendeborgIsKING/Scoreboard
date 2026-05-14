@@ -558,7 +558,7 @@ export function ScoreboardDisplay() {
           </div>
 
           {/* Full padded right edge of score row; wrapper spans full board width (not just the away column) */}
-          <div className="pointer-events-auto absolute right-4 top-[11.25rem] z-20 flex gap-2 max-sm:right-[max(1rem,env(safe-area-inset-right))] max-sm:top-[9.25rem] max-sm:landscape:top-[10.75rem] max-sm:portrait:top-[9.25rem]">
+          <div className="pointer-events-auto absolute right-8 top-[11.75rem] z-20 flex gap-2 max-sm:right-[max(1.5rem,env(safe-area-inset-right))] max-sm:top-[9.65rem] max-sm:landscape:top-[11.15rem] max-sm:portrait:top-[9.65rem]">
             <CircleBtn
               icon={<BuzzerIcon className="h-5 w-5" />}
               onClick={() => playSfxClip("/sfx/horn.mp3")}
