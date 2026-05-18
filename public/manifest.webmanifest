@@ -1,0 +1,10 @@
+{
+  "name": "Scoreboard",
+  "short_name": "Scoreboard",
+  "description": "Live sports scoreboard",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#000000",
+  "theme_color": "#000000",
+  "orientation": "landscape"
+}

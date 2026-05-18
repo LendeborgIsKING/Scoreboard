@@ -74,6 +74,12 @@ const cormorant = Cormorant_Garamond({
 export const metadata: Metadata = {
   title: "Scoreboard",
   description: "Scoreboard app — deployed on Vercel",
+  manifest: "/manifest.webmanifest",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "Scoreboard",
+  },
 };
 
 export const viewport: Viewport = {
