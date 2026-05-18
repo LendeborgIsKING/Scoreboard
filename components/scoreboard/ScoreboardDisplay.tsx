@@ -37,10 +37,6 @@ import {
   WhistleIcon,
 } from "./UiIcons";
 
-type ScreenOrientationWithLock = ScreenOrientation & {
-  lock?: (orientation: "portrait" | "landscape" | "any") => Promise<void>;
-  unlock?: () => void;
-};
 
 type Side = "a" | "b";
 type Popover = null | "period" | "clock" | "teamA" | "teamB" | "shotclock";
@@ -216,22 +212,6 @@ export function ScoreboardDisplay() {
     return () => stopThemeAmbient();
   }, [theme]);
 
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const orientation = window.screen.orientation as ScreenOrientationWithLock;
-    if (orientation.lock) {
-      orientation.lock("landscape").catch(() => {});
-    }
-    return () => {
-      if (orientation.unlock) {
-        try {
-          orientation.unlock();
-        } catch {
-          /* ignore */
-        }
-      }
-    };
-  }, []);
 
   const scoreActions = useMemo(() => cfg.scoring.slice(0, 4), [cfg.scoring]);
 
