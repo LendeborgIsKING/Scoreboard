@@ -23,6 +23,9 @@ export function MobileAppShell({
 }) {
   const isPortraitMobile = usePortraitMobile();
 
+  // Only rotate once the user has started a game — menu and setup stay normal portrait.
+  const shouldRotate = isPortraitMobile && !!isGame;
+
   // CSS rotation trick: rotate the root container so the content fills the
   // screen in landscape even if the device is physically held portrait.
   //
@@ -34,7 +37,7 @@ export function MobileAppShell({
   //   • transform-origin: 0 0  (top-left corner stays fixed)
   //   • rotate(90deg) spins it clockwise, then translateY(-100vw) moves the
   //     result back into the viewport so top-left aligns with screen corner.
-  const rotateStyle: CSSProperties = isPortraitMobile
+  const rotateStyle: CSSProperties = shouldRotate
     ? {
         position: "fixed",
         top: 0,
@@ -48,7 +51,7 @@ export function MobileAppShell({
       }
     : {};
 
-  if (isPortraitMobile) {
+  if (shouldRotate) {
     // Simplified shell — no phone-mockup frame, just full-screen rotated.
     return (
       <div style={rotateStyle}>
