@@ -1,18 +1,27 @@
 "use client";
 
-import type { CSSProperties, ReactNode } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import { usePortraitMobile } from "@/hooks/usePortraitMobile";
 
 /** Typical smartphone content width (CSS px) — aligns with iPhone 14/15 logical ~390pt */
 export const MOBILE_APP_WIDTH_PX = 390;
 
+/** The scoreboard is laid out on a fixed landscape canvas of this size. */
+const DESIGN_WIDTH = 844;
+const DESIGN_HEIGHT = 390;
+
 /**
  * One column, phone-sized: full width on small viewports, capped at
  * MOBILE_APP_WIDTH_PX on larger screens.
  *
- * On a small phone held in portrait (where the OS won't lock orientation, e.g.
- * iOS Safari) we CSS-rotate the entire shell 90° so the app always appears in
- * landscape without any OS intervention.
+ * On a phone in portrait, during a game we CSS-rotate the entire design canvas
+ * 90° and scale it uniformly to fit whatever screen size we're on. The result
+ * is the scoreboard looks identical (and proportional) on every device.
  */
 export function MobileAppShell({
   children,
@@ -26,51 +35,8 @@ export function MobileAppShell({
   // Only rotate once the user has started a game — menu and setup stay normal portrait.
   const shouldRotate = isPortraitMobile && !!isGame;
 
-  // CSS rotation trick: rotate the root container so the content fills the
-  // screen in landscape even if the device is physically held portrait.
-  //
-  // Math:  portrait phone  → 100vw = short side, 100vh = long side
-  //   • Set element width = 100vh (long side) — after 90° rotation this
-  //     becomes the visual height, filling the screen top-to-bottom.
-  //   • Set element height = 100vw (short side) — after rotation this fills
-  //     the screen left-to-right.
-  //   • transform-origin: 0 0  (top-left corner stays fixed)
-  //   • rotate(90deg) spins it clockwise, then translateY(-100vw) moves the
-  //     result back into the viewport so top-left aligns with screen corner.
-  const rotateStyle: CSSProperties = shouldRotate
-    ? {
-        position: "fixed",
-        top: 0,
-        left: 0,
-        width: "100vh",
-        height: "100vw",
-        transformOrigin: "0 0",
-        transform: "rotate(90deg) translateY(-100vw)",
-        overflow: "hidden",
-        background: "#000",
-      }
-    : {};
-
   if (shouldRotate) {
-    // Simplified shell — no phone-mockup frame, just full-screen rotated.
-    //
-    // After a 90° CW rotation the safe-area edges swap:
-    //   portrait TOP  (Dynamic Island, ~59 px) → visual RIGHT  → paddingRight
-    //   portrait BOTTOM (home bar,  ~34 px)    → visual LEFT   → paddingLeft
-    //   portrait LEFT / RIGHT (0 px)           → visual TOP / BOTTOM (no padding needed)
-    return (
-      <div style={rotateStyle}>
-        <div
-          className="flex h-full w-full flex-col overflow-hidden bg-black"
-          style={{
-            paddingLeft: "env(safe-area-inset-bottom)",
-            paddingRight: "env(safe-area-inset-top)",
-          }}
-        >
-          {children}
-        </div>
-      </div>
-    );
+    return <AutoFitGameShell>{children}</AutoFitGameShell>;
   }
 
   // Normal (landscape / desktop) shell.
@@ -98,6 +64,94 @@ export function MobileAppShell({
         )}
         <div className="flex min-h-0 flex-1 flex-col overflow-y-auto overflow-x-hidden overscroll-y-contain touch-pan-y">
           {children}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Renders a fixed-size DESIGN_WIDTH × DESIGN_HEIGHT canvas, rotates it 90° CW
+ * (so it appears landscape on a portrait phone), and uniformly scales it to
+ * fit whatever screen we're on — accounting for safe-area insets (Dynamic
+ * Island on the visual right edge, home bar on the visual left edge).
+ */
+function AutoFitGameShell({ children }: { children: ReactNode }) {
+  const measureRef = useRef<HTMLDivElement>(null);
+  const [scale, setScale] = useState(1);
+
+  useEffect(() => {
+    const compute = () => {
+      const el = measureRef.current;
+      if (!el) return;
+      const availW = el.clientWidth;
+      const availH = el.clientHeight;
+      if (!availW || !availH) return;
+      // After 90° CW rotation, the design 844×390 canvas becomes
+      // visually 390 wide × 844 tall — fit that to the available box.
+      const s = Math.min(availW / DESIGN_HEIGHT, availH / DESIGN_WIDTH);
+      setScale(Math.max(0.01, s));
+    };
+    compute();
+    const ro = new ResizeObserver(compute);
+    if (measureRef.current) ro.observe(measureRef.current);
+    window.addEventListener("orientationchange", compute);
+    window.addEventListener("resize", compute);
+    return () => {
+      ro.disconnect();
+      window.removeEventListener("orientationchange", compute);
+      window.removeEventListener("resize", compute);
+    };
+  }, []);
+
+  return (
+    <div
+      style={{
+        position: "fixed",
+        inset: 0,
+        background: "#000",
+        overflow: "hidden",
+      }}
+    >
+      {/* Safe-area padded measurement area. clientWidth/clientHeight here
+          gives us the usable box after notch / home-bar insets. */}
+      <div
+        ref={measureRef}
+        style={{
+          position: "absolute",
+          inset: 0,
+          paddingTop: "env(safe-area-inset-top)",
+          paddingBottom: "env(safe-area-inset-bottom)",
+          paddingLeft: "env(safe-area-inset-left)",
+          paddingRight: "env(safe-area-inset-right)",
+          boxSizing: "border-box",
+        }}
+      >
+        {/* The design canvas: fixed 844×390, centered, rotated CW, scaled
+            to fit. Centering via translate(-50%, -50%) on the unrotated
+            box then layering rotate+scale keeps the visual centered. */}
+        <div
+          style={{
+            position: "absolute",
+            top: "50%",
+            left: "50%",
+            width: DESIGN_WIDTH,
+            height: DESIGN_HEIGHT,
+            transform: `translate(-50%, -50%) rotate(90deg) scale(${scale})`,
+            transformOrigin: "center center",
+          }}
+        >
+          <div
+            style={{
+              width: "100%",
+              height: "100%",
+              display: "flex",
+              flexDirection: "column",
+              background: "#000",
+            }}
+          >
+            {children}
+          </div>
         </div>
       </div>
     </div>
