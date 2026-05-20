@@ -53,9 +53,20 @@ export function MobileAppShell({
 
   if (shouldRotate) {
     // Simplified shell — no phone-mockup frame, just full-screen rotated.
+    //
+    // After a 90° CW rotation the safe-area edges swap:
+    //   portrait TOP  (Dynamic Island, ~59 px) → visual RIGHT  → paddingRight
+    //   portrait BOTTOM (home bar,  ~34 px)    → visual LEFT   → paddingLeft
+    //   portrait LEFT / RIGHT (0 px)           → visual TOP / BOTTOM (no padding needed)
     return (
       <div style={rotateStyle}>
-        <div className="flex h-full w-full flex-col overflow-hidden bg-black">
+        <div
+          className="flex h-full w-full flex-col overflow-hidden bg-black"
+          style={{
+            paddingLeft: "env(safe-area-inset-bottom)",
+            paddingRight: "env(safe-area-inset-top)",
+          }}
+        >
           {children}
         </div>
       </div>
