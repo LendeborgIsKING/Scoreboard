@@ -439,7 +439,7 @@ export function ScoreboardDisplay() {
         </div>
 
         <div className="relative mt-0 flex-1">
-          <div className="grid grid-cols-[auto_1fr_auto_1fr_auto] items-start gap-x-3 gap-y-2 px-4 pb-2 pt-1">
+          <div className="grid grid-cols-[auto_1fr_auto_1fr_auto] items-start gap-x-5 gap-y-2 px-5 pb-2 pt-1">
             {/* Away (B) on the left */}
             <ActionColumn side="b" actions={scoreActions} onTap={onScore} />
 
@@ -532,23 +532,23 @@ export function ScoreboardDisplay() {
               tint={teamA.color}
               displayFont={tokens.displayFont}
             />
+            {/* Sits at the right edge of the home column, just to the left of the action column —
+                guarantees no overlap with the +point buttons. */}
+            <div className="mt-1 flex gap-3 self-end">
+              <CircleBtn
+                icon={<BuzzerIcon className="h-5 w-5" />}
+                onClick={() => playSfxClip("/sfx/horn.mp3")}
+                ariaLabel="Horn"
+              />
+              <CircleBtn
+                icon={<WhistleIcon className="h-5 w-5" />}
+                onClick={() => playSfxClip("/sfx/whistle.mp3")}
+                ariaLabel="Whistle"
+              />
+            </div>
           </section>
 
             <ActionColumn side="a" actions={scoreActions} onTap={onScore} />
-          </div>
-
-          {/* Full padded right edge of score row; wrapper spans full board width (not just the away column) */}
-          <div className="pointer-events-auto absolute right-8 top-[11.75rem] z-20 flex gap-2">
-            <CircleBtn
-              icon={<BuzzerIcon className="h-5 w-5" />}
-              onClick={() => playSfxClip("/sfx/horn.mp3")}
-              ariaLabel="Horn"
-            />
-            <CircleBtn
-              icon={<WhistleIcon className="h-5 w-5" />}
-              onClick={() => playSfxClip("/sfx/whistle.mp3")}
-              ariaLabel="Whistle"
-            />
           </div>
         </div>
 
