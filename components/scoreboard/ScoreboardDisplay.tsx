@@ -39,6 +39,7 @@ import {
   MenuIcon,
   MicSlashIcon,
   MicrophoneIcon,
+  MusicNoteIcon,
   PauseIcon,
   PencilIcon,
   PlayIcon,
@@ -170,6 +171,7 @@ export function ScoreboardDisplay() {
   const setPossession = useGameStore((s) => s.setPossession);
   const setSfxEnabled = useGameStore((s) => s.setSfxEnabled);
   const setMusicEnabled = useGameStore((s) => s.setMusicEnabled);
+  const setMusicTrack = useGameStore((s) => s.setMusicTrack);
   const startShotClock = useGameStore((s) => s.startShotClock);
   const pauseShotClock = useGameStore((s) => s.pauseShotClock);
   const resetShotClock = useGameStore((s) => s.resetShotClock);
@@ -308,6 +310,18 @@ export function ScoreboardDisplay() {
               icon={<MenuIcon className="h-5 w-5" />}
               onClick={() => setUiPhase("menu")}
               ariaLabel="Exit to menu"
+            />
+            <MusicToggleButton
+              playing={musicEnabled && musicTrack !== "none"}
+              onToggle={() => {
+                const playing = musicEnabled && musicTrack !== "none";
+                if (playing) {
+                  setMusicEnabled(false);
+                } else {
+                  if (musicTrack === "none") setMusicTrack("hype");
+                  setMusicEnabled(true);
+                }
+              }}
             />
             <div className="relative" ref={audioMenuRef}>
               <motion.button
@@ -795,6 +809,56 @@ function CircleBtn({
       style={{ WebkitTapHighlightColor: "transparent" }}
     >
       {icon ?? <span className="text-2xl font-black">{label}</span>}
+    </motion.button>
+  );
+}
+
+/**
+ * One-tap music play/pause sitting in the scoreboard header so users don't
+ * have to dive into settings. Highlighted (filled lime-tinted) when playing,
+ * with three animated EQ bars bouncing next to the note.
+ */
+function MusicToggleButton({
+  playing,
+  onToggle,
+}: {
+  playing: boolean;
+  onToggle: () => void;
+}) {
+  return (
+    <motion.button
+      type="button"
+      onClick={onToggle}
+      whileTap={{ scale: 0.9 }}
+      whileHover={{ scale: 1.06 }}
+      transition={{ type: "spring", stiffness: 700, damping: 22 }}
+      aria-label={playing ? "Pause music" : "Play music"}
+      aria-pressed={playing}
+      className={`flex h-12 w-12 min-h-[44px] min-w-[44px] touch-manipulation select-none items-center justify-center gap-0.5 rounded-full border-2 shadow transition-colors active:bg-white/20 ${
+        playing
+          ? "border-lime-300 bg-lime-400/15 text-lime-200"
+          : "border-white/50 bg-transparent text-white hover:bg-white/10 hover:border-white"
+      }`}
+      style={{ WebkitTapHighlightColor: "transparent" }}
+    >
+      <MusicNoteIcon className="h-5 w-5" aria-hidden />
+      {playing && (
+        <span className="flex h-4 items-end gap-[2px]" aria-hidden>
+          {[0, 1, 2].map((i) => (
+            <motion.span
+              key={i}
+              className="block w-[2px] rounded-sm bg-lime-300"
+              animate={{ height: ["25%", "100%", "40%", "85%", "30%"] }}
+              transition={{
+                duration: 0.85,
+                repeat: Infinity,
+                ease: "easeInOut",
+                delay: i * 0.12,
+              }}
+            />
+          ))}
+        </span>
+      )}
     </motion.button>
   );
 }

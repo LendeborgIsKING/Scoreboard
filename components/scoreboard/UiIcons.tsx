@@ -137,6 +137,14 @@ export function TriangleRightIcon(props: IconProps) {
   );
 }
 
+export function MusicNoteIcon(props: IconProps) {
+  return (
+    <svg {...base(props)}>
+      <path d="M9 17V5l11-2v12a3 3 0 1 1-2-2.83V6.42L11 8.06V17a3 3 0 1 1-2-2.83Z" />
+    </svg>
+  );
+}
+
 export function MicrophoneIcon(props: IconProps) {
   return (
     <svg {...strokeBase(props)}>
