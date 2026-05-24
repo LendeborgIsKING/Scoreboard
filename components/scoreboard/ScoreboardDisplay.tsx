@@ -32,6 +32,8 @@ import { ShotClock } from "./ShotClock";
 import { BannerOverlay } from "./BannerOverlay";
 import { Confetti } from "./Confetti";
 import { StopHornOverlay } from "./StopHornOverlay";
+import { FinalCountdownPrompt } from "./FinalCountdownPrompt";
+import { GameOverOverlay } from "./GameOverOverlay";
 import {
   BuzzerIcon,
   CheckIcon,
@@ -229,6 +231,12 @@ export function ScoreboardDisplay() {
       void prefetchSfxClip("/sfx/horn.mp3");
     }
   }, [sportId]);
+
+  // Warm the Final Countdown clip early so the first play hits instantly
+  // when the prompt is accepted in the closing minute.
+  useEffect(() => {
+    void prefetchSfxClip("/music/final-countdown.mp3");
+  }, []);
 
   const scoreActions = useMemo(() => cfg.scoring.slice(0, 4), [cfg.scoring]);
 
@@ -622,7 +630,9 @@ export function ScoreboardDisplay() {
 
         <BannerOverlay />
         <Confetti trigger={confettiKey} />
+        <FinalCountdownPrompt />
         <StopHornOverlay />
+        <GameOverOverlay />
 
         <AnimatePresence>
           {popover && (

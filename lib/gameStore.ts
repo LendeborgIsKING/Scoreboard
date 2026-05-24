@@ -108,6 +108,20 @@ export interface GameState extends GameStateSlice {
   /** True when a hockey goal horn is currently sounding — drives the
    *  fullscreen STOP HORN overlay. */
   hornPlaying: boolean;
+  /** Set ~3 s after the final whistle. Drives the fullscreen winner
+   *  celebration (continuous confetti, big winner name, etc.). */
+  gameOverCelebration: {
+    winnerSide: "a" | "b";
+    winnerName: string;
+    loserName: string;
+    finalScoreA: number;
+    finalScoreB: number;
+  } | null;
+  /** Whether the "Play The Final Countdown?" prompt is currently visible. */
+  finalCountdownPromptVisible: boolean;
+  /** Tracks whether the prompt has already been shown for this game so we
+   *  never spam it twice. Reset on resetGame / setSport / fresh hydration. */
+  finalCountdownPromptShownThisGame: boolean;
 }
 
 interface GameStateSlice {
@@ -195,6 +209,10 @@ type GameStore = GameState & {
   setHockeyGoalHornAway: (id: string | null) => void;
   setNhlHornOffset: (teamId: string, startSec: number) => void;
   stopHorn: () => void;
+  dismissGameOverCelebration: () => void;
+  showFinalCountdownPrompt: () => void;
+  dismissFinalCountdownPrompt: () => void;
+  playFinalCountdown: () => void;
   showBanner: (msg: Omit<BannerMessage, "id">) => void;
   clearBanner: () => void;
   finalizeGame: () => void;
@@ -258,6 +276,9 @@ export const useGameStore = create<GameStore>()(
       hockeyGoalHornAway: null,
       nhlHornOffsets: {},
       hornPlaying: false,
+      gameOverCelebration: null,
+      finalCountdownPromptVisible: false,
+      finalCountdownPromptShownThisGame: false,
 
       pushUndo: () => {
         const snap = snapshotFrom(get());
@@ -297,6 +318,11 @@ export const useGameStore = create<GameStore>()(
           timerVariantId: vid,
           period: 1,
           timer: defaultTimerForSport(id, get().customSport, vid),
+          // Fresh sport = fresh game session: rearm the Final Countdown prompt
+          // and clear any leftover celebration.
+          finalCountdownPromptShownThisGame: false,
+          finalCountdownPromptVisible: false,
+          gameOverCelebration: null,
         });
       },
 
@@ -574,6 +600,9 @@ export const useGameStore = create<GameStore>()(
             runStartedAt: null,
             accumulatedMs: 0,
           },
+          finalCountdownPromptShownThisGame: false,
+          finalCountdownPromptVisible: false,
+          gameOverCelebration: null,
         });
       },
 
@@ -663,10 +692,40 @@ export const useGameStore = create<GameStore>()(
           period,
           teamA,
           teamB,
+          finalCountdownPromptShownThisGame,
+          finalCountdownPromptVisible,
+          gameOverCelebration,
         } = get();
         if (!timer.running) return;
         const total = timer.countdownFromSeconds * 1000;
         const elapsed = getElapsedMs(timer);
+        const remainingSec = Math.max(0, (total - elapsed) / 1000);
+
+        const cfg = resolveSportConfig(sportId, customSport);
+        const max =
+          effectiveMaxPeriods(cfg, timerVariantId) ?? cfg.maxPeriods;
+        const isFinalPeriod = max != null && period >= max;
+
+        // ---- Last-minute Final Countdown prompt ----
+        // Show once per game, only in the final period of a clocked sport,
+        // while the clock is between 1 and 60 seconds. Skip if a celebration
+        // is already up.
+        if (
+          !cfg.noGameClock &&
+          isFinalPeriod &&
+          !finalCountdownPromptShownThisGame &&
+          !finalCountdownPromptVisible &&
+          !gameOverCelebration &&
+          remainingSec > 1 &&
+          remainingSec <= 60
+        ) {
+          set({
+            finalCountdownPromptVisible: true,
+            finalCountdownPromptShownThisGame: true,
+          });
+        }
+
+        // ---- End of period / game ----
         if (elapsed >= total) {
           set({
             timer: {
@@ -675,14 +734,17 @@ export const useGameStore = create<GameStore>()(
               runStartedAt: null,
               accumulatedMs: total,
             },
+            // Buzzer ends any lingering Final Countdown prompt.
+            finalCountdownPromptVisible: false,
           });
           if (sfxEnabled) playSfxClip("/sfx/horn.mp3");
-          const cfg = resolveSportConfig(sportId, customSport);
-          const max =
-            effectiveMaxPeriods(cfg, timerVariantId) ?? cfg.maxPeriods;
           if (max && period >= max && teamA.score !== teamB.score) {
+            const winnerSide: "a" | "b" =
+              teamA.score > teamB.score ? "a" : "b";
             const winnerName =
-              teamA.score > teamB.score ? teamA.name : teamB.name;
+              winnerSide === "a" ? teamA.name : teamB.name;
+            const loserName =
+              winnerSide === "a" ? teamB.name : teamA.name;
             bannerCounter += 1;
             set({
               banner: {
@@ -696,6 +758,27 @@ export const useGameStore = create<GameStore>()(
               setTimeout(() => playSfx("tada"), 200);
               setTimeout(() => playSfx("cheer"), 400);
             }
+            // 3-second delay then trigger the full celebration overlay.
+            const finalA = teamA.score;
+            const finalB = teamB.score;
+            setTimeout(() => {
+              // Only show if user hasn't already left the game screen.
+              if (get().uiPhase !== "game") return;
+              set((state) => ({
+                gameOverCelebration: {
+                  winnerSide,
+                  winnerName,
+                  loserName,
+                  finalScoreA: finalA,
+                  finalScoreB: finalB,
+                },
+                confettiKey: state.confettiKey + 1,
+              }));
+              if (get().sfxEnabled) {
+                playSfx("tada");
+                setTimeout(() => playSfx("cheer"), 250);
+              }
+            }, 3000);
           } else {
             // Automatically advance period and reset the clock for the next one after a 3 second delay.
             setTimeout(() => {
@@ -830,6 +913,28 @@ export const useGameStore = create<GameStore>()(
         set({ hornPlaying: false });
       },
 
+      dismissGameOverCelebration: () => {
+        // Save the result to history once the user dismisses the celebration.
+        const { gameOverCelebration } = get();
+        if (gameOverCelebration) get().finalizeGame();
+        set({ gameOverCelebration: null });
+      },
+
+      showFinalCountdownPrompt: () =>
+        set({
+          finalCountdownPromptVisible: true,
+          finalCountdownPromptShownThisGame: true,
+        }),
+
+      dismissFinalCountdownPrompt: () =>
+        set({ finalCountdownPromptVisible: false }),
+
+      playFinalCountdown: () => {
+        // Start at 13 s to skip the spoken intro and hit the iconic synth.
+        playSfxClip("/music/final-countdown.mp3", 13);
+        set({ finalCountdownPromptVisible: false });
+      },
+
       showBanner: (msg) => {
         bannerCounter += 1;
         set({ banner: { id: bannerCounter, ...msg } });
@@ -958,8 +1063,11 @@ export const useGameStore = create<GameStore>()(
         if (merged.hockeyGoalHornHome === undefined) merged.hockeyGoalHornHome = null;
         if (merged.hockeyGoalHornAway === undefined) merged.hockeyGoalHornAway = null;
         if (!merged.nhlHornOffsets) merged.nhlHornOffsets = {};
-        // Never restore a horn-playing flag from a previous session.
+        // Never restore transient overlay flags from a previous session.
         merged.hornPlaying = false;
+        merged.gameOverCelebration = null;
+        merged.finalCountdownPromptVisible = false;
+        merged.finalCountdownPromptShownThisGame = false;
         return merged;
       },
     },
