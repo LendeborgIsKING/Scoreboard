@@ -47,6 +47,25 @@ function ensureCtx(): AudioContext | null {
   return ctx;
 }
 
+let audioUnlocked = false;
+/** Resume the audio context on the very first user gesture. iOS/Safari leaves
+ *  it suspended until then; doing this proactively means the first real tap
+ *  doesn't lose any audio. */
+export function primeAudioOnFirstGesture() {
+  if (typeof window === "undefined" || audioUnlocked) return;
+  const unlock = () => {
+    audioUnlocked = true;
+    const c = ensureCtx();
+    if (c && c.state === "suspended") c.resume().catch(() => {});
+    window.removeEventListener("pointerdown", unlock);
+    window.removeEventListener("touchstart", unlock);
+    window.removeEventListener("keydown", unlock);
+  };
+  window.addEventListener("pointerdown", unlock, { once: false, passive: true });
+  window.addEventListener("touchstart", unlock, { once: false, passive: true });
+  window.addEventListener("keydown", unlock, { once: false });
+}
+
 export function setSfxVolume(v: number) {
   ensureCtx();
   if (masterSfxGain) masterSfxGain.gain.value = Math.max(0, Math.min(1, v));
@@ -245,20 +264,98 @@ export const BASKETBALL_SCORE_SFX_SRC = "/sfx/basketball-swish.mp3";
 /** Tracks the currently-playing SFX clip so we can stop it before the next. */
 let activeClip: { stop: () => void } | null = null;
 
-/** One-shot sampled SFX (mono/stereo clips) via Web Audio gain graph.
- *  Optional `startSec` / `endSec` let you play a sub-clip from a longer file.
- *  Calling this while a clip is already playing stops the previous one first.
- */
-export function playSfxClip(src: string, startSec = 0, endSec?: number) {
-  // Stop any currently playing clip
+/** Cache of pre-fetched audio buffers (decoded once, played instantly). */
+const decodedClipCache = new Map<string, AudioBuffer>();
+const decodeInflight = new Map<string, Promise<AudioBuffer>>();
+
+/** Pre-fetch + decode an audio file so the next `playSfxClip` of it is instant.
+ *  Safe to call multiple times — caches the decoded buffer. */
+export async function prefetchSfxClip(src: string): Promise<void> {
+  const c = ensureCtx();
+  if (!c) return;
+  if (decodedClipCache.has(src)) return;
+  if (decodeInflight.has(src)) {
+    await decodeInflight.get(src);
+    return;
+  }
+  const p = (async () => {
+    const resp = await fetch(src);
+    const arr = await resp.arrayBuffer();
+    return await new Promise<AudioBuffer>((resolve, reject) => {
+      c.decodeAudioData(arr, resolve, reject);
+    });
+  })();
+  decodeInflight.set(src, p);
+  try {
+    const buf = await p;
+    decodedClipCache.set(src, buf);
+  } catch {
+    /* ignore — fall back to streaming on play */
+  } finally {
+    decodeInflight.delete(src);
+  }
+}
+
+export type PlayClipOptions = {
+  onEnded?: () => void;
+};
+
+/** Stop whatever clip is currently playing (horn, basketball swish, etc.). */
+export function stopActiveSfxClip() {
   if (activeClip) {
     activeClip.stop();
     activeClip = null;
   }
+}
+
+/** One-shot sampled SFX (mono/stereo clips) via Web Audio gain graph.
+ *  Optional `startSec` / `endSec` let you play a sub-clip from a longer file.
+ *  Calling this while a clip is already playing stops the previous one first.
+ *
+ *  If the file has been pre-decoded with `prefetchSfxClip`, this uses an
+ *  `AudioBufferSourceNode` for zero-latency playback. Otherwise it falls
+ *  back to a streaming `<audio>` element.
+ */
+export function playSfxClip(
+  src: string,
+  startSec = 0,
+  endSec?: number,
+  opts: PlayClipOptions = {},
+) {
+  // Stop any currently playing clip
+  stopActiveSfxClip();
   const c = ensureCtx();
   if (!c || !masterSfxGain) return;
   if (c.state === "suspended") c.resume().catch(() => {});
 
+  // Fast path: decoded buffer cached → instant playback, sample-accurate stop.
+  const cached = decodedClipCache.get(src);
+  if (cached) {
+    const node = c.createBufferSource();
+    node.buffer = cached;
+    node.connect(masterSfxGain);
+    let stopped = false;
+    const stop = () => {
+      if (stopped) return;
+      stopped = true;
+      try { node.stop(); } catch { /* already stopped */ }
+      try { node.disconnect(); } catch { /* ignore */ }
+      if (activeClip === handle) activeClip = null;
+    };
+    node.onended = () => {
+      const wasActive = activeClip === handle;
+      stop();
+      if (wasActive) opts.onEnded?.();
+    };
+    const handle = { stop };
+    activeClip = handle;
+    const duration = endSec != null ? Math.max(0, endSec - startSec) : undefined;
+    if (duration != null) node.start(0, startSec, duration);
+    else node.start(0, startSec);
+    return;
+  }
+
+  // Slow path: stream via <audio>.
   const audio = new Audio(src);
   audio.preload = "auto";
 
@@ -270,8 +367,8 @@ export function playSfxClip(src: string, startSec = 0, endSec?: number) {
     audio.volume = Math.min(1, Math.max(0, masterSfxGain.gain.value));
   }
 
-  function cleanup() {
-    if (activeClip === handle) activeClip = null;
+  let finished = false;
+  function cleanup(natural = false) {
     audio.removeEventListener("ended", onEnded);
     audio.removeEventListener("timeupdate", onTimeUpdate);
     audio.removeEventListener("error", onErr);
@@ -279,16 +376,22 @@ export function playSfxClip(src: string, startSec = 0, endSec?: number) {
     try { source?.disconnect(); } catch { /* ignore */ }
     audio.removeAttribute("src");
     try { audio.load(); } catch { /* ignore */ }
+    const wasActive = activeClip === handle;
+    if (wasActive) activeClip = null;
+    if (natural && wasActive && !finished) {
+      finished = true;
+      opts.onEnded?.();
+    }
   }
 
-  const handle = { stop: cleanup };
+  const handle = { stop: () => cleanup(false) };
   activeClip = handle;
 
   function onTimeUpdate() {
-    if (endSec != null && audio.currentTime >= endSec) cleanup();
+    if (endSec != null && audio.currentTime >= endSec) cleanup(true);
   }
-  function onEnded() { cleanup(); }
-  function onErr() { cleanup(); }
+  function onEnded() { cleanup(true); }
+  function onErr() { cleanup(false); }
 
   if (endSec != null) audio.addEventListener("timeupdate", onTimeUpdate);
   audio.addEventListener("ended", onEnded);
@@ -296,7 +399,7 @@ export function playSfxClip(src: string, startSec = 0, endSec?: number) {
 
   const startPlayback = () => {
     audio.currentTime = startSec;
-    audio.play().catch(() => cleanup());
+    audio.play().catch(() => cleanup(false));
   };
 
   if (startSec > 0) {
@@ -307,7 +410,17 @@ export function playSfxClip(src: string, startSec = 0, endSec?: number) {
       audio.load();
     }
   } else {
-    audio.play().catch(() => cleanup());
+    audio.play().catch(() => cleanup(false));
+  }
+}
+
+/** Short haptic vibration on supported devices. Safe no-op elsewhere. */
+export function vibrate(pattern: number | number[]) {
+  if (typeof navigator === "undefined") return;
+  try {
+    navigator.vibrate?.(pattern);
+  } catch {
+    /* ignore */
   }
 }
 

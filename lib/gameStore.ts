@@ -29,6 +29,8 @@ import {
   setMusic as setAudioMusic,
   setMusicVolume,
   setSfxVolume,
+  stopActiveSfxClip,
+  vibrate,
 } from "./audio";
 
 const UNDO_MAX = 40;
@@ -103,6 +105,9 @@ export interface GameState extends GameStateSlice {
   hockeyGoalHornAway: string | null;
   /** User-adjusted start timestamps (seconds) keyed by NHL team id */
   nhlHornOffsets: Record<string, number>;
+  /** True when a hockey goal horn is currently sounding — drives the
+   *  fullscreen STOP HORN overlay. */
+  hornPlaying: boolean;
 }
 
 interface GameStateSlice {
@@ -189,6 +194,7 @@ type GameStore = GameState & {
   setHockeyGoalHornHome: (id: string | null) => void;
   setHockeyGoalHornAway: (id: string | null) => void;
   setNhlHornOffset: (teamId: string, startSec: number) => void;
+  stopHorn: () => void;
   showBanner: (msg: Omit<BannerMessage, "id">) => void;
   clearBanner: () => void;
   finalizeGame: () => void;
@@ -251,6 +257,7 @@ export const useGameStore = create<GameStore>()(
       hockeyGoalHornHome: null,
       hockeyGoalHornAway: null,
       nhlHornOffsets: {},
+      hornPlaying: false,
 
       pushUndo: () => {
         const snap = snapshotFrom(get());
@@ -401,22 +408,27 @@ export const useGameStore = create<GameStore>()(
           } else if (sportId === "hockey") {
             const { hockeyGoalHornHome, hockeyGoalHornAway, nhlHornOffsets } = get();
             const hornTeamId = team === "a" ? hockeyGoalHornHome : hockeyGoalHornAway;
+            const clearHornFlag = () => set({ hornPlaying: false });
+            // Flag goes up immediately so the STOP HORN overlay appears the same frame.
+            set({ hornPlaying: true });
             if (hornTeamId) {
               const hornTeam = NHL_TEAMS.find((t) => t.id === hornTeamId);
               if (hornTeam) {
                 const start = nhlHornOffsets[hornTeamId] ?? hornTeam.defaultStart;
                 const end = start + hornTeam.defaultDuration;
-                playSfxClip(NHL_HORN_SRC, start, end);
+                playSfxClip(NHL_HORN_SRC, start, end, { onEnded: clearHornFlag });
               } else {
-                playSfxClip("/sfx/horn.mp3");
+                playSfxClip("/sfx/horn.mp3", 0, undefined, { onEnded: clearHornFlag });
               }
             } else {
-              playSfxClip("/sfx/horn.mp3");
+              playSfxClip("/sfx/horn.mp3", 0, undefined, { onEnded: clearHornFlag });
             }
           } else if (action.value >= 6) playSfx("tada");
           else if (action.value >= 3) playSfx("swoosh");
           else playSfx("chime");
         }
+        // Quick haptic on every score for tactile feedback on phones.
+        if (action.value > 0) vibrate(20);
       },
 
       adjustFouls: (team, delta) => {
@@ -813,6 +825,11 @@ export const useGameStore = create<GameStore>()(
           nhlHornOffsets: { ...state.nhlHornOffsets, [teamId]: startSec },
         })),
 
+      stopHorn: () => {
+        stopActiveSfxClip();
+        set({ hornPlaying: false });
+      },
+
       showBanner: (msg) => {
         bannerCounter += 1;
         set({ banner: { id: bannerCounter, ...msg } });
@@ -941,6 +958,8 @@ export const useGameStore = create<GameStore>()(
         if (merged.hockeyGoalHornHome === undefined) merged.hockeyGoalHornHome = null;
         if (merged.hockeyGoalHornAway === undefined) merged.hockeyGoalHornAway = null;
         if (!merged.nhlHornOffsets) merged.nhlHornOffsets = {};
+        // Never restore a horn-playing flag from a previous session.
+        merged.hornPlaying = false;
         return merged;
       },
     },

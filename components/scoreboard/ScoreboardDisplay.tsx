@@ -3,7 +3,14 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useGameStore } from "@/lib/gameStore";
-import { setMusic as setAudioMusic, playSfxClip, setThemeAmbient, stopThemeAmbient } from "@/lib/audio";
+import {
+  setMusic as setAudioMusic,
+  playSfxClip,
+  prefetchSfxClip,
+  setThemeAmbient,
+  stopThemeAmbient,
+} from "@/lib/audio";
+import { NHL_HORN_SRC } from "@/lib/nhlTeams";
 import {
   hasFeature,
   resolveActiveVariant,
@@ -24,6 +31,7 @@ import { PickerWheel } from "./PickerWheel";
 import { ShotClock } from "./ShotClock";
 import { BannerOverlay } from "./BannerOverlay";
 import { Confetti } from "./Confetti";
+import { StopHornOverlay } from "./StopHornOverlay";
 import {
   BuzzerIcon,
   CheckIcon,
@@ -212,6 +220,13 @@ export function ScoreboardDisplay() {
     return () => stopThemeAmbient();
   }, [theme]);
 
+  // Pre-decode hockey horns so the first tap fires instantly with zero lag.
+  useEffect(() => {
+    if (sportId === "hockey") {
+      void prefetchSfxClip(NHL_HORN_SRC);
+      void prefetchSfxClip("/sfx/horn.mp3");
+    }
+  }, [sportId]);
 
   const scoreActions = useMemo(() => cfg.scoring.slice(0, 4), [cfg.scoring]);
 
@@ -297,13 +312,15 @@ export function ScoreboardDisplay() {
             <div className="relative" ref={audioMenuRef}>
               <motion.button
                 type="button"
-                whileTap={{ scale: 0.92 }}
-                whileHover={{ scale: 1.04 }}
+                whileTap={{ scale: 0.9 }}
+                whileHover={{ scale: 1.06 }}
+                transition={{ type: "spring", stiffness: 700, damping: 22 }}
                 aria-label="Mute or restore music and sound effects"
                 aria-expanded={audioMenuOpen}
                 aria-haspopup="menu"
                 onClick={() => setAudioMenuOpen((open) => !open)}
-                className="flex h-12 w-12 min-h-[44px] min-w-[44px] touch-manipulation items-center justify-center rounded-full border-2 border-white/50 bg-transparent text-white shadow transition hover:bg-white/10 hover:border-white"
+                className="flex h-12 w-12 min-h-[44px] min-w-[44px] touch-manipulation select-none items-center justify-center rounded-full border-2 border-white/50 bg-transparent text-white shadow transition-colors hover:bg-white/10 hover:border-white active:bg-white/20"
+                style={{ WebkitTapHighlightColor: "transparent" }}
               >
                 <MicrophoneIcon className="h-6 w-6" aria-hidden />
               </motion.button>
@@ -591,6 +608,7 @@ export function ScoreboardDisplay() {
 
         <BannerOverlay />
         <Confetti trigger={confettiKey} />
+        <StopHornOverlay />
 
         <AnimatePresence>
           {popover && (
@@ -769,10 +787,12 @@ function CircleBtn({
     <motion.button
       type="button"
       onClick={onClick}
-      whileTap={{ scale: 0.92 }}
-      whileHover={{ scale: 1.04 }}
+      whileTap={{ scale: 0.9 }}
+      whileHover={{ scale: 1.06 }}
+      transition={{ type: "spring", stiffness: 700, damping: 22 }}
       aria-label={ariaLabel ?? label}
-      className="flex h-12 w-12 min-h-[44px] min-w-[44px] touch-manipulation items-center justify-center rounded-full border-2 border-white/50 bg-transparent text-white shadow transition hover:bg-white/10 hover:border-white"
+      className="flex h-12 w-12 min-h-[44px] min-w-[44px] touch-manipulation select-none items-center justify-center rounded-full border-2 border-white/50 bg-transparent text-white shadow transition-colors hover:bg-white/10 hover:border-white active:bg-white/20"
+      style={{ WebkitTapHighlightColor: "transparent" }}
     >
       {icon ?? <span className="text-2xl font-black">{label}</span>}
     </motion.button>
@@ -794,10 +814,18 @@ function ActionColumn({
         <motion.button
           key={`${side}-${a.id}`}
           type="button"
-          onClick={() => onTap(side, a.id)}
-          whileTap={{ scale: 0.9 }}
-          whileHover={{ scale: 1.05 }}
-          className="flex h-14 w-14 min-h-[44px] min-w-[44px] items-center justify-center rounded-full border-2 border-white/50 bg-transparent text-xl font-black text-white shadow transition hover:bg-white/10 hover:border-white"
+          // Fire on the pointer-down event for max responsiveness — score the
+          // moment a finger lands rather than waiting for tap completion.
+          onPointerDown={(e) => {
+            // Only main button / primary touch.
+            if (e.button !== undefined && e.button !== 0) return;
+            onTap(side, a.id);
+          }}
+          whileTap={{ scale: 0.88 }}
+          whileHover={{ scale: 1.06 }}
+          transition={{ type: "spring", stiffness: 700, damping: 22 }}
+          className="flex h-14 w-14 min-h-[44px] min-w-[44px] touch-manipulation select-none items-center justify-center rounded-full border-2 border-white/50 bg-transparent text-xl font-black text-white shadow transition-colors hover:bg-white/10 hover:border-white active:bg-white/20"
+          style={{ WebkitTapHighlightColor: "transparent" }}
           title={`${a.label} (${a.value})`}
         >
           {a.label}

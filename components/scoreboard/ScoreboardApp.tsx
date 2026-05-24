@@ -3,6 +3,7 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { useGameStore } from "@/lib/gameStore";
 import { useCountdownTick } from "@/hooks/useCountdownTick";
+import { primeAudioOnFirstGesture } from "@/lib/audio";
 import { ScoreboardDisplay } from "./ScoreboardDisplay";
 import { SportMenu } from "./SportMenu";
 import { SportSetup } from "./SportSetup";
@@ -42,6 +43,11 @@ export function ScoreboardApp() {
     void useGameStore.persist.rehydrate();
     if (useGameStore.persist.hasHydrated()) finish();
     return unsub;
+  }, []);
+
+  // Unlock Web Audio on the very first interaction so taps have zero latency.
+  useEffect(() => {
+    primeAudioOnFirstGesture();
   }, []);
 
   let content: ReactNode;
