@@ -30,6 +30,7 @@ import { SettingsModal } from "./SettingsModal";
 import { StatsModal } from "./StatsModal";
 import { HistoryModal } from "./HistoryModal";
 import { ThemeAmbience } from "./ThemeAmbience";
+import { CourtAmbience } from "./CourtAmbience";
 import { scoreFontClass } from "@/lib/themeDisplayFont";
 import { MOBILE_SCOREBOARD_SHELL } from "@/lib/mobileClasses";
 import { SportLineIcon } from "./SportLineIcons";
@@ -133,10 +134,10 @@ function themeTokens(theme: string): ThemeTokens {
       };
     case "court":
       return {
-        bg: "bg-[radial-gradient(ellipse_at_center,_#4a2800_0%,_#1a0f00_45%,_#000_75%)] text-white",
-        scoreColor: "text-orange-400",
-        clockColor: "text-orange-500",
-        lowTimeColor: "text-amber-400",
+        bg: "bg-[#c97438] text-white",
+        scoreColor: "text-white",
+        clockColor: "text-white",
+        lowTimeColor: "text-amber-100",
         displayFont,
       };
     default: // dark
@@ -341,8 +342,9 @@ export function ScoreboardDisplay() {
     >
       <ThemeAmbience theme={theme} />
       <div className="relative z-10 flex w-full min-h-full flex-1 flex-col items-center">
-      <div className={`absolute left-1/2 top-1/2 flex h-[390px] w-[844px] -translate-x-1/2 -translate-y-1/2 rotate-90 flex-col ${MOBILE_SCOREBOARD_SHELL}`}>
-        <div className="grid grid-cols-[1fr_auto_1fr] items-start gap-2 px-4 pt-4 text-white">
+      <div className={`absolute left-1/2 top-1/2 flex h-[390px] w-[844px] -translate-x-1/2 -translate-y-1/2 rotate-90 flex-col overflow-hidden ${MOBILE_SCOREBOARD_SHELL}`}>
+        {theme === "court" && <CourtAmbience />}
+        <div className="relative z-10 grid grid-cols-[1fr_auto_1fr] items-start gap-2 px-4 pt-4 text-white">
           <div className="flex items-center justify-start gap-2 pt-1.5">
             <CircleBtn
               icon={<MenuIcon className="h-5 w-5" />}
@@ -514,7 +516,7 @@ export function ScoreboardDisplay() {
           </div>
         </div>
 
-        <div className="relative mt-0 flex-1">
+        <div className="relative z-10 mt-0 flex-1">
           <div className="grid grid-cols-[auto_1fr_auto_1fr_auto] items-start gap-x-5 gap-y-2 px-5 pb-2 pt-1">
             {/* Away (B) on the left */}
             <ActionColumn side="b" actions={scoreActions} onTap={onScore} />

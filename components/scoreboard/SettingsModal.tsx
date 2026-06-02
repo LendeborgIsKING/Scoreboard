@@ -42,7 +42,7 @@ const THEMES: { id: import("@/lib/types").ThemeId; label: string; chip: string }
   { id: "ice",      label: "Ice",      chip: "bg-gradient-to-br from-sky-700 to-cyan-400" },
   { id: "midnight", label: "Midnight", chip: "bg-gradient-to-br from-indigo-900 to-violet-700" },
   { id: "gold",     label: "Gold",     chip: "bg-gradient-to-br from-yellow-600 to-amber-400" },
-  { id: "court",    label: "Orange Court", chip: "bg-gradient-to-br from-orange-700 to-amber-600" },
+  { id: "court",    label: "Orange Court", chip: "bg-[#c97438] ring-1 ring-white/40" },
 ];
 
 const TRACKS: {
