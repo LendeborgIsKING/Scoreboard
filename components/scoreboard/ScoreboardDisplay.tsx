@@ -12,13 +12,11 @@ import {
 } from "@/lib/audio";
 import { NHL_HORN_SRC } from "@/lib/nhlTeams";
 import {
-  effectiveMaxPeriods,
   hasFeature,
   resolveActiveVariant,
   resolveSportConfig,
 } from "@/lib/sportRegistry";
 import {
-  BoxScoreRow,
   FoulBonusLabels,
   ResetFoulsChip,
   ScoreMargin,
@@ -196,8 +194,6 @@ export function ScoreboardDisplay() {
   const resetShotClock = useGameStore((s) => s.resetShotClock);
   const setShotClockDuration = useGameStore((s) => s.setShotClockDuration);
   const confettiKey = useGameStore((s) => s.confettiKey);
-  const showBoxScore = useGameStore((s) => s.showBoxScore);
-  const periodScores = useGameStore((s) => s.periodScores);
   const foulsResetPrompt = useGameStore((s) => s.foulsResetPrompt);
   const undoStack = useGameStore((s) => s.undoStack);
   const undo = useGameStore((s) => s.undo);
@@ -276,8 +272,6 @@ export function ScoreboardDisplay() {
   const hasTimeouts = hasFeature(cfg, "timeouts");
   const showPossession = hasFeature(cfg, "possession");
   const isBasketball = cfg.id === "basketball";
-  const maxPeriods =
-    effectiveMaxPeriods(cfg, timerVariantId) ?? cfg.maxPeriods ?? 4;
   const showFoulsReset =
     isBasketball &&
     hasFouls &&
@@ -672,21 +666,6 @@ export function ScoreboardDisplay() {
             <ActionColumn side="a" actions={scoreActions} onTap={onScore} />
           </div>
         </div>
-
-        {isBasketball && showBoxScore && (
-          <div className="absolute bottom-10 left-1/2 z-20 w-full max-w-lg -translate-x-1/2 px-4">
-            <BoxScoreRow
-              periodScores={periodScores}
-              period={period}
-              periodLabel={periodLabel}
-              maxPeriods={maxPeriods}
-              teamAName={teamA.name}
-              teamBName={teamB.name}
-              teamAColor={teamA.color}
-              teamBColor={teamB.color}
-            />
-          </div>
-        )}
 
         <button
           type="button"

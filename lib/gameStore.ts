@@ -122,8 +122,6 @@ export interface GameState extends GameStateSlice {
   /** Tracks whether the prompt has already been shown for this game so we
    *  never spam it twice. Reset on resetGame / setSport / fresh hydration. */
   finalCountdownPromptShownThisGame: boolean;
-  /** When true, show per-quarter box score row on the basketball scoreboard. */
-  showBoxScore: boolean;
   /** After advancing a quarter in basketball, surface reset-fouls until used. */
   foulsResetPrompt: boolean;
 }
@@ -173,7 +171,6 @@ type GameStore = GameState & {
   adjustFouls: (team: TeamId, delta: number) => void;
   adjustTimeouts: (team: TeamId, delta: number) => void;
   resetTeamFouls: () => void;
-  setShowBoxScore: (v: boolean) => void;
   dismissFoulsResetPrompt: () => void;
   setPossession: (team: TeamId | null) => void;
   nextPeriod: () => void;
@@ -295,7 +292,6 @@ export const useGameStore = create<GameStore>()(
       gameOverCelebration: null,
       finalCountdownPromptVisible: false,
       finalCountdownPromptShownThisGame: false,
-      showBoxScore: false,
       foulsResetPrompt: false,
 
       pushUndo: () => {
@@ -561,8 +557,6 @@ export const useGameStore = create<GameStore>()(
           foulsResetPrompt: false,
         }));
       },
-
-      setShowBoxScore: (v) => set({ showBoxScore: v }),
 
       dismissFoulsResetPrompt: () => set({ foulsResetPrompt: false }),
 
@@ -1108,7 +1102,6 @@ export const useGameStore = create<GameStore>()(
         musicVolume: state.musicVolume,
         history: state.history,
         periodScores: state.periodScores,
-        showBoxScore: state.showBoxScore,
         hockeyGoalHornHome: state.hockeyGoalHornHome,
         hockeyGoalHornAway: state.hockeyGoalHornAway,
         nhlHornOffsets: state.nhlHornOffsets,
@@ -1144,7 +1137,6 @@ export const useGameStore = create<GameStore>()(
         if (rawTrack === "ambient") merged.musicTrack = "none";
         if (typeof merged.musicVolume !== "number") merged.musicVolume = 0.3;
         if (!merged.periodScores) merged.periodScores = { a: [0], b: [0] };
-        if (typeof merged.showBoxScore !== "boolean") merged.showBoxScore = false;
         merged.foulsResetPrompt = false;
         if (!merged.history) merged.history = [];
         merged.banner = null;

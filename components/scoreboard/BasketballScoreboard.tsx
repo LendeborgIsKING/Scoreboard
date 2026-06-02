@@ -92,7 +92,7 @@ export function ScoreMargin({
   );
 }
 
-export function BoxScoreRow({
+export function BoxScoreTable({
   periodScores,
   period,
   periodLabel,
@@ -101,6 +101,8 @@ export function BoxScoreRow({
   teamBName,
   teamAColor,
   teamBColor,
+  scoreA,
+  scoreB,
 }: {
   periodScores: { a: number[]; b: number[] };
   period: number;
@@ -110,58 +112,65 @@ export function BoxScoreRow({
   teamBName: string;
   teamAColor: string;
   teamBColor: string;
+  scoreA: number;
+  scoreB: number;
 }) {
   const cols = maxPeriods > 0 ? maxPeriods : 4;
   const headers = Array.from({ length: cols }, (_, i) => {
     const n = i + 1;
-    const short =
-      periodLabel.length <= 2
-        ? `${periodLabel[0] ?? "P"}${n}`
-        : `Q${n}`;
-    return short;
+    return periodLabel.length <= 2
+      ? `${periodLabel} ${n}`
+      : `Quarter ${n}`;
   });
 
   const cell = (arr: number[], qi: number) => {
-    const idx = qi;
-    if (idx > period - 1) return "—";
-    if (idx === period - 1) return String(arr[idx] ?? 0);
-    return String(arr[idx] ?? 0);
+    if (qi > period - 1) return "—";
+    return String(arr[qi] ?? 0);
   };
 
-  const gridCols = `auto repeat(${cols}, minmax(1.25rem, 1fr))`;
-
   return (
-    <div className="w-full max-w-md px-2">
-      <div
-        className="gap-x-2 text-center text-[10px] font-bold uppercase tracking-wider text-white/40"
-        style={{ display: "grid", gridTemplateColumns: gridCols }}
-      >
-        <span />
-        {headers.map((h) => (
-          <span key={h}>{h}</span>
-        ))}
-      </div>
-      <div
-        className="mt-0.5 gap-x-2 gap-y-0.5 text-center text-xs font-bold text-white"
-        style={{ display: "grid", gridTemplateColumns: gridCols }}
-      >
-        <span className="truncate text-left pr-1" style={{ color: teamBColor }}>
-          {teamBName}
-        </span>
-        {Array.from({ length: cols }, (_, qi) => (
-          <span key={`b-${qi}`} className="tabular-nums text-white/90">
-            {cell(periodScores.b, qi)}
-          </span>
-        ))}
-        <span className="truncate text-left pr-1" style={{ color: teamAColor }}>
-          {teamAName}
-        </span>
-        {Array.from({ length: cols }, (_, qi) => (
-          <span key={`a-${qi}`} className="tabular-nums text-white/90">
-            {cell(periodScores.a, qi)}
-          </span>
-        ))}
-      </div>
+    <div className="overflow-hidden rounded-xl border border-white/10">
+      <table className="w-full text-left text-sm text-white">
+        <thead className="bg-white/5 text-[10px] uppercase tracking-widest text-zinc-400">
+          <tr>
+            <th className="px-3 py-2">Team</th>
+            {headers.map((h) => (
+              <th key={h} className="px-3 py-2 text-center">
+                {h}
+              </th>
+            ))}
+            <th className="px-3 py-2 text-right">Total</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-white/5">
+          <tr>
+            <td className="px-3 py-2 font-bold" style={{ color: teamBColor }}>
+              {teamBName}
+            </td>
+            {Array.from({ length: cols }, (_, qi) => (
+              <td key={`b-${qi}`} className="px-3 py-2 text-center font-stencil tabular-nums">
+                {cell(periodScores.b, qi)}
+              </td>
+            ))}
+            <td className="px-3 py-2 text-right font-stencil tabular-nums text-orange-300">
+              {scoreB}
+            </td>
+          </tr>
+          <tr>
+            <td className="px-3 py-2 font-bold" style={{ color: teamAColor }}>
+              {teamAName}
+            </td>
+            {Array.from({ length: cols }, (_, qi) => (
+              <td key={`a-${qi}`} className="px-3 py-2 text-center font-stencil tabular-nums">
+                {cell(periodScores.a, qi)}
+              </td>
+            ))}
+            <td className="px-3 py-2 text-right font-stencil tabular-nums text-orange-300">
+              {scoreA}
+            </td>
+          </tr>
+        </tbody>
+      </table>
     </div>
   );
 }

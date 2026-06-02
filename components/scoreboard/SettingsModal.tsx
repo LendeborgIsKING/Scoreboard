@@ -3,7 +3,8 @@
 import { useState, type ReactNode } from "react";
 import { motion } from "framer-motion";
 import { useGameStore } from "@/lib/gameStore";
-import { resolveSportConfig } from "@/lib/sportRegistry";
+import { resolveSportConfig, effectiveMaxPeriods, resolveActiveVariant } from "@/lib/sportRegistry";
+import { BoxScoreTable } from "./BasketballScoreboard";
 import { playSfx, playSfxClip } from "@/lib/audio";
 import { NHL_TEAMS, NHL_HORN_SRC } from "@/lib/nhlTeams";
 import {
@@ -28,7 +29,7 @@ type Panel =
   | "music"
   | "theme"
   | "shotclock"
-  | "basketball"
+  | "boxscore"
   | "team-colors"
   | "hockey-horn";
 
@@ -113,7 +114,7 @@ export function SettingsModal({
             onMusic={() => setPanel("music")}
             onTheme={() => setPanel("theme")}
             onShotClock={() => setPanel("shotclock")}
-            onBasketball={() => setPanel("basketball")}
+            onBoxScore={() => setPanel("boxscore")}
             onTeamColors={() => setPanel("team-colors")}
             onHockeyHorn={() => setPanel("hockey-horn")}
             onStats={onStats}
@@ -124,7 +125,7 @@ export function SettingsModal({
         {panel === "music" && <MusicPanel />}
         {panel === "theme" && <ThemePanel />}
         {panel === "shotclock" && <ShotClockPanel />}
-        {panel === "basketball" && <BasketballPanel />}
+        {panel === "boxscore" && <BoxScorePanel />}
         {panel === "team-colors" && <TeamColorsPanel />}
         {panel === "hockey-horn" && <HockeyHornPanel />}
       </motion.div>
@@ -138,7 +139,7 @@ function MenuView({
   onMusic,
   onTheme,
   onShotClock,
-  onBasketball,
+  onBoxScore,
   onTeamColors,
   onHockeyHorn,
   onStats,
@@ -149,7 +150,7 @@ function MenuView({
   onMusic: () => void;
   onTheme: () => void;
   onShotClock: () => void;
-  onBasketball: () => void;
+  onBoxScore: () => void;
   onTeamColors: () => void;
   onHockeyHorn: () => void;
   onStats: () => void;
@@ -166,7 +167,7 @@ function MenuView({
       <Tile label="Theme" icon={<PaletteGlyph />} onClick={onTheme} />
       <Tile label="Shot clock" icon={<ClockGlyph />} onClick={onShotClock} />
       {isBasketball && (
-        <Tile label="Basketball" icon={<BallGlyph />} onClick={onBasketball} />
+        <Tile label="Box score" icon={<BallGlyph />} onClick={onBoxScore} />
       )}
 
       <Tile label="Colors" icon={<DropGlyph />} onClick={onTeamColors} />
@@ -298,20 +299,35 @@ function ThemePanel() {
   );
 }
 
-function BasketballPanel() {
-  const showBoxScore = useGameStore((s) => s.showBoxScore);
-  const setShowBoxScore = useGameStore((s) => s.setShowBoxScore);
+function BoxScorePanel() {
+  const teamA = useGameStore((s) => s.teamA);
+  const teamB = useGameStore((s) => s.teamB);
+  const periodScores = useGameStore((s) => s.periodScores);
+  const period = useGameStore((s) => s.period);
+  const sportId = useGameStore((s) => s.sportId);
+  const customSport = useGameStore((s) => s.customSport);
+  const timerVariantId = useGameStore((s) => s.timerVariantId);
+
+  const cfg = resolveSportConfig(sportId, customSport);
+  const variant = resolveActiveVariant(cfg, timerVariantId);
+  const periodLabel = variant?.periodLabel ?? cfg.periodLabel;
+  const maxPeriods =
+    effectiveMaxPeriods(cfg, timerVariantId) ?? cfg.maxPeriods ?? 4;
+
   return (
-    <PanelShell title="Basketball">
-      <ToggleRow
-        label="Show box score"
-        checked={showBoxScore}
-        onChange={setShowBoxScore}
+    <PanelShell title="Box score">
+      <BoxScoreTable
+        periodScores={periodScores}
+        period={period}
+        periodLabel={periodLabel}
+        maxPeriods={maxPeriods}
+        teamAName={teamA.name}
+        teamBName={teamB.name}
+        teamAColor={teamA.color}
+        teamBColor={teamB.color}
+        scoreA={teamA.score}
+        scoreB={teamB.score}
       />
-      <p className="text-xs text-zinc-500">
-        Per-quarter scoring row at the bottom of the scoreboard. Off by default
-        to keep the layout clean.
-      </p>
     </PanelShell>
   );
 }
