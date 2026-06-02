@@ -234,15 +234,6 @@ const initialShotClock: ShotClockState = {
 
 let bannerCounter = 0;
 
-function scoreLeader(
-  scoreA: number,
-  scoreB: number,
-): "a" | "b" | "tie" {
-  if (scoreA > scoreB) return "a";
-  if (scoreB > scoreA) return "b";
-  return "tie";
-}
-
 function bigPlayLabel(
   delta: number,
   sportId: string,
@@ -400,19 +391,11 @@ export const useGameStore = create<GameStore>()(
       },
 
       addScore: (team, actionId) => {
-        const {
-          sportId,
-          customSport,
-          sfxEnabled,
-          periodScores,
-          period,
-          teamA,
-          teamB,
-        } = get();
+        const { sportId, customSport, sfxEnabled, periodScores, period } =
+          get();
         const cfg = resolveSportConfig(sportId, customSport);
         const action = cfg.scoring.find((a) => a.id === actionId);
         if (!action) return;
-        const leaderBefore = scoreLeader(teamA.score, teamB.score);
         get().pushUndo();
         set((state) => {
           const key = team === "a" ? "teamA" : "teamB";
@@ -428,11 +411,6 @@ export const useGameStore = create<GameStore>()(
           updatedPeriodScores[team][idx] =
             (updatedPeriodScores[team][idx] ?? 0) + action.value;
           const newScore = state[key].score + action.value;
-          const newA =
-            team === "a" ? newScore : state.teamA.score;
-          const newB =
-            team === "b" ? newScore : state.teamB.score;
-          const leaderAfter = scoreLeader(newA, newB);
           const milestone = newScore > 0 && newScore % 25 === 0;
           const isBig = action.value >= 6 || milestone;
           const isMid = action.value >= 3;
@@ -444,38 +422,6 @@ export const useGameStore = create<GameStore>()(
               text: bigPlayLabel(action.value, cfg.id, milestone, newScore),
               flavor: "score",
             };
-          }
-          if (
-            sportId === "basketball" &&
-            action.value > 0 &&
-            leaderBefore !== leaderAfter
-          ) {
-            const leadText =
-              leaderAfter === "tie"
-                ? "TIE GAME"
-                : "LEAD CHANGE";
-            const leadSub =
-              leaderAfter === "tie"
-                ? undefined
-                : leaderAfter === "a"
-                  ? state.teamA.name
-                  : state.teamB.name;
-            if (banner) {
-              banner = {
-                ...banner,
-                subtext: leadSub
-                  ? `${leadText} · ${leadSub}`
-                  : leadText,
-              };
-            } else {
-              bannerCounter += 1;
-              banner = {
-                id: bannerCounter,
-                text: leadText,
-                subtext: leadSub,
-                flavor: "info",
-              };
-            }
           }
           return {
             [key]: {
