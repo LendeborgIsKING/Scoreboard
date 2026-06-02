@@ -3,7 +3,6 @@
 import { FireAmbience } from "./FireAmbience";
 
 export function ThemeAmbience({ theme }: { theme: string }) {
-  if (theme === "fire") return <FireAmbience />;
   if (theme === "ice") return <IceAmbience />;
   return null;
 }

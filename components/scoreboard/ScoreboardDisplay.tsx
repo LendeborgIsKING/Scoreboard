@@ -31,6 +31,7 @@ import { StatsModal } from "./StatsModal";
 import { HistoryModal } from "./HistoryModal";
 import { ThemeAmbience } from "./ThemeAmbience";
 import { CourtAmbience } from "./CourtAmbience";
+import { FireAmbience } from "./FireAmbience";
 import { scoreFontClass } from "@/lib/themeDisplayFont";
 import { MOBILE_SCOREBOARD_SHELL } from "@/lib/mobileClasses";
 import { SportLineIcon } from "./SportLineIcons";
@@ -344,6 +345,7 @@ export function ScoreboardDisplay() {
       <div className="relative z-10 flex w-full min-h-full flex-1 flex-col items-center">
       <div className={`absolute left-1/2 top-1/2 flex h-[390px] w-[844px] -translate-x-1/2 -translate-y-1/2 rotate-90 flex-col overflow-hidden ${MOBILE_SCOREBOARD_SHELL}`}>
         {theme === "court" && <CourtAmbience />}
+        {theme === "fire" && <FireAmbience />}
         <div className="relative z-10 grid grid-cols-[1fr_auto_1fr] items-start gap-2 px-4 pt-4 text-white">
           <div className="flex items-center justify-start gap-2 pt-1.5">
             <CircleBtn

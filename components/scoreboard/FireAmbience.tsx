@@ -13,15 +13,16 @@ type FlameSpec = {
   lean: number;
 };
 
-function makeFlames(count: number, spread: number, baseH: number): FlameSpec[] {
+function makeFlames(count: number, baseH: number): FlameSpec[] {
   return Array.from({ length: count }, (_, i) => ({
     id: i,
-    x: (i / count) * spread + (100 - spread) / 2,
+    // Even spacing across full width — no offset bias
+    x: ((i + 0.5) / count) * 100,
     w: 3.2 + (i % 4) * 0.9,
-    h: baseH + (i % 6) * 5 + ((i * 7) % 9),
+    h: baseH + (i % 6) * 4 + ((i * 5) % 7),
     delay: i * 0.05,
     dur: 0.65 + (i % 5) * 0.12,
-    lean: -8 + (i % 7) * 2.5,
+    lean: -6 + (i % 7) * 2,
   }));
 }
 
@@ -115,18 +116,20 @@ function SideFlames({
   side,
   count,
   filterId,
+  intensity = 1,
 }: {
   side: "left" | "right";
   count: number;
   filterId: string;
+  intensity?: number;
 }) {
   const flames = useMemo(
     () =>
       Array.from({ length: count }, (_, i) => ({
         id: i,
-        y: 6 + (i / count) * 82,
-        w: 14 + (i % 3) * 4,
-        h: 10 + (i % 4) * 2.5,
+        y: 4 + ((i + 0.5) / count) * 88,
+        w: 16 + (i % 3) * 3,
+        h: 11 + (i % 4) * 2,
         delay: i * 0.11,
         dur: 0.9 + (i % 4) * 0.14,
         lean: side === "left" ? -4 + (i % 3) : 4 - (i % 3),
@@ -136,7 +139,8 @@ function SideFlames({
 
   return (
     <div
-      className={`absolute ${side === "left" ? "left-0" : "right-0"} inset-y-0 w-[22%]`}
+      className={`absolute ${side === "left" ? "left-0" : "right-0"} inset-y-0 w-[20%]`}
+      style={{ opacity: intensity }}
     >
       {flames.map((f) => (
         <div
@@ -155,7 +159,7 @@ function SideFlames({
             animate={{
               scaleY: [0.85, 1.12, 0.9, 1.05, 0.85],
               scaleX: [1, 0.88, 1.04, 0.92, 1],
-              opacity: [0.45, 0.82, 0.5, 0.75, 0.45],
+              opacity: [0.55, 0.88, 0.6, 0.82, 0.55],
             }}
             transition={{
               duration: f.dur,
@@ -175,13 +179,13 @@ function SideFlames({
 function Embers() {
   const embers = useMemo(
     () =>
-      Array.from({ length: 18 }, (_, i) => ({
+      Array.from({ length: 20 }, (_, i) => ({
         id: i,
-        left: 8 + ((i * 17) % 84),
+        left: 5 + (i / 19) * 90,
         size: 1.5 + (i % 3),
-        delay: i * 0.35,
+        delay: i * 0.32,
         dur: 2.2 + (i % 5) * 0.4,
-        drift: -12 + (i % 7) * 4,
+        drift: -10 + (i % 9) * 2.5,
       })),
     [],
   );
@@ -216,12 +220,11 @@ function Embers() {
 }
 
 export function FireAmbience() {
-  const bottomFlames = useMemo(() => makeFlames(26, 98, 32), []);
-  const topFlames = useMemo(() => makeFlames(14, 90, 14), []);
+  const edgeFlames = useMemo(() => makeFlames(24, 28), []);
 
   return (
     <div
-      className="pointer-events-none absolute inset-0 z-[2] overflow-hidden"
+      className="pointer-events-none absolute inset-0 z-0 overflow-hidden"
       aria-hidden
     >
       {/* Shared SVG defs — turbulence warp + gradients */}
@@ -298,40 +301,40 @@ export function FireAmbience() {
         </defs>
       </svg>
 
-      {/* Ambient heat glow */}
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom,_rgba(234,88,12,0.35)_0%,transparent_55%),radial-gradient(ellipse_at_top,_rgba(127,29,29,0.2)_0%,transparent_45%)]" />
-      <div className="absolute inset-x-0 bottom-0 h-[55%] bg-gradient-to-t from-orange-600/25 via-red-900/10 to-transparent mix-blend-screen" />
+      {/* Even ambient glow on all four edges */}
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_rgba(234,88,12,0.22)_0%,transparent_50%),radial-gradient(ellipse_at_bottom,_rgba(234,88,12,0.22)_0%,transparent_50%),radial-gradient(ellipse_at_left,_rgba(185,28,28,0.18)_0%,transparent_45%),radial-gradient(ellipse_at_right,_rgba(185,28,28,0.18)_0%,transparent_45%)]" />
 
-      {/* Main flame wall — bottom */}
-      <div className="absolute inset-x-0 bottom-0 h-[48%] mix-blend-screen">
+      {/* Bottom edge — matches top */}
+      <div className="absolute inset-x-0 bottom-0 h-[38%] mix-blend-screen">
         <FlameRow
-          flames={bottomFlames}
+          flames={edgeFlames}
           className="absolute inset-0"
           filterId="fireWarp"
         />
       </div>
 
-      {/* Softer ceiling flames */}
-      <div className="absolute inset-x-0 top-0 h-[22%] mix-blend-screen opacity-60">
+      {/* Top edge — same intensity as bottom */}
+      <div className="absolute inset-x-0 top-0 h-[38%] mix-blend-screen">
         <FlameRow
-          flames={topFlames}
+          flames={edgeFlames}
           className="absolute inset-0 rotate-180"
-          filterId="fireWarpSoft"
+          filterId="fireWarp"
         />
       </div>
 
-      <SideFlames side="left" count={9} filterId="fireWarpSoft" />
-      <SideFlames side="right" count={9} filterId="fireWarpSoft" />
+      {/* Away (left) and home (right) — matched */}
+      <SideFlames side="left" count={10} filterId="fireWarpSoft" />
+      <SideFlames side="right" count={10} filterId="fireWarpSoft" />
 
-      {/* Rising sparks */}
+      {/* Rising sparks — spread evenly */}
       <div className="absolute inset-0 mix-blend-screen">
         <Embers />
       </div>
 
-      {/* Hot flicker wash */}
+      {/* Center flicker — not bottom-heavy */}
       <motion.div
-        className="absolute inset-0 bg-[radial-gradient(circle_at_50%_100%,rgba(251,146,60,0.12)_0%,transparent_50%)] mix-blend-overlay"
-        animate={{ opacity: [0.4, 0.75, 0.5, 0.8, 0.4] }}
+        className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(251,146,60,0.08)_0%,transparent_55%)] mix-blend-overlay"
+        animate={{ opacity: [0.35, 0.65, 0.4, 0.6, 0.35] }}
         transition={{ duration: 1.6, repeat: Infinity, ease: "easeInOut" }}
       />
     </div>
