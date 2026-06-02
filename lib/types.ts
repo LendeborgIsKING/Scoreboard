@@ -53,7 +53,16 @@ export type SportConfig = {
   noGameClock?: boolean;
 };
 
-export type ThemeId = "dark" | "neon" | "classic" | "stadium" | "fire" | "ice" | "midnight" | "gold";
+export type ThemeId =
+  | "dark"
+  | "neon"
+  | "classic"
+  | "stadium"
+  | "fire"
+  | "ice"
+  | "midnight"
+  | "gold"
+  | "court";
 
 export type MusicTrackId = "none" | "hype" | "anthem";
 

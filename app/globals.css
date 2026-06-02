@@ -20,6 +20,7 @@
   --font-display-ice: var(--font-iceberg), ui-sans-serif, sans-serif;
   --font-display-midnight: var(--font-cinzel), ui-serif, serif;
   --font-display-gold: var(--font-cormorant), ui-serif, Georgia, serif;
+  --font-display-court: var(--font-bungee), ui-sans-serif, sans-serif;
 }
 
 @media (prefers-color-scheme: dark) {

@@ -28,6 +28,7 @@ type Panel =
   | "music"
   | "theme"
   | "shotclock"
+  | "basketball"
   | "team-colors"
   | "hockey-horn";
 
@@ -40,6 +41,7 @@ const THEMES: { id: import("@/lib/types").ThemeId; label: string; chip: string }
   { id: "ice",      label: "Ice",      chip: "bg-gradient-to-br from-sky-700 to-cyan-400" },
   { id: "midnight", label: "Midnight", chip: "bg-gradient-to-br from-indigo-900 to-violet-700" },
   { id: "gold",     label: "Gold",     chip: "bg-gradient-to-br from-yellow-600 to-amber-400" },
+  { id: "court",    label: "Orange Court", chip: "bg-gradient-to-br from-orange-700 to-amber-600" },
 ];
 
 const TRACKS: {
@@ -111,6 +113,7 @@ export function SettingsModal({
             onMusic={() => setPanel("music")}
             onTheme={() => setPanel("theme")}
             onShotClock={() => setPanel("shotclock")}
+            onBasketball={() => setPanel("basketball")}
             onTeamColors={() => setPanel("team-colors")}
             onHockeyHorn={() => setPanel("hockey-horn")}
             onStats={onStats}
@@ -121,6 +124,7 @@ export function SettingsModal({
         {panel === "music" && <MusicPanel />}
         {panel === "theme" && <ThemePanel />}
         {panel === "shotclock" && <ShotClockPanel />}
+        {panel === "basketball" && <BasketballPanel />}
         {panel === "team-colors" && <TeamColorsPanel />}
         {panel === "hockey-horn" && <HockeyHornPanel />}
       </motion.div>
@@ -134,6 +138,7 @@ function MenuView({
   onMusic,
   onTheme,
   onShotClock,
+  onBasketball,
   onTeamColors,
   onHockeyHorn,
   onStats,
@@ -144,6 +149,7 @@ function MenuView({
   onMusic: () => void;
   onTheme: () => void;
   onShotClock: () => void;
+  onBasketball: () => void;
   onTeamColors: () => void;
   onHockeyHorn: () => void;
   onStats: () => void;
@@ -151,6 +157,7 @@ function MenuView({
 }) {
   const sportId = useGameStore((s) => s.sportId);
   const isHockey = sportId === "hockey";
+  const isBasketball = sportId === "basketball";
   return (
     <div className="mx-auto mt-16 grid max-w-full grid-cols-3 gap-x-4 gap-y-5 px-5 max-sm:mt-14 max-sm:gap-x-3 max-sm:gap-y-4 max-sm:px-4 sm:mt-20 sm:grid-cols-5 sm:gap-x-6 sm:gap-y-4 sm:px-10">
       <Tile label="Edit" icon={<PencilIcon className="h-7 w-7" />} onClick={onEdit} />
@@ -158,6 +165,9 @@ function MenuView({
       <Tile label="Music" icon={<NoteGlyph />} onClick={onMusic} />
       <Tile label="Theme" icon={<PaletteGlyph />} onClick={onTheme} />
       <Tile label="Shot clock" icon={<ClockGlyph />} onClick={onShotClock} />
+      {isBasketball && (
+        <Tile label="Basketball" icon={<BallGlyph />} onClick={onBasketball} />
+      )}
 
       <Tile label="Colors" icon={<DropGlyph />} onClick={onTeamColors} />
       <Tile label="Stats" icon={<BarGlyph />} onClick={onStats} />
@@ -284,6 +294,24 @@ function ThemePanel() {
           </button>
         ))}
       </div>
+    </PanelShell>
+  );
+}
+
+function BasketballPanel() {
+  const showBoxScore = useGameStore((s) => s.showBoxScore);
+  const setShowBoxScore = useGameStore((s) => s.setShowBoxScore);
+  return (
+    <PanelShell title="Basketball">
+      <ToggleRow
+        label="Show box score"
+        checked={showBoxScore}
+        onChange={setShowBoxScore}
+      />
+      <p className="text-xs text-zinc-500">
+        Per-quarter scoring row at the bottom of the scoreboard. Off by default
+        to keep the layout clean.
+      </p>
     </PanelShell>
   );
 }
@@ -514,6 +542,15 @@ function ClockGlyph() {
   return (
     <svg viewBox="0 0 24 24" className="h-7 w-7" fill="currentColor">
       <path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Zm0 18a8 8 0 1 1 0-16 8 8 0 0 1 0 16Zm1-13h-2v6l5 3 1-1.6L13 11V7Z" />
+    </svg>
+  );
+}
+
+function BallGlyph() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-7 w-7" fill="none" stroke="currentColor" strokeWidth="2">
+      <circle cx="12" cy="12" r="9" />
+      <path d="M12 3v18M7 7c3 2 7 2 10 0M7 17c3-2 7-2 10 0" strokeWidth="1.5" />
     </svg>
   );
 }

@@ -122,6 +122,10 @@ export interface GameState extends GameStateSlice {
   /** Tracks whether the prompt has already been shown for this game so we
    *  never spam it twice. Reset on resetGame / setSport / fresh hydration. */
   finalCountdownPromptShownThisGame: boolean;
+  /** When true, show per-quarter box score row on the basketball scoreboard. */
+  showBoxScore: boolean;
+  /** After advancing a quarter in basketball, surface reset-fouls until used. */
+  foulsResetPrompt: boolean;
 }
 
 interface GameStateSlice {
@@ -168,6 +172,9 @@ type GameStore = GameState & {
   addScore: (team: TeamId, actionId: string) => void;
   adjustFouls: (team: TeamId, delta: number) => void;
   adjustTimeouts: (team: TeamId, delta: number) => void;
+  resetTeamFouls: () => void;
+  setShowBoxScore: (v: boolean) => void;
+  dismissFoulsResetPrompt: () => void;
   setPossession: (team: TeamId | null) => void;
   nextPeriod: () => void;
   prevPeriod: () => void;
@@ -230,6 +237,15 @@ const initialShotClock: ShotClockState = {
 
 let bannerCounter = 0;
 
+function scoreLeader(
+  scoreA: number,
+  scoreB: number,
+): "a" | "b" | "tie" {
+  if (scoreA > scoreB) return "a";
+  if (scoreB > scoreA) return "b";
+  return "tie";
+}
+
 function bigPlayLabel(
   delta: number,
   sportId: string,
@@ -279,6 +295,8 @@ export const useGameStore = create<GameStore>()(
       gameOverCelebration: null,
       finalCountdownPromptVisible: false,
       finalCountdownPromptShownThisGame: false,
+      showBoxScore: false,
+      foulsResetPrompt: false,
 
       pushUndo: () => {
         const snap = snapshotFrom(get());
@@ -386,11 +404,19 @@ export const useGameStore = create<GameStore>()(
       },
 
       addScore: (team, actionId) => {
-        const { sportId, customSport, sfxEnabled, periodScores, period } =
-          get();
+        const {
+          sportId,
+          customSport,
+          sfxEnabled,
+          periodScores,
+          period,
+          teamA,
+          teamB,
+        } = get();
         const cfg = resolveSportConfig(sportId, customSport);
         const action = cfg.scoring.find((a) => a.id === actionId);
         if (!action) return;
+        const leaderBefore = scoreLeader(teamA.score, teamB.score);
         get().pushUndo();
         set((state) => {
           const key = team === "a" ? "teamA" : "teamB";
@@ -406,6 +432,11 @@ export const useGameStore = create<GameStore>()(
           updatedPeriodScores[team][idx] =
             (updatedPeriodScores[team][idx] ?? 0) + action.value;
           const newScore = state[key].score + action.value;
+          const newA =
+            team === "a" ? newScore : state.teamA.score;
+          const newB =
+            team === "b" ? newScore : state.teamB.score;
+          const leaderAfter = scoreLeader(newA, newB);
           const milestone = newScore > 0 && newScore % 25 === 0;
           const isBig = action.value >= 6 || milestone;
           const isMid = action.value >= 3;
@@ -418,6 +449,38 @@ export const useGameStore = create<GameStore>()(
               flavor: "score",
             };
           }
+          if (
+            sportId === "basketball" &&
+            action.value > 0 &&
+            leaderBefore !== leaderAfter
+          ) {
+            const leadText =
+              leaderAfter === "tie"
+                ? "TIE GAME"
+                : "LEAD CHANGE";
+            const leadSub =
+              leaderAfter === "tie"
+                ? undefined
+                : leaderAfter === "a"
+                  ? state.teamA.name
+                  : state.teamB.name;
+            if (banner) {
+              banner = {
+                ...banner,
+                subtext: leadSub
+                  ? `${leadText} · ${leadSub}`
+                  : leadText,
+              };
+            } else {
+              bannerCounter += 1;
+              banner = {
+                id: bannerCounter,
+                text: leadText,
+                subtext: leadSub,
+                flavor: "info",
+              };
+            }
+          }
           return {
             [key]: {
               ...state[key],
@@ -428,6 +491,13 @@ export const useGameStore = create<GameStore>()(
             banner,
           };
         });
+        if (
+          sportId === "basketball" &&
+          action.value > 0 &&
+          get().shotClock.enabled
+        ) {
+          get().resetShotClock();
+        }
         if (sfxEnabled && action.value > 0) {
           if (sportId === "basketball") {
             playSfxClip(BASKETBALL_SCORE_SFX_SRC);
@@ -483,6 +553,19 @@ export const useGameStore = create<GameStore>()(
         });
       },
 
+      resetTeamFouls: () => {
+        get().pushUndo();
+        set((state) => ({
+          teamA: { ...state.teamA, fouls: 0 },
+          teamB: { ...state.teamB, fouls: 0 },
+          foulsResetPrompt: false,
+        }));
+      },
+
+      setShowBoxScore: (v) => set({ showBoxScore: v }),
+
+      dismissFoulsResetPrompt: () => set({ foulsResetPrompt: false }),
+
       setPossession: (team) => {
         get().pushUndo();
         set({ possession: team });
@@ -507,6 +590,8 @@ export const useGameStore = create<GameStore>()(
         set({
           period: nextPeriodNum,
           periodScores: { a, b },
+          foulsResetPrompt:
+            sportId === "basketball" && nextPeriodNum > period,
         });
       },
 
@@ -603,6 +688,7 @@ export const useGameStore = create<GameStore>()(
           finalCountdownPromptShownThisGame: false,
           finalCountdownPromptVisible: false,
           gameOverCelebration: null,
+          foulsResetPrompt: false,
         });
       },
 
@@ -1022,6 +1108,7 @@ export const useGameStore = create<GameStore>()(
         musicVolume: state.musicVolume,
         history: state.history,
         periodScores: state.periodScores,
+        showBoxScore: state.showBoxScore,
         hockeyGoalHornHome: state.hockeyGoalHornHome,
         hockeyGoalHornAway: state.hockeyGoalHornAway,
         nhlHornOffsets: state.nhlHornOffsets,
@@ -1057,6 +1144,8 @@ export const useGameStore = create<GameStore>()(
         if (rawTrack === "ambient") merged.musicTrack = "none";
         if (typeof merged.musicVolume !== "number") merged.musicVolume = 0.3;
         if (!merged.periodScores) merged.periodScores = { a: [0], b: [0] };
+        if (typeof merged.showBoxScore !== "boolean") merged.showBoxScore = false;
+        merged.foulsResetPrompt = false;
         if (!merged.history) merged.history = [];
         merged.banner = null;
         if (typeof merged.confettiKey !== "number") merged.confettiKey = 0;

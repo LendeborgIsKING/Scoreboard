@@ -13,6 +13,7 @@ export const THEME_SCORE_FONT: Record<ThemeId, string> = {
   ice: "font-display-ice",
   midnight: "font-display-midnight",
   gold: "font-display-gold",
+  court: "font-display-court",
 };
 
 export function scoreFontClass(theme: string): string {

@@ -12,10 +12,18 @@ import {
 } from "@/lib/audio";
 import { NHL_HORN_SRC } from "@/lib/nhlTeams";
 import {
+  effectiveMaxPeriods,
   hasFeature,
   resolveActiveVariant,
   resolveSportConfig,
 } from "@/lib/sportRegistry";
+import {
+  BoxScoreRow,
+  FoulBonusLabels,
+  ResetFoulsChip,
+  ScoreMargin,
+  TimeoutDots,
+} from "./BasketballScoreboard";
 import { formatSeconds } from "@/lib/format";
 import { useTimerDisplay } from "@/hooks/useTimerDisplay";
 import { useCountdownTick } from "@/hooks/useCountdownTick";
@@ -45,6 +53,7 @@ import {
   PauseIcon,
   PencilIcon,
   PlayIcon,
+  UndoIcon,
   WhistleIcon,
 } from "./UiIcons";
 
@@ -124,6 +133,14 @@ function themeTokens(theme: string): ThemeTokens {
         lowTimeColor: "text-amber-400",
         displayFont,
       };
+    case "court":
+      return {
+        bg: "bg-[radial-gradient(ellipse_at_center,_#4a2800_0%,_#1a0f00_45%,_#000_75%)] text-white",
+        scoreColor: "text-orange-400",
+        clockColor: "text-orange-500",
+        lowTimeColor: "text-amber-400",
+        displayFont,
+      };
     default: // dark
       return {
         bg: "bg-black text-white",
@@ -179,6 +196,16 @@ export function ScoreboardDisplay() {
   const resetShotClock = useGameStore((s) => s.resetShotClock);
   const setShotClockDuration = useGameStore((s) => s.setShotClockDuration);
   const confettiKey = useGameStore((s) => s.confettiKey);
+  const showBoxScore = useGameStore((s) => s.showBoxScore);
+  const periodScores = useGameStore((s) => s.periodScores);
+  const foulsResetPrompt = useGameStore((s) => s.foulsResetPrompt);
+  const undoStack = useGameStore((s) => s.undoStack);
+  const undo = useGameStore((s) => s.undo);
+  const adjustTimeouts = useGameStore((s) => s.adjustTimeouts);
+  const resetTeamFouls = useGameStore((s) => s.resetTeamFouls);
+  const dismissFoulsResetPrompt = useGameStore(
+    (s) => s.dismissFoulsResetPrompt,
+  );
 
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [statsOpen, setStatsOpen] = useState(false);
@@ -246,7 +273,16 @@ export function ScoreboardDisplay() {
   const periodText = `${periodLabel} ${period}`;
   const lowTime = clockSec <= 60 && clockSec > 0;
   const hasFouls = hasFeature(cfg, "fouls");
+  const hasTimeouts = hasFeature(cfg, "timeouts");
   const showPossession = hasFeature(cfg, "possession");
+  const isBasketball = cfg.id === "basketball";
+  const maxPeriods =
+    effectiveMaxPeriods(cfg, timerVariantId) ?? cfg.maxPeriods ?? 4;
+  const showFoulsReset =
+    isBasketball &&
+    hasFouls &&
+    (editing || foulsResetPrompt) &&
+    (teamA.fouls > 0 || teamB.fouls > 0 || foulsResetPrompt);
 
   const openClockPicker = () => {
     setMinDraft(Math.floor(timer.countdownFromSeconds / 60));
@@ -458,6 +494,13 @@ export function ScoreboardDisplay() {
           </div>
 
           <div className="flex items-center justify-end gap-2 pt-1.5">
+            {undoStack.length > 0 && (
+              <CircleBtn
+                icon={<UndoIcon className="h-5 w-5" />}
+                onClick={() => undo()}
+                ariaLabel="Undo last action"
+              />
+            )}
             <CircleBtn
               icon={
                 editing ? (
@@ -502,6 +545,14 @@ export function ScoreboardDisplay() {
               tint={teamB.color}
               displayFont={tokens.displayFont}
             />
+            {isBasketball && hasTimeouts && (
+              <TimeoutDots
+                remaining={teamB.timeouts}
+                teamLabel={teamB.name}
+                editing={editing}
+                onAdjust={(d) => adjustTimeouts("b", d)}
+              />
+            )}
           </section>
 
           {/* Center panel */}
@@ -512,6 +563,18 @@ export function ScoreboardDisplay() {
               <span className="h-5 w-px bg-white/15" aria-hidden />
             </div>
 
+            {isBasketball && (
+              <ScoreMargin
+                scoreA={teamA.score}
+                scoreB={teamB.score}
+                teamAName={teamA.name}
+                teamBName={teamB.name}
+                teamAColor={teamA.color}
+                teamBColor={teamB.color}
+                displayFont={tokens.displayFont}
+              />
+            )}
+
             {hasFouls && (
               <FoulsBlock
                 aValue={teamB.fouls}
@@ -520,6 +583,17 @@ export function ScoreboardDisplay() {
                 onA={(d) => adjustFouls("b", d)}
                 onB={(d) => adjustFouls("a", d)}
                 displayFont={tokens.displayFont}
+              />
+            )}
+
+            {isBasketball && hasFouls && (
+              <FoulBonusLabels awayFouls={teamB.fouls} homeFouls={teamA.fouls} />
+            )}
+
+            {showFoulsReset && (
+              <ResetFoulsChip
+                onReset={() => resetTeamFouls()}
+                onDismiss={() => dismissFoulsResetPrompt()}
               />
             )}
 
@@ -571,6 +645,14 @@ export function ScoreboardDisplay() {
               tint={teamA.color}
               displayFont={tokens.displayFont}
             />
+            {isBasketball && hasTimeouts && (
+              <TimeoutDots
+                remaining={teamA.timeouts}
+                teamLabel={teamA.name}
+                editing={editing}
+                onAdjust={(d) => adjustTimeouts("a", d)}
+              />
+            )}
             {/* Sits at the right edge of the home column, just to the left of the action column —
                 guarantees no overlap with the +point buttons. */}
             <div className="mt-1 flex gap-3 self-end">
@@ -590,6 +672,21 @@ export function ScoreboardDisplay() {
             <ActionColumn side="a" actions={scoreActions} onTap={onScore} />
           </div>
         </div>
+
+        {isBasketball && showBoxScore && (
+          <div className="absolute bottom-10 left-1/2 z-20 w-full max-w-lg -translate-x-1/2 px-4">
+            <BoxScoreRow
+              periodScores={periodScores}
+              period={period}
+              periodLabel={periodLabel}
+              maxPeriods={maxPeriods}
+              teamAName={teamA.name}
+              teamBName={teamB.name}
+              teamAColor={teamA.color}
+              teamBColor={teamB.color}
+            />
+          </div>
+        )}
 
         <button
           type="button"
