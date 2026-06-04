@@ -7,6 +7,7 @@ import type {
   GameHistoryEntry,
   GameSnapshot,
   MusicTrackId,
+  ScoreSoundId,
   ShotClockState,
   SportConfig,
   TeamId,
@@ -33,6 +34,29 @@ import {
   vibrate,
 } from "./audio";
 
+function playScoreSound(id: ScoreSoundId) {
+  switch (id) {
+    case "swish":
+      playSfxClip(BASKETBALL_SCORE_SFX_SRC);
+      break;
+    case "horn":
+      playSfxClip("/sfx/horn.mp3");
+      break;
+    case "chime":
+      playSfx("chime");
+      break;
+    case "ding":
+      playSfx("ding");
+      break;
+    case "tada":
+      playSfx("tada");
+      break;
+    case "none":
+    default:
+      break;
+  }
+}
+
 const UNDO_MAX = 40;
 
 const defaultTeam = (name: string, color: string): TeamState => ({
@@ -41,6 +65,7 @@ const defaultTeam = (name: string, color: string): TeamState => ({
   score: 0,
   fouls: 0,
   timeouts: 7,
+  logo: null,
 });
 
 function defaultTimerForSport(
@@ -124,6 +149,23 @@ export interface GameState extends GameStateSlice {
   finalCountdownPromptShownThisGame: boolean;
   /** After advancing a quarter in basketball, surface reset-fouls until used. */
   foulsResetPrompt: boolean;
+  /** Haptic feedback on button presses. */
+  vibrationEnabled: boolean;
+  /** Soft tick sound on button presses. */
+  pressTickEnabled: boolean;
+  /** Start the game clock automatically on the first score. */
+  autoStartClockOnScore: boolean;
+  /** Keep the device screen awake during a game. */
+  keepAwakeEnabled: boolean;
+  /** End the game when a team reaches the target score. */
+  targetScoreEnabled: boolean;
+  targetScore: number;
+  /** Show confetti bursts on big plays. */
+  confettiEnabled: boolean;
+  /** Show the centered play banners (BUCKET!, 3 POINTS!, etc.). */
+  bannersEnabled: boolean;
+  /** Which sound plays when a team scores. */
+  scoreSoundId: ScoreSoundId;
 }
 
 interface GameStateSlice {
@@ -168,10 +210,22 @@ type GameStore = GameState & {
   setSport: (id: string) => void;
   setCustomSport: (config: SportConfig) => void;
   addScore: (team: TeamId, actionId: string) => void;
+  triggerGameOver: () => void;
   adjustFouls: (team: TeamId, delta: number) => void;
   adjustTimeouts: (team: TeamId, delta: number) => void;
   resetTeamFouls: () => void;
   dismissFoulsResetPrompt: () => void;
+  resetScoresOnly: () => void;
+  setTeamLogo: (team: TeamId, logo: string | null) => void;
+  setVibrationEnabled: (v: boolean) => void;
+  setPressTickEnabled: (v: boolean) => void;
+  setAutoStartClockOnScore: (v: boolean) => void;
+  setKeepAwakeEnabled: (v: boolean) => void;
+  setTargetScoreEnabled: (v: boolean) => void;
+  setTargetScore: (n: number) => void;
+  setConfettiEnabled: (v: boolean) => void;
+  setBannersEnabled: (v: boolean) => void;
+  setScoreSound: (id: ScoreSoundId) => void;
   setPossession: (team: TeamId | null) => void;
   nextPeriod: () => void;
   prevPeriod: () => void;
@@ -284,6 +338,15 @@ export const useGameStore = create<GameStore>()(
       finalCountdownPromptVisible: false,
       finalCountdownPromptShownThisGame: false,
       foulsResetPrompt: false,
+      vibrationEnabled: true,
+      pressTickEnabled: false,
+      autoStartClockOnScore: false,
+      keepAwakeEnabled: true,
+      targetScoreEnabled: false,
+      targetScore: 21,
+      confettiEnabled: true,
+      bannersEnabled: true,
+      scoreSoundId: "default",
 
       pushUndo: () => {
         const snap = snapshotFrom(get());
@@ -391,12 +454,38 @@ export const useGameStore = create<GameStore>()(
       },
 
       addScore: (team, actionId) => {
-        const { sportId, customSport, sfxEnabled, periodScores, period } =
-          get();
+        const {
+          sportId,
+          customSport,
+          sfxEnabled,
+          periodScores,
+          period,
+          timer,
+          confettiEnabled,
+          bannersEnabled,
+          scoreSoundId,
+          vibrationEnabled,
+          autoStartClockOnScore,
+          targetScoreEnabled,
+          targetScore,
+        } = get();
         const cfg = resolveSportConfig(sportId, customSport);
         const action = cfg.scoring.find((a) => a.id === actionId);
         if (!action) return;
         get().pushUndo();
+
+        // Buzzer-beater: scored with the clock running in the final 3 seconds.
+        const remainingMs = Math.max(
+          0,
+          timer.countdownFromSeconds * 1000 - getElapsedMs(timer),
+        );
+        const isBuzzerBeater =
+          !cfg.noGameClock &&
+          timer.running &&
+          action.value > 0 &&
+          remainingMs > 0 &&
+          remainingMs <= 3000;
+
         set((state) => {
           const key = team === "a" ? "teamA" : "teamB";
           const updatedPeriodScores = {
@@ -412,14 +501,16 @@ export const useGameStore = create<GameStore>()(
             (updatedPeriodScores[team][idx] ?? 0) + action.value;
           const newScore = state[key].score + action.value;
           const milestone = newScore > 0 && newScore % 25 === 0;
-          const isBig = action.value >= 6 || milestone;
+          const isBig = action.value >= 6 || milestone || isBuzzerBeater;
           const isMid = action.value >= 3;
           let banner = state.banner;
-          if (isBig || isMid) {
+          if (bannersEnabled && (isBig || isMid || isBuzzerBeater)) {
             bannerCounter += 1;
             banner = {
               id: bannerCounter,
-              text: bigPlayLabel(action.value, cfg.id, milestone, newScore),
+              text: isBuzzerBeater
+                ? "BUZZER BEATER!"
+                : bigPlayLabel(action.value, cfg.id, milestone, newScore),
               flavor: "score",
             };
           }
@@ -429,10 +520,25 @@ export const useGameStore = create<GameStore>()(
               score: newScore,
             },
             periodScores: updatedPeriodScores,
-            confettiKey: isBig ? state.confettiKey + 1 : state.confettiKey,
+            confettiKey:
+              confettiEnabled && isBig
+                ? state.confettiKey + 1
+                : state.confettiKey,
             banner,
           };
         });
+
+        // Auto-start the clock on the first score of a clocked sport.
+        if (
+          autoStartClockOnScore &&
+          action.value > 0 &&
+          !cfg.noGameClock &&
+          !get().timer.running &&
+          getElapsedMs(get().timer) === 0
+        ) {
+          get().startTimer();
+        }
+
         if (
           sportId === "basketball" &&
           action.value > 0 &&
@@ -441,7 +547,9 @@ export const useGameStore = create<GameStore>()(
           get().resetShotClock();
         }
         if (sfxEnabled && action.value > 0) {
-          if (sportId === "basketball") {
+          if (scoreSoundId !== "default") {
+            playScoreSound(scoreSoundId);
+          } else if (sportId === "basketball") {
             playSfxClip(BASKETBALL_SCORE_SFX_SRC);
           } else if (sportId === "hockey") {
             const { hockeyGoalHornHome, hockeyGoalHornAway, nhlHornOffsets } = get();
@@ -466,7 +574,39 @@ export const useGameStore = create<GameStore>()(
           else playSfx("chime");
         }
         // Quick haptic on every score for tactile feedback on phones.
-        if (action.value > 0) vibrate(20);
+        if (action.value > 0 && vibrationEnabled) vibrate(20);
+
+        // Target-score win: end the game when a team reaches the target.
+        if (targetScoreEnabled && action.value > 0) {
+          const { teamA, teamB } = get();
+          const reached =
+            teamA.score >= targetScore || teamB.score >= targetScore;
+          if (reached && teamA.score !== teamB.score) {
+            get().triggerGameOver();
+          }
+        }
+      },
+
+      triggerGameOver: () => {
+        const { teamA, teamB, sfxEnabled, gameOverCelebration } = get();
+        if (gameOverCelebration) return;
+        if (teamA.score === teamB.score) return;
+        const winnerSide: "a" | "b" = teamA.score > teamB.score ? "a" : "b";
+        get().pauseTimer();
+        set((state) => ({
+          gameOverCelebration: {
+            winnerSide,
+            winnerName: winnerSide === "a" ? teamA.name : teamB.name,
+            loserName: winnerSide === "a" ? teamB.name : teamA.name,
+            finalScoreA: teamA.score,
+            finalScoreB: teamB.score,
+          },
+          confettiKey: state.confettiKey + 1,
+        }));
+        if (sfxEnabled) {
+          playSfx("tada");
+          setTimeout(() => playSfx("cheer"), 250);
+        }
       },
 
       adjustFouls: (team, delta) => {
@@ -505,6 +645,33 @@ export const useGameStore = create<GameStore>()(
       },
 
       dismissFoulsResetPrompt: () => set({ foulsResetPrompt: false }),
+
+      resetScoresOnly: () => {
+        get().pushUndo();
+        set((state) => ({
+          teamA: { ...state.teamA, score: 0, fouls: 0 },
+          teamB: { ...state.teamB, score: 0, fouls: 0 },
+          periodScores: { a: [0], b: [0] },
+          period: 1,
+          foulsResetPrompt: false,
+        }));
+      },
+
+      setTeamLogo: (team, logo) => {
+        const key = team === "a" ? "teamA" : "teamB";
+        set({ [key]: { ...get()[key], logo } });
+      },
+
+      setVibrationEnabled: (v) => set({ vibrationEnabled: v }),
+      setPressTickEnabled: (v) => set({ pressTickEnabled: v }),
+      setAutoStartClockOnScore: (v) => set({ autoStartClockOnScore: v }),
+      setKeepAwakeEnabled: (v) => set({ keepAwakeEnabled: v }),
+      setTargetScoreEnabled: (v) => set({ targetScoreEnabled: v }),
+      setTargetScore: (n) =>
+        set({ targetScore: Math.max(1, Math.floor(n)) }),
+      setConfettiEnabled: (v) => set({ confettiEnabled: v }),
+      setBannersEnabled: (v) => set({ bannersEnabled: v }),
+      setScoreSound: (id) => set({ scoreSoundId: id }),
 
       setPossession: (team) => {
         get().pushUndo();
@@ -1051,6 +1218,15 @@ export const useGameStore = create<GameStore>()(
         hockeyGoalHornHome: state.hockeyGoalHornHome,
         hockeyGoalHornAway: state.hockeyGoalHornAway,
         nhlHornOffsets: state.nhlHornOffsets,
+        vibrationEnabled: state.vibrationEnabled,
+        pressTickEnabled: state.pressTickEnabled,
+        autoStartClockOnScore: state.autoStartClockOnScore,
+        keepAwakeEnabled: state.keepAwakeEnabled,
+        targetScoreEnabled: state.targetScoreEnabled,
+        targetScore: state.targetScore,
+        confettiEnabled: state.confettiEnabled,
+        bannersEnabled: state.bannersEnabled,
+        scoreSoundId: state.scoreSoundId,
       }),
       skipHydration: true,
       merge: (persisted, current) => {
@@ -1084,6 +1260,26 @@ export const useGameStore = create<GameStore>()(
         if (typeof merged.musicVolume !== "number") merged.musicVolume = 0.3;
         if (!merged.periodScores) merged.periodScores = { a: [0], b: [0] };
         merged.foulsResetPrompt = false;
+        if (typeof merged.vibrationEnabled !== "boolean")
+          merged.vibrationEnabled = true;
+        if (typeof merged.pressTickEnabled !== "boolean")
+          merged.pressTickEnabled = false;
+        if (typeof merged.autoStartClockOnScore !== "boolean")
+          merged.autoStartClockOnScore = false;
+        if (typeof merged.keepAwakeEnabled !== "boolean")
+          merged.keepAwakeEnabled = true;
+        if (typeof merged.targetScoreEnabled !== "boolean")
+          merged.targetScoreEnabled = false;
+        if (typeof merged.targetScore !== "number") merged.targetScore = 21;
+        if (typeof merged.confettiEnabled !== "boolean")
+          merged.confettiEnabled = true;
+        if (typeof merged.bannersEnabled !== "boolean")
+          merged.bannersEnabled = true;
+        if (!merged.scoreSoundId) merged.scoreSoundId = "default";
+        if (merged.teamA && merged.teamA.logo === undefined)
+          merged.teamA = { ...merged.teamA, logo: null };
+        if (merged.teamB && merged.teamB.logo === undefined)
+          merged.teamB = { ...merged.teamB, logo: null };
         if (!merged.history) merged.history = [];
         merged.banner = null;
         if (typeof merged.confettiKey !== "number") merged.confettiKey = 0;

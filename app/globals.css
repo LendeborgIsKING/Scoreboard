@@ -21,6 +21,8 @@
   --font-display-midnight: var(--font-cinzel), ui-serif, serif;
   --font-display-gold: var(--font-cormorant), ui-serif, Georgia, serif;
   --font-display-court: var(--font-bungee), ui-sans-serif, sans-serif;
+  --font-display-retro: var(--font-audiowide), ui-sans-serif, sans-serif;
+  --font-display-blackout: var(--font-rajdhani), ui-sans-serif, system-ui, sans-serif;
 }
 
 @media (prefers-color-scheme: dark) {

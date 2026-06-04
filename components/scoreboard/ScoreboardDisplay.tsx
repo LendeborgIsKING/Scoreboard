@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useGameStore } from "@/lib/gameStore";
 import {
   setMusic as setAudioMusic,
+  playSfx,
   playSfxClip,
   prefetchSfxClip,
   setThemeAmbient,
@@ -22,10 +23,12 @@ import {
   ScoreMargin,
   TimeoutDots,
 } from "./BasketballScoreboard";
-import { formatSeconds } from "@/lib/format";
-import { useTimerDisplay } from "@/hooks/useTimerDisplay";
+import { formatClockSmart } from "@/lib/format";
+import { useTimerMs } from "@/hooks/useTimerMs";
 import { useCountdownTick } from "@/hooks/useCountdownTick";
 import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
+import { useWakeLock } from "@/hooks/useWakeLock";
+import { pressFeedback } from "@/lib/feedback";
 import { SettingsModal } from "./SettingsModal";
 import { StatsModal } from "./StatsModal";
 import { HistoryModal } from "./HistoryModal";
@@ -53,7 +56,6 @@ import {
   PauseIcon,
   PencilIcon,
   PlayIcon,
-  UndoIcon,
   WhistleIcon,
 } from "./UiIcons";
 
@@ -141,6 +143,22 @@ function themeTokens(theme: string): ThemeTokens {
         lowTimeColor: "text-amber-100",
         displayFont,
       };
+    case "retro":
+      return {
+        bg: "bg-[radial-gradient(ellipse_at_center,_#04240f_0%,_#000_78%)] text-white",
+        scoreColor: "text-green-400",
+        clockColor: "text-amber-400",
+        lowTimeColor: "text-red-400",
+        displayFont,
+      };
+    case "blackout":
+      return {
+        bg: "bg-black text-white",
+        scoreColor: "text-white",
+        clockColor: "text-white",
+        lowTimeColor: "text-zinc-400",
+        displayFont,
+      };
     default: // dark
       return {
         bg: "bg-black text-white",
@@ -197,13 +215,13 @@ export function ScoreboardDisplay() {
   const setShotClockDuration = useGameStore((s) => s.setShotClockDuration);
   const confettiKey = useGameStore((s) => s.confettiKey);
   const foulsResetPrompt = useGameStore((s) => s.foulsResetPrompt);
-  const undoStack = useGameStore((s) => s.undoStack);
-  const undo = useGameStore((s) => s.undo);
   const adjustTimeouts = useGameStore((s) => s.adjustTimeouts);
+  const adjustScore = useGameStore((s) => s.adjustScore);
   const resetTeamFouls = useGameStore((s) => s.resetTeamFouls);
   const dismissFoulsResetPrompt = useGameStore(
     (s) => s.dismissFoulsResetPrompt,
   );
+  const keepAwakeEnabled = useGameStore((s) => s.keepAwakeEnabled);
 
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [statsOpen, setStatsOpen] = useState(false);
@@ -233,9 +251,24 @@ export function ScoreboardDisplay() {
   const cfg = resolveSportConfig(sportId, customSport);
   const activeVariant = resolveActiveVariant(cfg, timerVariantId);
   const tokens = themeTokens(theme);
-  const clockSec = useTimerDisplay();
+  const clockMs = useTimerMs();
+  const clockSec = Math.ceil(clockMs / 1000);
   useCountdownTick();
   useKeyboardShortcuts(true);
+  useWakeLock(keepAwakeEnabled);
+
+  const longPressB = useLongPress(() => {
+    adjustScore("b", -1);
+    pressFeedback("medium");
+  });
+  const longPressA = useLongPress(() => {
+    adjustScore("a", -1);
+    pressFeedback("medium");
+  });
+  const togglePossession = (side: Side) => {
+    pressFeedback();
+    setPossession(possession === side ? null : side);
+  };
 
   // Auto-resume music when entering the game
   useEffect(() => {
@@ -478,7 +511,7 @@ export function ScoreboardDisplay() {
                       : { duration: 0.2 }
                   }
                 >
-                  {!cfg.noGameClock ? formatSeconds(clockSec) : "--:--"}
+                  {!cfg.noGameClock ? formatClockSmart(clockMs) : "--:--"}
                 </motion.button>
               </div>
             </div>
@@ -492,13 +525,6 @@ export function ScoreboardDisplay() {
           </div>
 
           <div className="flex items-center justify-end gap-2 pt-1.5">
-            {undoStack.length > 0 && (
-              <CircleBtn
-                icon={<UndoIcon className="h-5 w-5" />}
-                onClick={() => undo()}
-                ariaLabel="Undo last action"
-              />
-            )}
             <CircleBtn
               icon={
                 editing ? (
@@ -524,25 +550,44 @@ export function ScoreboardDisplay() {
             <ActionColumn side="b" actions={scoreActions} onTap={onScore} />
 
           <section className="flex flex-col items-center justify-center gap-1.5">
-            <button
-              type="button"
-              onClick={() => onTeamNameClick("b")}
-              className={`flex max-w-full items-center gap-2 break-words text-4xl font-black leading-tight text-white ${editDash}`}
-              style={{ color: teamB.color }}
-            >
-              {showPossession && possession === "b" && (
-                <span className="text-cyan-400" aria-label="possession">
-                  {"\u25B6"}
-                </span>
+            <div className="flex max-w-full items-center gap-2">
+              {showPossession && (
+                <PossessionToggle
+                  active={possession === "b"}
+                  onClick={() => togglePossession("b")}
+                  dir="right"
+                />
               )}
-              {teamB.name}
-            </button>
-            <AnimatedScore
-              value={teamB.score}
-              colorClass={tokens.scoreColor}
-              tint={teamB.color}
-              displayFont={tokens.displayFont}
-            />
+              {teamB.logo && (
+                <img
+                  src={teamB.logo}
+                  alt=""
+                  className="h-9 w-9 shrink-0 rounded object-contain"
+                />
+              )}
+              <button
+                type="button"
+                onClick={() => onTeamNameClick("b")}
+                className={`break-words text-4xl font-black leading-tight text-white ${editDash}`}
+                style={{ color: teamB.color }}
+              >
+                {teamB.name}
+              </button>
+            </div>
+            <div {...longPressB}>
+              <AnimatedScore
+                value={teamB.score}
+                colorClass={tokens.scoreColor}
+                tint={teamB.color}
+                displayFont={tokens.displayFont}
+              />
+            </div>
+            {editing && (
+              <ScoreAdjust
+                onMinus={() => adjustScore("b", -1)}
+                onPlus={() => adjustScore("b", 1)}
+              />
+            )}
             {isBasketball && hasTimeouts && (
               <TimeoutDots
                 remaining={teamB.timeouts}
@@ -624,25 +669,44 @@ export function ScoreboardDisplay() {
 
           {/* Home (A) on the right */}
           <section className="flex flex-col items-center justify-center gap-1.5">
-            <button
-              type="button"
-              onClick={() => onTeamNameClick("a")}
-              className={`flex max-w-full items-center gap-2 break-words text-4xl font-black leading-tight text-white ${editDash}`}
-              style={{ color: teamA.color }}
-            >
-              {teamA.name}
-              {showPossession && possession === "a" && (
-                <span className="text-cyan-400" aria-label="possession">
-                  {"\u25C0"}
-                </span>
+            <div className="flex max-w-full items-center gap-2">
+              <button
+                type="button"
+                onClick={() => onTeamNameClick("a")}
+                className={`break-words text-4xl font-black leading-tight text-white ${editDash}`}
+                style={{ color: teamA.color }}
+              >
+                {teamA.name}
+              </button>
+              {teamA.logo && (
+                <img
+                  src={teamA.logo}
+                  alt=""
+                  className="h-9 w-9 shrink-0 rounded object-contain"
+                />
               )}
-            </button>
-            <AnimatedScore
-              value={teamA.score}
-              colorClass={tokens.scoreColor}
-              tint={teamA.color}
-              displayFont={tokens.displayFont}
-            />
+              {showPossession && (
+                <PossessionToggle
+                  active={possession === "a"}
+                  onClick={() => togglePossession("a")}
+                  dir="left"
+                />
+              )}
+            </div>
+            <div {...longPressA}>
+              <AnimatedScore
+                value={teamA.score}
+                colorClass={tokens.scoreColor}
+                tint={teamA.color}
+                displayFont={tokens.displayFont}
+              />
+            </div>
+            {editing && (
+              <ScoreAdjust
+                onMinus={() => adjustScore("a", -1)}
+                onPlus={() => adjustScore("a", 1)}
+              />
+            )}
             {isBasketball && hasTimeouts && (
               <TimeoutDots
                 remaining={teamA.timeouts}
@@ -653,7 +717,7 @@ export function ScoreboardDisplay() {
             )}
             {/* Sits at the right edge of the home column, just to the left of the action column —
                 guarantees no overlap with the +point buttons. */}
-            <div className="mt-1 flex gap-3 self-end">
+            <div className="mt-1 flex max-w-[120px] flex-wrap justify-end gap-2 self-end">
               <CircleBtn
                 icon={<BuzzerIcon className="h-5 w-5" />}
                 onClick={() => playSfxClip("/sfx/horn.mp3")}
@@ -663,6 +727,16 @@ export function ScoreboardDisplay() {
                 icon={<WhistleIcon className="h-5 w-5" />}
                 onClick={() => playSfxClip("/sfx/whistle.mp3")}
                 ariaLabel="Whistle"
+              />
+              <CircleBtn
+                icon={<CheerIcon className="h-5 w-5" />}
+                onClick={() => playSfx("cheer")}
+                ariaLabel="Crowd cheer"
+              />
+              <CircleBtn
+                icon={<BooIcon className="h-5 w-5" />}
+                onClick={() => playSfx("boo")}
+                ariaLabel="Crowd boo"
               />
             </div>
           </section>
@@ -890,16 +964,121 @@ function CircleBtn({
   return (
     <motion.button
       type="button"
-      onClick={onClick}
-      whileTap={{ scale: 0.9 }}
+      onClick={() => {
+        pressFeedback();
+        onClick();
+      }}
+      whileTap={{ scale: 0.86 }}
       whileHover={{ scale: 1.06 }}
-      transition={{ type: "spring", stiffness: 700, damping: 22 }}
+      transition={{ type: "spring", stiffness: 600, damping: 18 }}
       aria-label={ariaLabel ?? label}
       className="flex h-12 w-12 min-h-[44px] min-w-[44px] touch-manipulation select-none items-center justify-center rounded-full border-2 border-white/50 bg-transparent text-white shadow transition-colors hover:bg-white/10 hover:border-white active:bg-white/20"
       style={{ WebkitTapHighlightColor: "transparent" }}
     >
       {icon ?? <span className="text-2xl font-black">{label}</span>}
     </motion.button>
+  );
+}
+
+/** Long-press helper — fires `cb` after the user holds for `ms`. */
+function useLongPress(cb: () => void, ms = 500) {
+  const timer = useRef<number | null>(null);
+  const clear = () => {
+    if (timer.current) {
+      window.clearTimeout(timer.current);
+      timer.current = null;
+    }
+  };
+  return {
+    onPointerDown: () => {
+      clear();
+      timer.current = window.setTimeout(cb, ms);
+    },
+    onPointerUp: clear,
+    onPointerLeave: clear,
+    onPointerCancel: clear,
+  };
+}
+
+/** Tappable possession arrow — flips possession in normal play. */
+function PossessionToggle({
+  active,
+  onClick,
+  dir,
+}: {
+  active: boolean;
+  onClick: () => void;
+  dir: "left" | "right";
+}) {
+  return (
+    <motion.button
+      type="button"
+      onClick={onClick}
+      whileTap={{ scale: 0.85 }}
+      transition={{ type: "spring", stiffness: 600, damping: 18 }}
+      aria-label="Toggle possession"
+      aria-pressed={active}
+      className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full border text-sm transition ${
+        active
+          ? "border-cyan-400 bg-cyan-400/20 text-cyan-300"
+          : "border-white/25 text-white/30 hover:border-white/60 hover:text-white/70"
+      }`}
+      style={{ WebkitTapHighlightColor: "transparent" }}
+    >
+      {dir === "right" ? "\u25B6" : "\u25C0"}
+    </motion.button>
+  );
+}
+
+/** Compact +/- under a score for quick corrections in edit mode. */
+function ScoreAdjust({
+  onMinus,
+  onPlus,
+}: {
+  onMinus: () => void;
+  onPlus: () => void;
+}) {
+  return (
+    <div className="flex items-center gap-3">
+      <button
+        type="button"
+        onClick={() => {
+          pressFeedback();
+          onMinus();
+        }}
+        className="flex h-8 w-8 items-center justify-center rounded-full border border-white/50 text-lg font-black text-white transition hover:bg-white/10 hover:border-white active:bg-white/20"
+        aria-label="Subtract a point"
+      >
+        −
+      </button>
+      <button
+        type="button"
+        onClick={() => {
+          pressFeedback();
+          onPlus();
+        }}
+        className="flex h-8 w-8 items-center justify-center rounded-full border border-white/50 text-lg font-black text-white transition hover:bg-white/10 hover:border-white active:bg-white/20"
+        aria-label="Add a point"
+      >
+        +
+      </button>
+    </div>
+  );
+}
+
+function CheerIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} fill="currentColor" aria-hidden>
+      <path d="M2 13.5 13 9l7 2.5v3L13 17 2 13.5Zm12 4.9 6-2.1v3.2a1 1 0 0 1-1.3.95L14 19v-.6ZM13 3l1.2 2.5L17 6.7l-2.5 1.2L13 10.4l-1.2-2.5L9.3 6.7l2.5-1.2L13 3Z" />
+    </svg>
+  );
+}
+
+function BooIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} fill="currentColor" aria-hidden>
+      <path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Zm-3.5 7a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3Zm7 0a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3ZM8 17c.8-1.8 2.3-3 4-3s3.2 1.2 4 3c-1.2-.7-2.6-1-4-1s-2.8.3-4 1Z" />
+    </svg>
   );
 }
 

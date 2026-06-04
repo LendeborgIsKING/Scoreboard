@@ -3,6 +3,8 @@
 import { useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useGameStore } from "@/lib/gameStore";
+import { resolveActiveVariant, resolveSportConfig } from "@/lib/sportRegistry";
+import { shareScoreboardImage } from "@/lib/scoreboardImage";
 
 type Particle = {
   x: number;
@@ -41,6 +43,32 @@ export function GameOverOverlay() {
   const dismiss = useGameStore((s) => s.dismissGameOverCelebration);
   const resetGame = useGameStore((s) => s.resetGame);
   const setUiPhase = useGameStore((s) => s.setUiPhase);
+  const teamA = useGameStore((s) => s.teamA);
+  const teamB = useGameStore((s) => s.teamB);
+  const periodScores = useGameStore((s) => s.periodScores);
+  const sportId = useGameStore((s) => s.sportId);
+  const customSport = useGameStore((s) => s.customSport);
+  const timerVariantId = useGameStore((s) => s.timerVariantId);
+  const period = useGameStore((s) => s.period);
+
+  const cfg = resolveSportConfig(sportId, customSport);
+  const variant = resolveActiveVariant(cfg, timerVariantId);
+  const periodLabel = variant?.periodLabel ?? cfg.periodLabel;
+  const recapCols = Math.max(
+    periodScores.a.length,
+    periodScores.b.length,
+    1,
+  );
+
+  const onShare = () =>
+    void shareScoreboardImage({
+      sportName: cfg.name,
+      periodLabel,
+      period,
+      teamA: { name: teamA.name, color: teamA.color, score: teamA.score },
+      teamB: { name: teamB.name, color: teamB.color, score: teamB.score },
+      periodScores,
+    });
 
   return (
     <AnimatePresence>
@@ -162,6 +190,52 @@ export function GameOverOverlay() {
             </motion.div>
 
             <motion.div
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.7, duration: 0.4 }}
+              className="mt-4 w-full max-w-md overflow-hidden rounded-xl border border-white/10 bg-black/30"
+            >
+              <table className="w-full text-sm text-white">
+                <thead className="bg-white/5 text-[10px] uppercase tracking-widest text-white/50">
+                  <tr>
+                    <th className="px-3 py-1.5 text-left">Team</th>
+                    {Array.from({ length: recapCols }).map((_, i) => (
+                      <th key={i} className="px-2 py-1.5 text-center">
+                        {periodLabel.length <= 2
+                          ? `${periodLabel} ${i + 1}`
+                          : `Q${i + 1}`}
+                      </th>
+                    ))}
+                    <th className="px-3 py-1.5 text-right">T</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-white/5">
+                  {([
+                    { t: teamB, arr: periodScores.b },
+                    { t: teamA, arr: periodScores.a },
+                  ] as const).map((row, ri) => (
+                    <tr key={ri}>
+                      <td
+                        className="px-3 py-1.5 text-left font-bold"
+                        style={{ color: row.t.color }}
+                      >
+                        {row.t.name}
+                      </td>
+                      {Array.from({ length: recapCols }).map((_, i) => (
+                        <td key={i} className="px-2 py-1.5 text-center tabular-nums text-white/80">
+                          {row.arr[i] ?? 0}
+                        </td>
+                      ))}
+                      <td className="px-3 py-1.5 text-right font-black tabular-nums text-yellow-300">
+                        {row.t.score}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </motion.div>
+
+            <motion.div
               initial={{ opacity: 0, y: 16 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.85, duration: 0.4 }}
@@ -194,6 +268,17 @@ export function GameOverOverlay() {
                 style={{ WebkitTapHighlightColor: "transparent" }}
               >
                 Exit
+              </motion.button>
+              <motion.button
+                type="button"
+                whileTap={{ scale: 0.94 }}
+                whileHover={{ scale: 1.05 }}
+                transition={{ type: "spring", stiffness: 700, damping: 22 }}
+                onClick={onShare}
+                className="rounded-full border-2 border-white/50 bg-transparent px-6 py-3 text-base font-bold uppercase tracking-[0.2em] text-white transition-colors hover:bg-white/10 hover:border-white"
+                style={{ WebkitTapHighlightColor: "transparent" }}
+              >
+                Share
               </motion.button>
               <motion.button
                 type="button"

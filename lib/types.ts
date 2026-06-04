@@ -62,7 +62,19 @@ export type ThemeId =
   | "ice"
   | "midnight"
   | "gold"
-  | "court";
+  | "court"
+  | "retro"
+  | "blackout";
+
+/** Sound played when a team scores. "default" keeps per-sport behavior. */
+export type ScoreSoundId =
+  | "default"
+  | "swish"
+  | "chime"
+  | "ding"
+  | "horn"
+  | "tada"
+  | "none";
 
 export type MusicTrackId = "none" | "hype" | "anthem";
 
@@ -99,6 +111,8 @@ export interface TeamState {
   score: number;
   fouls: number;
   timeouts: number;
+  /** Optional uploaded logo as a small data URL, shown next to the name. */
+  logo?: string | null;
 }
 
 export interface TimerState {

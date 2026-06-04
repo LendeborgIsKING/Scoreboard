@@ -14,6 +14,8 @@ export const THEME_SCORE_FONT: Record<ThemeId, string> = {
   midnight: "font-display-midnight",
   gold: "font-display-gold",
   court: "font-display-court",
+  retro: "font-display-retro",
+  blackout: "font-display-blackout",
 };
 
 export function scoreFontClass(theme: string): string {

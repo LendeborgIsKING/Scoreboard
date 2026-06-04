@@ -12,7 +12,6 @@ import { playSfx } from "@/lib/audio";
  * - B: away team primary score
  * - 1/2/3: home actions by index; Shift+1/2/3: away
  * - F/V: home foul +/-; G/N: away foul +/-
- * - U: undo
  * - R: reset clock
  * - S: swap teams
  * - M: mute/unmute sfx
@@ -78,10 +77,6 @@ export function useKeyboardShortcuts(active: boolean) {
         case "n":
         case "N":
           s.adjustFouls("b", -1);
-          break;
-        case "u":
-        case "U":
-          s.undo();
           break;
         case "r":
         case "R":

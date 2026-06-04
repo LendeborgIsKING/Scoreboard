@@ -15,7 +15,8 @@ export type SfxName =
   | "swoosh"
   | "ding"
   | "tada"
-  | "click";
+  | "click"
+  | "tick";
 
 export type MusicTrack = "none" | "hype" | "anthem";
 
@@ -220,6 +221,17 @@ function clickSfx(c: AudioContext, dest: AudioNode) {
   o.stop(c.currentTime + 0.06);
 }
 
+/** Very short, soft tap — used for button press feedback. */
+function tickSfx(c: AudioContext, dest: AudioNode) {
+  const o = c.createOscillator();
+  o.type = "sine";
+  o.frequency.value = 2400;
+  const g = envGain(c, 0.08, 0.001, 0.03);
+  o.connect(g).connect(dest);
+  o.start();
+  o.stop(c.currentTime + 0.04);
+}
+
 export function playSfx(name: SfxName) {
   const c = ensureCtx();
   if (!c || !masterSfxGain) return;
@@ -254,6 +266,9 @@ export function playSfx(name: SfxName) {
       break;
     case "click":
       clickSfx(c, masterSfxGain);
+      break;
+    case "tick":
+      tickSfx(c, masterSfxGain);
       break;
   }
 }
