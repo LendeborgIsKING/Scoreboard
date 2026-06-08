@@ -298,7 +298,14 @@ export function ScoreboardDisplay() {
 
   const scoreActions = useMemo(() => cfg.scoring.slice(0, 4), [cfg.scoring]);
 
-  const onScore = (team: Side, actionId: string) => addScore(team, actionId);
+  const onScore = (team: Side, actionId: string) => {
+    if (editing) {
+      const action = scoreActions.find((a) => a.id === actionId);
+      if (action) adjustScore(team, -action.value);
+      return;
+    }
+    addScore(team, actionId);
+  };
 
   const periodLabel = activeVariant?.periodLabel ?? cfg.periodLabel;
   const periodText = `${periodLabel} ${period}`;
@@ -547,9 +554,14 @@ export function ScoreboardDisplay() {
         <div className="relative z-10 mt-0 flex-1">
           <div className="grid grid-cols-[auto_1fr_auto_1fr_auto] items-start gap-x-5 gap-y-2 px-5 pb-2 pt-1">
             {/* Away (B) on the left */}
-            <ActionColumn side="b" actions={scoreActions} onTap={onScore} />
+            <ActionColumn
+              side="b"
+              actions={scoreActions}
+              editing={editing}
+              onTap={onScore}
+            />
 
-          <section className="flex flex-col items-center justify-center gap-1.5">
+          <section className="flex w-full flex-col items-center justify-center gap-1.5">
             <div className="flex max-w-full items-center gap-2">
               {showPossession && (
                 <PossessionToggle
@@ -574,7 +586,7 @@ export function ScoreboardDisplay() {
                 {teamB.name}
               </button>
             </div>
-            <div {...longPressB}>
+            <div className="w-full" {...longPressB}>
               <AnimatedScore
                 value={teamB.score}
                 colorClass={tokens.scoreColor}
@@ -668,7 +680,7 @@ export function ScoreboardDisplay() {
           </section>
 
           {/* Home (A) on the right */}
-          <section className="flex flex-col items-center justify-center gap-1.5">
+          <section className="flex w-full flex-col items-center justify-center gap-1.5">
             <div className="flex max-w-full items-center gap-2">
               <button
                 type="button"
@@ -693,7 +705,7 @@ export function ScoreboardDisplay() {
                 />
               )}
             </div>
-            <div {...longPressA}>
+            <div className="w-full" {...longPressA}>
               <AnimatedScore
                 value={teamA.score}
                 colorClass={tokens.scoreColor}
@@ -741,7 +753,12 @@ export function ScoreboardDisplay() {
             </div>
           </section>
 
-            <ActionColumn side="a" actions={scoreActions} onTap={onScore} />
+            <ActionColumn
+              side="a"
+              actions={scoreActions}
+              editing={editing}
+              onTap={onScore}
+            />
           </div>
         </div>
 
@@ -1132,38 +1149,53 @@ function MusicToggleButton({
   );
 }
 
+function actionLabel(
+  action: { label: string; value: number },
+  editing: boolean,
+) {
+  if (!editing) return action.label;
+  if (action.label.startsWith("+")) return action.label.replace("+", "−");
+  return `−${action.value}`;
+}
+
 function ActionColumn({
   side,
   actions,
+  editing,
   onTap,
 }: {
   side: "a" | "b";
   actions: { id: string; label: string; value: number }[];
+  editing: boolean;
   onTap: (side: "a" | "b", actionId: string) => void;
 }) {
   return (
     <div className="relative z-30 flex flex-col items-center justify-center gap-2 py-1">
-      {actions.map((a) => (
-        <motion.button
-          key={`${side}-${a.id}`}
-          type="button"
-          // Fire on the pointer-down event for max responsiveness — score the
-          // moment a finger lands rather than waiting for tap completion.
-          onPointerDown={(e) => {
-            // Only main button / primary touch.
-            if (e.button !== undefined && e.button !== 0) return;
-            onTap(side, a.id);
-          }}
-          whileTap={{ scale: 0.88 }}
-          whileHover={{ scale: 1.06 }}
-          transition={{ type: "spring", stiffness: 700, damping: 22 }}
-          className="flex h-14 w-14 min-h-[44px] min-w-[44px] touch-manipulation select-none items-center justify-center rounded-full border-2 border-white/50 bg-transparent text-xl font-black text-white shadow transition-colors hover:bg-white/10 hover:border-white active:bg-white/20"
-          style={{ WebkitTapHighlightColor: "transparent" }}
-          title={`${a.label} (${a.value})`}
-        >
-          {a.label}
-        </motion.button>
-      ))}
+      {actions.map((a) => {
+        const label = actionLabel(a, editing);
+        return (
+          <motion.button
+            key={`${side}-${a.id}`}
+            type="button"
+            // Fire on the pointer-down event for max responsiveness — score the
+            // moment a finger lands rather than waiting for tap completion.
+            onPointerDown={(e) => {
+              // Only main button / primary touch.
+              if (e.button !== undefined && e.button !== 0) return;
+              pressFeedback();
+              onTap(side, a.id);
+            }}
+            whileTap={{ scale: 0.88 }}
+            whileHover={{ scale: 1.06 }}
+            transition={{ type: "spring", stiffness: 700, damping: 22 }}
+            className="flex h-14 w-14 min-h-[44px] min-w-[44px] touch-manipulation select-none items-center justify-center rounded-full border-2 border-white/50 bg-transparent text-xl font-black text-white shadow transition-colors hover:bg-white/10 hover:border-white active:bg-white/20"
+            style={{ WebkitTapHighlightColor: "transparent" }}
+            title={editing ? `${label} (${-a.value})` : `${a.label} (${a.value})`}
+          >
+            {label}
+          </motion.button>
+        );
+      })}
     </div>
   );
 }
