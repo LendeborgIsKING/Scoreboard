@@ -19,14 +19,15 @@ export function ScoreboardApp() {
   const uiPhase = useGameStore((s) => s.uiPhase);
   useCountdownTick();
 
-  // Lock to landscape as soon as the app loads so the screen flips immediately.
+  // Lock to landscape only during the game phase, and unlock when exiting.
   useEffect(() => {
     if (typeof window === "undefined") return;
     const orientation = window.screen.orientation as ScreenOrientationWithLock;
-    if (orientation?.lock) {
-      orientation.lock("landscape").catch(() => {});
-    }
-    return () => {
+    if (uiPhase === "game") {
+      if (orientation?.lock) {
+        orientation.lock("landscape").catch(() => {});
+      }
+    } else {
       if (orientation?.unlock) {
         try {
           orientation.unlock();
@@ -34,8 +35,8 @@ export function ScoreboardApp() {
           /* ignore */
         }
       }
-    };
-  }, []);
+    }
+  }, [uiPhase]);
 
   useEffect(() => {
     const finish = () => setHydrated(true);

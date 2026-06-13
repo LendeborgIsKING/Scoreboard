@@ -63,3 +63,13 @@ body {
 .hide-scrollbar::-webkit-scrollbar {
   display: none;
 }
+
+/* Mobile device fullscreen override for scoreboard display and modals */
+.mobile-device .mobile-fullscreen {
+  position: static !important;
+  height: 100% !important;
+  width: 100% !important;
+  transform: none !important;
+  top: auto !important;
+  left: auto !important;
+}
