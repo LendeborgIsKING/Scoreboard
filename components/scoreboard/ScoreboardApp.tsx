@@ -19,25 +19,6 @@ export function ScoreboardApp() {
   const uiPhase = useGameStore((s) => s.uiPhase);
   useCountdownTick();
 
-  // Lock to landscape only during the game phase, and unlock when exiting.
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const orientation = window.screen.orientation as ScreenOrientationWithLock;
-    if (uiPhase === "game") {
-      if (orientation?.lock) {
-        orientation.lock("landscape").catch(() => {});
-      }
-    } else {
-      if (orientation?.unlock) {
-        try {
-          orientation.unlock();
-        } catch {
-          /* ignore */
-        }
-      }
-    }
-  }, [uiPhase]);
-
   useEffect(() => {
     const finish = () => setHydrated(true);
     const unsub = useGameStore.persist.onFinishHydration(finish);

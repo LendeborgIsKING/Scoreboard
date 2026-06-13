@@ -166,6 +166,8 @@ export interface GameState extends GameStateSlice {
   bannersEnabled: boolean;
   /** Which sound plays when a team scores. */
   scoreSoundId: ScoreSoundId;
+  /** Rotation angle for the portrait mobile CSS rotation (90 or 270) */
+  cssRotation: 90 | 270;
 }
 
 interface GameStateSlice {
@@ -252,6 +254,7 @@ type GameStore = GameState & {
   applyOfficialPeriodTimer: () => void;
   applyOvertimeTimer: () => void;
   setUiPhase: (phase: UiPhase) => void;
+  toggleCssRotation: () => void;
   setShotClockEnabled: (v: boolean) => void;
   setShotClockDuration: (seconds: number) => void;
   startShotClock: () => void;
@@ -318,6 +321,7 @@ export const useGameStore = create<GameStore>()(
       presentationMode: false,
       hypeMode: false,
       theme: "dark",
+      cssRotation: 90,
       controlsCollapsed: false,
       uiPhase: "menu",
       shotClock: initialShotClock,
@@ -987,6 +991,10 @@ export const useGameStore = create<GameStore>()(
       setTheme: (t) => set({ theme: t }),
       setControlsCollapsed: (v) => set({ controlsCollapsed: v }),
       setUiPhase: (phase) => set({ uiPhase: phase }),
+      toggleCssRotation: () =>
+        set((state) => ({
+          cssRotation: state.cssRotation === 90 ? 270 : 90,
+        })),
 
       setShotClockEnabled: (v) =>
         set((state) => ({

@@ -7,6 +7,7 @@ import {
   type ReactNode,
 } from "react";
 import { usePortraitMobile } from "@/hooks/usePortraitMobile";
+import { useGameStore } from "@/lib/gameStore";
 
 /** Typical smartphone content width (CSS px) — aligns with iPhone 14/15 logical ~390pt */
 export const MOBILE_APP_WIDTH_PX = 390;
@@ -137,6 +138,7 @@ export function MobileAppShell({
 function AutoFitGameShell({ children }: { children: ReactNode }) {
   const measureRef = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(1);
+  const cssRotation = useGameStore((s) => s.cssRotation);
 
   useEffect(() => {
     const compute = () => {
@@ -145,7 +147,7 @@ function AutoFitGameShell({ children }: { children: ReactNode }) {
       const availW = el.clientWidth;
       const availH = el.clientHeight;
       if (!availW || !availH) return;
-      // After 90° CW rotation, the design 844×390 canvas becomes
+      // After 90° CW or 270° CCW rotation, the design 844×390 canvas becomes
       // visually 390 wide × 844 tall — fit that to the available box.
       const s = Math.min(availW / DESIGN_HEIGHT, availH / DESIGN_WIDTH);
       setScale(Math.max(0.01, s));
@@ -185,7 +187,7 @@ function AutoFitGameShell({ children }: { children: ReactNode }) {
           boxSizing: "border-box",
         }}
       >
-        {/* The design canvas: fixed 844×390, centered, rotated CW, scaled
+        {/* The design canvas: fixed 844×390, centered, rotated, scaled
             to fit. Centering via translate(-50%, -50%) on the unrotated
             box then layering rotate+scale keeps the visual centered. */}
         <div
@@ -195,15 +197,18 @@ function AutoFitGameShell({ children }: { children: ReactNode }) {
             left: "50%",
             width: DESIGN_WIDTH,
             height: DESIGN_HEIGHT,
-            transform: `translate(-50%, -50%) rotate(90deg) scale(${scale})`,
+            transform: `translate(-50%, -50%) rotate(${cssRotation}deg) scale(${scale})`,
             transformOrigin: "center center",
             boxSizing: "border-box",
-            // Since the design canvas is rotated 90deg CW:
-            // - Rotated LEFT of the canvas corresponds to physical TOP of the phone.
-            // - Rotated RIGHT of the canvas corresponds to physical BOTTOM of the phone.
-            // So we add padding on left/right to protect against top/bottom safe area insets!
-            paddingLeft: "max(1.5rem, env(safe-area-inset-top))",
-            paddingRight: "max(1.5rem, env(safe-area-inset-bottom))",
+            // Since the design canvas is rotated:
+            // - At 90deg CW: Left corresponds to physical TOP of the phone, Right to physical BOTTOM.
+            // - At 270deg CCW: Left corresponds to physical BOTTOM of the phone, Right to physical TOP.
+            paddingLeft: cssRotation === 90
+              ? "max(1.5rem, env(safe-area-inset-top))"
+              : "max(1.5rem, env(safe-area-inset-bottom))",
+            paddingRight: cssRotation === 90
+              ? "max(1.5rem, env(safe-area-inset-bottom))"
+              : "max(1.5rem, env(safe-area-inset-top))",
           }}
         >
           <div
