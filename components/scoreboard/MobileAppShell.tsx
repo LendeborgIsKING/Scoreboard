@@ -7,6 +7,7 @@ import {
   type ReactNode,
 } from "react";
 import { usePortraitMobile } from "@/hooks/usePortraitMobile";
+import { useIsMobileDevice } from "@/hooks/useIsMobileDevice";
 import { useGameStore } from "@/lib/gameStore";
 
 /** Typical smartphone content width (CSS px) — aligns with iPhone 14/15 logical ~390pt */
@@ -15,28 +16,6 @@ export const MOBILE_APP_WIDTH_PX = 390;
 /** The scoreboard is laid out on a fixed landscape canvas of this size. */
 const DESIGN_WIDTH = 844;
 const DESIGN_HEIGHT = 390;
-
-function useIsMobileDevice() {
-  const [isMobile, setIsMobile] = useState(false);
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-    const check = () => {
-      const touchSupport =
-        "ontouchstart" in window ||
-        navigator.maxTouchPoints > 0;
-      const smallScreen =
-        window.innerWidth < 1024 || window.innerHeight < 1024;
-      setIsMobile(touchSupport && smallScreen);
-    };
-    check();
-    window.addEventListener("resize", check);
-    return () => window.removeEventListener("resize", check);
-  }, []);
-
-  return { isMobile, mounted };
-}
 
 /**
  * One column, phone-sized: full screen on mobile devices, capped at
@@ -55,6 +34,7 @@ export function MobileAppShell({
 }) {
   const isPortraitMobile = usePortraitMobile();
   const { isMobile, mounted } = useIsMobileDevice();
+  const displayFlipped = useGameStore((s) => s.displayFlipped);
 
   useEffect(() => {
     if (!mounted) return;
@@ -85,17 +65,31 @@ export function MobileAppShell({
     }
 
     // Physically in landscape (or menu/setup in portrait)
+    const flip = isGame && displayFlipped;
     return (
       <div
         className="relative flex min-h-[100dvh] w-full flex-col bg-black overflow-hidden"
         style={{
-          paddingLeft: isGame ? "max(1.5rem, env(safe-area-inset-left))" : undefined,
-          paddingRight: isGame ? "max(1.5rem, env(safe-area-inset-right))" : undefined,
-          paddingTop: isGame ? "env(safe-area-inset-top)" : undefined,
-          paddingBottom: isGame ? "env(safe-area-inset-bottom)" : undefined,
+          // When flipped 180°, the physical insets swap sides — so swap the
+          // padding too, keeping buttons clear of the notch / home bar.
+          paddingLeft: isGame
+            ? `max(1.5rem, env(safe-area-inset-${flip ? "right" : "left"}))`
+            : undefined,
+          paddingRight: isGame
+            ? `max(1.5rem, env(safe-area-inset-${flip ? "left" : "right"}))`
+            : undefined,
+          paddingTop: isGame
+            ? `env(safe-area-inset-${flip ? "bottom" : "top"})`
+            : undefined,
+          paddingBottom: isGame
+            ? `env(safe-area-inset-${flip ? "top" : "bottom"})`
+            : undefined,
         }}
       >
-        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto overflow-x-hidden overscroll-y-contain touch-pan-y">
+        <div
+          className="flex min-h-0 flex-1 flex-col overflow-y-auto overflow-x-hidden overscroll-y-contain touch-pan-y"
+          style={flip ? { transform: "rotate(180deg)" } : undefined}
+        >
           {children}
         </div>
       </div>
@@ -138,7 +132,9 @@ export function MobileAppShell({
 function AutoFitGameShell({ children }: { children: ReactNode }) {
   const measureRef = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(1);
-  const cssRotation = useGameStore((s) => s.cssRotation);
+  const displayFlipped = useGameStore((s) => s.displayFlipped);
+  // Base portrait rotation is 90° CW; flipping adds 180° → 270°.
+  const rotation = displayFlipped ? 270 : 90;
 
   useEffect(() => {
     const compute = () => {
@@ -197,16 +193,16 @@ function AutoFitGameShell({ children }: { children: ReactNode }) {
             left: "50%",
             width: DESIGN_WIDTH,
             height: DESIGN_HEIGHT,
-            transform: `translate(-50%, -50%) rotate(${cssRotation}deg) scale(${scale})`,
+            transform: `translate(-50%, -50%) rotate(${rotation}deg) scale(${scale})`,
             transformOrigin: "center center",
             boxSizing: "border-box",
             // Since the design canvas is rotated:
             // - At 90deg CW: Left corresponds to physical TOP of the phone, Right to physical BOTTOM.
             // - At 270deg CCW: Left corresponds to physical BOTTOM of the phone, Right to physical TOP.
-            paddingLeft: cssRotation === 90
+            paddingLeft: rotation === 90
               ? "max(1.5rem, env(safe-area-inset-top))"
               : "max(1.5rem, env(safe-area-inset-bottom))",
-            paddingRight: cssRotation === 90
+            paddingRight: rotation === 90
               ? "max(1.5rem, env(safe-area-inset-bottom))"
               : "max(1.5rem, env(safe-area-inset-top))",
           }}

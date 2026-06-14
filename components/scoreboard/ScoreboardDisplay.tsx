@@ -28,7 +28,7 @@ import { useTimerMs } from "@/hooks/useTimerMs";
 import { useCountdownTick } from "@/hooks/useCountdownTick";
 import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
 import { useWakeLock } from "@/hooks/useWakeLock";
-import { usePortraitMobile } from "@/hooks/usePortraitMobile";
+import { useIsMobileDevice } from "@/hooks/useIsMobileDevice";
 import { pressFeedback } from "@/lib/feedback";
 import { SettingsModal } from "./SettingsModal";
 import { StatsModal } from "./StatsModal";
@@ -224,8 +224,8 @@ export function ScoreboardDisplay() {
     (s) => s.dismissFoulsResetPrompt,
   );
   const keepAwakeEnabled = useGameStore((s) => s.keepAwakeEnabled);
-  const toggleCssRotation = useGameStore((s) => s.toggleCssRotation);
-  const isPortraitMobile = usePortraitMobile();
+  const toggleDisplayFlip = useGameStore((s) => s.toggleDisplayFlip);
+  const { isMobile } = useIsMobileDevice();
 
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [statsOpen, setStatsOpen] = useState(false);
@@ -397,10 +397,10 @@ export function ScoreboardDisplay() {
               onClick={() => setUiPhase("menu")}
               ariaLabel="Exit to menu"
             />
-            {isPortraitMobile && (
+            {isMobile && (
               <CircleBtn
                 icon={<RotateIcon className="h-5 w-5" />}
-                onClick={toggleCssRotation}
+                onClick={toggleDisplayFlip}
                 ariaLabel="Flip screen orientation 180 degrees"
               />
             )}
