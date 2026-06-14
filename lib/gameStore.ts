@@ -576,7 +576,7 @@ export const useGameStore = create<GameStore>()(
               playSfxClip(
                 "/music/mike-breen-double-bang.mp3",
                 49,
-                53.5,
+                54,
               );
             } else {
               playSfxClip(
