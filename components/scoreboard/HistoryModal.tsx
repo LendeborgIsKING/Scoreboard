@@ -2,8 +2,8 @@
 
 import { motion } from "framer-motion";
 import { useGameStore } from "@/lib/gameStore";
+import { useIsMobileDevice } from "@/hooks/useIsMobileDevice";
 import { CloseIcon } from "./UiIcons";
-import { MOBILE_SCOREBOARD_SHELL } from "@/lib/mobileClasses";
 
 type Props = { onClose: () => void };
 
@@ -11,6 +11,10 @@ export function HistoryModal({ onClose }: Props) {
   const history = useGameStore((s) => s.history);
   const finalize = useGameStore((s) => s.finalizeGame);
   const clear = useGameStore((s) => s.clearHistory);
+  const { isMobile } = useIsMobileDevice();
+  const shellClass = isMobile
+    ? "absolute inset-0 flex min-h-0 w-full flex-col bg-black p-5 text-white"
+    : "absolute left-1/2 top-1/2 flex h-[390px] w-[844px] min-h-0 -translate-x-1/2 -translate-y-1/2 rotate-90 flex-col bg-black p-5 text-white";
 
   return (
     <motion.div
@@ -25,7 +29,7 @@ export function HistoryModal({ onClose }: Props) {
         animate={{ opacity: 1, scale: 1 }}
         exit={{ opacity: 0, scale: 0.97 }}
         onClick={(e) => e.stopPropagation()}
-        className={`absolute left-1/2 top-1/2 flex h-[390px] w-[844px] min-h-0 -translate-x-1/2 -translate-y-1/2 rotate-90 flex-col bg-black p-5 text-white ${MOBILE_SCOREBOARD_SHELL}`}
+        className={shellClass}
       >
         <div className="mb-3 flex shrink-0 items-center justify-between gap-2 max-sm:flex-wrap">
           <h2 className="font-stencil text-2xl max-sm:text-xl sm:text-3xl">History</h2>

@@ -3,6 +3,7 @@
 import { useRef, useState, type ReactNode } from "react";
 import { motion } from "framer-motion";
 import { useGameStore } from "@/lib/gameStore";
+import { useIsMobileDevice } from "@/hooks/useIsMobileDevice";
 import { resolveSportConfig, effectiveMaxPeriods, resolveActiveVariant } from "@/lib/sportRegistry";
 import { BoxScoreTable } from "./BasketballScoreboard";
 import { playSfx, playSfxClip } from "@/lib/audio";
@@ -17,7 +18,6 @@ import {
   MenuIcon,
   PencilIcon,
 } from "./UiIcons";
-import { MOBILE_SCOREBOARD_SHELL } from "@/lib/mobileClasses";
 
 type Props = {
   onClose: () => void;
@@ -81,6 +81,10 @@ export function SettingsModal({
   onHistory,
 }: Props) {
   const [panel, setPanel] = useState<Panel>("menu");
+  const { isMobile } = useIsMobileDevice();
+  const shellClass = isMobile
+    ? "absolute inset-0 flex min-h-0 w-full flex-col bg-black text-white"
+    : "absolute left-1/2 top-1/2 flex h-[390px] w-[844px] min-h-0 -translate-x-1/2 -translate-y-1/2 rotate-90 flex-col bg-black text-white";
 
   return (
     <motion.div
@@ -97,7 +101,7 @@ export function SettingsModal({
         exit={{ opacity: 0, scale: 0.98 }}
         transition={{ duration: 0.22, ease: "easeOut" }}
         onClick={(e) => e.stopPropagation()}
-        className={`absolute left-1/2 top-1/2 flex h-[390px] w-[844px] min-h-0 -translate-x-1/2 -translate-y-1/2 rotate-90 flex-col bg-black text-white ${MOBILE_SCOREBOARD_SHELL}`}
+        className={shellClass}
       >
         <button
           type="button"

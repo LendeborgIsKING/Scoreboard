@@ -2,9 +2,9 @@
 
 import { motion } from "framer-motion";
 import { useGameStore } from "@/lib/gameStore";
+import { useIsMobileDevice } from "@/hooks/useIsMobileDevice";
 import { resolveActiveVariant, resolveSportConfig } from "@/lib/sportRegistry";
 import { CloseIcon } from "./UiIcons";
-import { MOBILE_SCOREBOARD_SHELL } from "@/lib/mobileClasses";
 
 type Props = { onClose: () => void };
 
@@ -114,6 +114,11 @@ function ModalShell({
   onClose: () => void;
   title: string;
 }) {
+  const { isMobile } = useIsMobileDevice();
+  const shellClass = isMobile
+    ? "absolute inset-0 flex min-h-0 w-full flex-col bg-black p-5 text-white"
+    : "absolute left-1/2 top-1/2 flex h-[390px] w-[844px] min-h-0 -translate-x-1/2 -translate-y-1/2 rotate-90 flex-col bg-black p-5 text-white";
+
   return (
     <motion.div
       className="absolute inset-0 z-50 bg-black/80 backdrop-blur-sm"
@@ -127,7 +132,7 @@ function ModalShell({
         animate={{ opacity: 1, scale: 1 }}
         exit={{ opacity: 0, scale: 0.97 }}
         onClick={(e) => e.stopPropagation()}
-        className={`absolute left-1/2 top-1/2 flex h-[390px] w-[844px] min-h-0 -translate-x-1/2 -translate-y-1/2 rotate-90 flex-col bg-black p-5 text-white ${MOBILE_SCOREBOARD_SHELL}`}
+        className={shellClass}
       >
         <div className="mb-3 flex items-center justify-between">
           <h2 className="font-stencil text-3xl">{title}</h2>
