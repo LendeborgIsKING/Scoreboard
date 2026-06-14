@@ -6,7 +6,6 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { usePortraitMobile } from "@/hooks/usePortraitMobile";
 import { useIsMobileDevice } from "@/hooks/useIsMobileDevice";
 import { useGameStore } from "@/lib/gameStore";
 
@@ -18,12 +17,13 @@ const DESIGN_WIDTH = 844;
 const DESIGN_HEIGHT = 390;
 
 /**
- * One column, phone-sized: full screen on mobile devices, capped at
- * MOBILE_APP_WIDTH_PX on desktop screens.
+ * Phone-sized shell.
  *
- * On a phone in portrait, during a game we CSS-rotate the entire design canvas
- * 90° and scale it uniformly to fit whatever screen size we're on. The result
- * is the scoreboard looks identical (and proportional) on every device.
+ * During a game on a mobile device, the fixed 844×390 landscape scoreboard is
+ * rendered at its native size and then uniformly SCALED to fit the available
+ * screen (inside the safe area). This guarantees nothing is ever cut off, and
+ * it auto-rotates to stay upright in either orientation — matching the behavior
+ * of native scoreboard apps. Menu / setup screens stay normal portrait.
  */
 export function MobileAppShell({
   children,
@@ -32,9 +32,7 @@ export function MobileAppShell({
   children: ReactNode;
   isGame?: boolean;
 }) {
-  const isPortraitMobile = usePortraitMobile();
   const { isMobile, mounted } = useIsMobileDevice();
-  const displayFlipped = useGameStore((s) => s.displayFlipped);
 
   useEffect(() => {
     if (!mounted) return;
@@ -48,9 +46,6 @@ export function MobileAppShell({
     };
   }, [isMobile, mounted]);
 
-  // Only rotate once the user has started a game — menu and setup stay normal portrait.
-  const shouldRotate = isPortraitMobile && !!isGame;
-
   if (!mounted) {
     return (
       <div className="flex min-h-[100dvh] w-full flex-col bg-black">
@@ -60,43 +55,30 @@ export function MobileAppShell({
   }
 
   if (isMobile) {
-    if (shouldRotate) {
+    // The live scoreboard is always rendered through the auto-fit shell so it
+    // scales to fit and rotates with the device. Menu / setup stay portrait.
+    if (isGame) {
       return <AutoFitGameShell>{children}</AutoFitGameShell>;
     }
 
-    // Physically in landscape (or menu/setup in portrait)
-    const flip = isGame && displayFlipped;
     return (
       <div
         className="relative flex min-h-[100dvh] w-full flex-col bg-black overflow-hidden"
         style={{
-          // When flipped 180°, the physical insets swap sides — so swap the
-          // padding too, keeping buttons clear of the notch / home bar.
-          paddingLeft: isGame
-            ? `max(1.5rem, env(safe-area-inset-${flip ? "right" : "left"}))`
-            : undefined,
-          paddingRight: isGame
-            ? `max(1.5rem, env(safe-area-inset-${flip ? "left" : "right"}))`
-            : undefined,
-          paddingTop: isGame
-            ? `env(safe-area-inset-${flip ? "bottom" : "top"})`
-            : undefined,
-          paddingBottom: isGame
-            ? `env(safe-area-inset-${flip ? "top" : "bottom"})`
-            : undefined,
+          paddingTop: "env(safe-area-inset-top)",
+          paddingBottom: "env(safe-area-inset-bottom)",
+          paddingLeft: "env(safe-area-inset-left)",
+          paddingRight: "env(safe-area-inset-right)",
         }}
       >
-        <div
-          className="flex min-h-0 flex-1 flex-col overflow-y-auto overflow-x-hidden overscroll-y-contain touch-pan-y"
-          style={flip ? { transform: "rotate(180deg)" } : undefined}
-        >
+        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto overflow-x-hidden overscroll-y-contain touch-pan-y">
           {children}
         </div>
       </div>
     );
   }
 
-  // Normal (landscape / desktop) shell.
+  // Desktop: simulated phone frame.
   return (
     <div className="flex min-h-[100dvh] items-center justify-center bg-zinc-800 py-6">
       <div
@@ -104,7 +86,6 @@ export function MobileAppShell({
           isGame ? "-rotate-90" : ""
         }`}
       >
-        {/* Safe top inset when playing on a notched phone */}
         {isGame ? (
           <div className="shrink-0" aria-hidden />
         ) : (
@@ -124,18 +105,16 @@ export function MobileAppShell({
 }
 
 /**
- * Renders a fixed-size DESIGN_WIDTH × DESIGN_HEIGHT canvas, rotates it 90° CW
- * (so it appears landscape on a portrait phone), and uniformly scales it to
- * fit whatever screen we're on — accounting for safe-area insets (Dynamic
- * Island on the visual right edge, home bar on the visual left edge).
+ * Renders the fixed-size DESIGN_WIDTH × DESIGN_HEIGHT canvas, centered, rotated
+ * to stay upright for the current device orientation, and uniformly scaled to
+ * fit the available safe area. Because we always fit the whole design, the
+ * scoreboard can never be cut off — it just scales down on smaller screens.
  */
 function AutoFitGameShell({ children }: { children: ReactNode }) {
   const measureRef = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(1);
+  const [isLandscape, setIsLandscape] = useState(true);
   const displayFlipped = useGameStore((s) => s.displayFlipped);
-  // Base portrait rotation is 270° (CCW) — this is upright for the common grip
-  // (rotating the phone clockwise into landscape). Flipping adds 180° → 90°.
-  const rotation = displayFlipped ? 90 : 270;
 
   useEffect(() => {
     const compute = () => {
@@ -144,9 +123,14 @@ function AutoFitGameShell({ children }: { children: ReactNode }) {
       const availW = el.clientWidth;
       const availH = el.clientHeight;
       if (!availW || !availH) return;
-      // After 90° CW or 270° CCW rotation, the design 844×390 canvas becomes
-      // visually 390 wide × 844 tall — fit that to the available box.
-      const s = Math.min(availW / DESIGN_HEIGHT, availH / DESIGN_WIDTH);
+      const landscape = window.innerWidth >= window.innerHeight;
+      setIsLandscape(landscape);
+      // Visual bounding box of the design after rotation:
+      // - Landscape (0/180°): 844 wide × 390 tall.
+      // - Portrait (90/270°): 390 wide × 844 tall.
+      const boxW = landscape ? DESIGN_WIDTH : DESIGN_HEIGHT;
+      const boxH = landscape ? DESIGN_HEIGHT : DESIGN_WIDTH;
+      const s = Math.min(availW / boxW, availH / boxH);
       setScale(Math.max(0.01, s));
     };
     compute();
@@ -161,6 +145,16 @@ function AutoFitGameShell({ children }: { children: ReactNode }) {
     };
   }, []);
 
+  // Keep the scoreboard upright for the current orientation; the flip button
+  // adds 180° so the user can correct either grip when rotation is locked.
+  const rotation = isLandscape
+    ? displayFlipped
+      ? 180
+      : 0
+    : displayFlipped
+      ? 90
+      : 270;
+
   return (
     <div
       style={{
@@ -170,23 +164,20 @@ function AutoFitGameShell({ children }: { children: ReactNode }) {
         overflow: "hidden",
       }}
     >
-      {/* Safe-area padded measurement area. clientWidth/clientHeight here
-          gives us the usable box after notch / home-bar insets. */}
+      {/* Safe-area inset measurement box — its measured size already excludes
+          the notch / Dynamic Island / home bar, so the scaled design centers
+          within the usable area in every orientation. Positioned via inset (not
+          padding) so clientWidth/Height reflect the real available space. */}
       <div
         ref={measureRef}
         style={{
           position: "absolute",
-          inset: 0,
-          paddingTop: "env(safe-area-inset-top)",
-          paddingBottom: "env(safe-area-inset-bottom)",
-          paddingLeft: "env(safe-area-inset-left)",
-          paddingRight: "env(safe-area-inset-right)",
-          boxSizing: "border-box",
+          top: "env(safe-area-inset-top)",
+          bottom: "env(safe-area-inset-bottom)",
+          left: "env(safe-area-inset-left)",
+          right: "env(safe-area-inset-right)",
         }}
       >
-        {/* The design canvas: fixed 844×390, centered, rotated, scaled
-            to fit. Centering via translate(-50%, -50%) on the unrotated
-            box then layering rotate+scale keeps the visual centered. */}
         <div
           style={{
             position: "absolute",
@@ -196,16 +187,6 @@ function AutoFitGameShell({ children }: { children: ReactNode }) {
             height: DESIGN_HEIGHT,
             transform: `translate(-50%, -50%) rotate(${rotation}deg) scale(${scale})`,
             transformOrigin: "center center",
-            boxSizing: "border-box",
-            // Since the design canvas is rotated:
-            // - At 90deg CW: Left corresponds to physical TOP of the phone, Right to physical BOTTOM.
-            // - At 270deg CCW: Left corresponds to physical BOTTOM of the phone, Right to physical TOP.
-            paddingLeft: rotation === 90
-              ? "max(1.5rem, env(safe-area-inset-top))"
-              : "max(1.5rem, env(safe-area-inset-bottom))",
-            paddingRight: rotation === 90
-              ? "max(1.5rem, env(safe-area-inset-bottom))"
-              : "max(1.5rem, env(safe-area-inset-top))",
           }}
         >
           <div
