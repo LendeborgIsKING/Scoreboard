@@ -8,6 +8,8 @@ import {
 } from "react";
 import { useIsMobileDevice } from "@/hooks/useIsMobileDevice";
 import { useGameStore } from "@/lib/gameStore";
+import { RotateIcon } from "./UiIcons";
+import { pressFeedback } from "@/lib/feedback";
 
 /** Typical smartphone content width (CSS px) — aligns with iPhone 14/15 logical ~390pt */
 export const MOBILE_APP_WIDTH_PX = 390;
@@ -115,6 +117,7 @@ function AutoFitGameShell({ children }: { children: ReactNode }) {
   const [scale, setScale] = useState(1);
   const [isLandscape, setIsLandscape] = useState(true);
   const displayFlipped = useGameStore((s) => s.displayFlipped);
+  const toggleDisplayFlip = useGameStore((s) => s.toggleDisplayFlip);
 
   useEffect(() => {
     const compute = () => {
@@ -202,6 +205,23 @@ function AutoFitGameShell({ children }: { children: ReactNode }) {
           </div>
         </div>
       </div>
+      <button
+        type="button"
+        aria-label="Flip screen orientation 180 degrees"
+        onClick={() => {
+          pressFeedback();
+          toggleDisplayFlip();
+        }}
+        className="fixed z-[220] flex h-12 w-12 min-h-[44px] min-w-[44px] items-center justify-center rounded-full border-2 border-white/60 bg-black/60 text-white shadow transition-colors hover:bg-white/10 active:bg-white/20"
+        style={{
+          top: "max(0.75rem, env(safe-area-inset-top))",
+          right: "max(0.75rem, env(safe-area-inset-right))",
+          WebkitTapHighlightColor: "transparent",
+          backdropFilter: "blur(4px)",
+        }}
+      >
+        <RotateIcon className="h-5 w-5" />
+      </button>
     </div>
   );
 }

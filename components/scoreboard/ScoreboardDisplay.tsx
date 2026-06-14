@@ -28,7 +28,6 @@ import { useTimerMs } from "@/hooks/useTimerMs";
 import { useCountdownTick } from "@/hooks/useCountdownTick";
 import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
 import { useWakeLock } from "@/hooks/useWakeLock";
-import { useIsMobileDevice } from "@/hooks/useIsMobileDevice";
 import { pressFeedback } from "@/lib/feedback";
 import { SettingsModal } from "./SettingsModal";
 import { StatsModal } from "./StatsModal";
@@ -57,7 +56,6 @@ import {
   PauseIcon,
   PencilIcon,
   PlayIcon,
-  RotateIcon,
   WhistleIcon,
 } from "./UiIcons";
 
@@ -224,8 +222,6 @@ export function ScoreboardDisplay() {
     (s) => s.dismissFoulsResetPrompt,
   );
   const keepAwakeEnabled = useGameStore((s) => s.keepAwakeEnabled);
-  const toggleDisplayFlip = useGameStore((s) => s.toggleDisplayFlip);
-  const { isMobile } = useIsMobileDevice();
 
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [statsOpen, setStatsOpen] = useState(false);
@@ -397,13 +393,6 @@ export function ScoreboardDisplay() {
               onClick={() => setUiPhase("menu")}
               ariaLabel="Exit to menu"
             />
-            {isMobile && (
-              <CircleBtn
-                icon={<RotateIcon className="h-5 w-5" />}
-                onClick={toggleDisplayFlip}
-                ariaLabel="Flip screen orientation 180 degrees"
-              />
-            )}
             <MusicToggleButton
               playing={musicEnabled && musicTrack !== "none"}
               onToggle={() => {
