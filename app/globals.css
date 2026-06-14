@@ -64,12 +64,18 @@ body {
   display: none;
 }
 
-/* Mobile device fullscreen override for scoreboard display and modals */
+/* Mobile device fullscreen override for scoreboard display and modals.
+   Tailwind v4 maps rotate/translate/scale to the individual CSS properties
+   (not the `transform` shorthand), so we must reset each of them — otherwise
+   the inner rotate-90 survives and double-rotates inside the auto-fit shell. */
 .mobile-device .mobile-fullscreen {
   position: static !important;
   height: 100% !important;
   width: 100% !important;
   transform: none !important;
+  rotate: none !important;
+  translate: none !important;
+  scale: none !important;
   top: auto !important;
   left: auto !important;
 }
