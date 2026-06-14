@@ -168,6 +168,12 @@ export interface GameState extends GameStateSlice {
   scoreSoundId: ScoreSoundId;
   /** When true, rotate the on-screen layout an extra 180° (manual flip). */
   displayFlipped: boolean;
+  /** True during the post-0:00 grace window where buzzer beaters can still count. */
+  buzzerBeaterWindowActive: boolean;
+  /** Deadline (Date.now ms) when the grace window ends. */
+  buzzerBeaterWindowEndsAt: number | null;
+  /** Guard so we don't schedule multiple end-of-window timers. */
+  buzzerBeaterWindowSettling: boolean;
 }
 
 interface GameStateSlice {
@@ -351,6 +357,9 @@ export const useGameStore = create<GameStore>()(
       confettiEnabled: true,
       bannersEnabled: true,
       scoreSoundId: "default",
+      buzzerBeaterWindowActive: false,
+      buzzerBeaterWindowEndsAt: null,
+      buzzerBeaterWindowSettling: false,
 
       pushUndo: () => {
         const snap = snapshotFrom(get());
@@ -394,6 +403,9 @@ export const useGameStore = create<GameStore>()(
           // and clear any leftover celebration.
           finalCountdownPromptShownThisGame: false,
           finalCountdownPromptVisible: false,
+          buzzerBeaterWindowActive: false,
+          buzzerBeaterWindowEndsAt: null,
+          buzzerBeaterWindowSettling: false,
           gameOverCelebration: null,
         });
       },
@@ -472,6 +484,7 @@ export const useGameStore = create<GameStore>()(
           autoStartClockOnScore,
           targetScoreEnabled,
           targetScore,
+          buzzerBeaterWindowActive,
         } = get();
         const cfg = resolveSportConfig(sportId, customSport);
         const action = cfg.scoring.find((a) => a.id === actionId);
@@ -485,10 +498,9 @@ export const useGameStore = create<GameStore>()(
         );
         const isBuzzerBeater =
           !cfg.noGameClock &&
-          timer.running &&
+          (timer.running || buzzerBeaterWindowActive) &&
           action.value > 0 &&
-          remainingMs > 0 &&
-          remainingMs <= 3000;
+          ((remainingMs > 0 && remainingMs <= 3000) || buzzerBeaterWindowActive);
 
         set((state) => {
           const key = team === "a" ? "teamA" : "teamB";
@@ -551,6 +563,17 @@ export const useGameStore = create<GameStore>()(
           get().resetShotClock();
         }
         if (sfxEnabled && action.value > 0) {
+          // During the 5-second post-buzzer grace window, if a score ties the game,
+          // play the requested Mike Breen clip segment.
+          const { teamA, teamB } = get();
+          const tieAfterScore = teamA.score === teamB.score;
+          if (buzzerBeaterWindowActive && tieAfterScore) {
+            playSfxClip(
+              "/music/mike-breen-double-bang.mp3",
+              49,
+              52.5,
+            );
+          }
           if (scoreSoundId !== "default") {
             playScoreSound(scoreSoundId);
           } else if (sportId === "basketball") {
@@ -798,6 +821,9 @@ export const useGameStore = create<GameStore>()(
           },
           finalCountdownPromptShownThisGame: false,
           finalCountdownPromptVisible: false,
+          buzzerBeaterWindowActive: false,
+          buzzerBeaterWindowEndsAt: null,
+          buzzerBeaterWindowSettling: false,
           gameOverCelebration: null,
           foulsResetPrompt: false,
         });
@@ -823,6 +849,9 @@ export const useGameStore = create<GameStore>()(
             running: false,
             runStartedAt: null,
           },
+          buzzerBeaterWindowActive: false,
+          buzzerBeaterWindowEndsAt: null,
+          buzzerBeaterWindowSettling: false,
         }));
       },
 
@@ -837,6 +866,9 @@ export const useGameStore = create<GameStore>()(
             running: false,
             runStartedAt: null,
           },
+          buzzerBeaterWindowActive: false,
+          buzzerBeaterWindowEndsAt: null,
+          buzzerBeaterWindowSettling: false,
         }));
       },
 
@@ -876,6 +908,9 @@ export const useGameStore = create<GameStore>()(
             runStartedAt: null,
             accumulatedMs: 0,
           },
+          buzzerBeaterWindowActive: false,
+          buzzerBeaterWindowEndsAt: null,
+          buzzerBeaterWindowSettling: false,
         }));
       },
 
@@ -892,8 +927,11 @@ export const useGameStore = create<GameStore>()(
           finalCountdownPromptShownThisGame,
           finalCountdownPromptVisible,
           gameOverCelebration,
+          buzzerBeaterWindowActive,
+          buzzerBeaterWindowEndsAt,
+          buzzerBeaterWindowSettling,
         } = get();
-        if (!timer.running) return;
+        if (!timer.running && !buzzerBeaterWindowActive) return;
         const total = timer.countdownFromSeconds * 1000;
         const elapsed = getElapsedMs(timer);
         const remainingSec = Math.max(0, (total - elapsed) / 1000);
@@ -924,6 +962,32 @@ export const useGameStore = create<GameStore>()(
 
         // ---- End of period / game ----
         if (elapsed >= total) {
+          // Start a 5-second grace window once the clock first hits 0:00.
+          if (!buzzerBeaterWindowActive) {
+            const endsAt = Date.now() + 5000;
+            set({
+              timer: {
+                ...timer,
+                running: false,
+                runStartedAt: null,
+                accumulatedMs: total,
+              },
+              finalCountdownPromptVisible: false,
+              buzzerBeaterWindowActive: true,
+              buzzerBeaterWindowEndsAt: endsAt,
+              buzzerBeaterWindowSettling: false,
+            });
+            if (sfxEnabled) playSfxClip("/sfx/horn.mp3");
+            return;
+          }
+
+          // While the window is active, wait until it expires before resolving period/game.
+          if (buzzerBeaterWindowEndsAt && Date.now() < buzzerBeaterWindowEndsAt) {
+            return;
+          }
+          if (buzzerBeaterWindowSettling) return;
+          set({ buzzerBeaterWindowSettling: true });
+
           set({
             timer: {
               ...timer,
@@ -933,8 +997,10 @@ export const useGameStore = create<GameStore>()(
             },
             // Buzzer ends any lingering Final Countdown prompt.
             finalCountdownPromptVisible: false,
+            buzzerBeaterWindowActive: false,
+            buzzerBeaterWindowEndsAt: null,
+            buzzerBeaterWindowSettling: false,
           });
-          if (sfxEnabled) playSfxClip("/sfx/horn.mp3");
           if (max && period >= max && teamA.score !== teamB.score) {
             const winnerSide: "a" | "b" =
               teamA.score > teamB.score ? "a" : "b";
@@ -1290,6 +1356,9 @@ export const useGameStore = create<GameStore>()(
         if (!merged.history) merged.history = [];
         merged.banner = null;
         if (typeof merged.confettiKey !== "number") merged.confettiKey = 0;
+        merged.buzzerBeaterWindowActive = false;
+        merged.buzzerBeaterWindowEndsAt = null;
+        merged.buzzerBeaterWindowSettling = false;
         if (merged.hockeyGoalHornHome === undefined) merged.hockeyGoalHornHome = null;
         if (merged.hockeyGoalHornAway === undefined) merged.hockeyGoalHornAway = null;
         if (!merged.nhlHornOffsets) merged.nhlHornOffsets = {};
