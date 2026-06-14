@@ -28,6 +28,7 @@ import { useTimerMs } from "@/hooks/useTimerMs";
 import { useCountdownTick } from "@/hooks/useCountdownTick";
 import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
 import { useWakeLock } from "@/hooks/useWakeLock";
+import { useIsMobileDevice } from "@/hooks/useIsMobileDevice";
 import { pressFeedback } from "@/lib/feedback";
 import { SettingsModal } from "./SettingsModal";
 import { StatsModal } from "./StatsModal";
@@ -36,7 +37,6 @@ import { ThemeAmbience } from "./ThemeAmbience";
 import { CourtAmbience } from "./CourtAmbience";
 import { FireAmbience } from "./FireAmbience";
 import { scoreFontClass } from "@/lib/themeDisplayFont";
-import { MOBILE_SCOREBOARD_SHELL } from "@/lib/mobileClasses";
 import { SportLineIcon } from "./SportLineIcons";
 import { PickerWheel } from "./PickerWheel";
 import { ShotClock } from "./ShotClock";
@@ -222,6 +222,7 @@ export function ScoreboardDisplay() {
     (s) => s.dismissFoulsResetPrompt,
   );
   const keepAwakeEnabled = useGameStore((s) => s.keepAwakeEnabled);
+  const { isMobile } = useIsMobileDevice();
 
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [statsOpen, setStatsOpen] = useState(false);
@@ -377,13 +378,17 @@ export function ScoreboardDisplay() {
     ? "border-2 border-dashed border-red-500 rounded-lg px-3 py-1"
     : "";
 
+  const scoreboardShellClass = isMobile
+    ? "relative flex h-full w-full flex-col overflow-hidden"
+    : "absolute left-1/2 top-1/2 flex h-[390px] w-[844px] -translate-x-1/2 -translate-y-1/2 rotate-90 flex-col overflow-hidden";
+
   return (
     <div
       className={`relative flex min-h-full flex-1 flex-col items-center overflow-hidden ${tokens.bg}`}
     >
       <ThemeAmbience theme={theme} />
       <div className="relative z-10 flex w-full min-h-full flex-1 flex-col items-center">
-      <div className={`absolute left-1/2 top-1/2 flex h-[390px] w-[844px] -translate-x-1/2 -translate-y-1/2 rotate-90 flex-col overflow-hidden ${MOBILE_SCOREBOARD_SHELL}`}>
+      <div className={scoreboardShellClass}>
         {theme === "court" && <CourtAmbience />}
         {theme === "fire" && <FireAmbience />}
         <div className="relative z-10 grid grid-cols-[1fr_auto_1fr] items-start gap-2 px-4 pt-4 text-white">
