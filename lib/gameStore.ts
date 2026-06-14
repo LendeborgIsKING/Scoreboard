@@ -563,16 +563,26 @@ export const useGameStore = create<GameStore>()(
           get().resetShotClock();
         }
         if (sfxEnabled && action.value > 0) {
-          // During the 5-second post-buzzer grace window, if a score ties the game,
-          // play the requested Mike Breen clip segment.
+          // During the 5-second post-buzzer grace window, play the requested
+          // Mike Breen clip segment:
+          // - tie: 0:49–0:52.5
+          // - go-ahead win: 1:32–1:35.5
           const { teamA, teamB } = get();
           const tieAfterScore = teamA.score === teamB.score;
-          if (buzzerBeaterWindowActive && tieAfterScore) {
-            playSfxClip(
-              "/music/mike-breen-double-bang.mp3",
-              49,
-              52.5,
-            );
+          if (buzzerBeaterWindowActive) {
+            if (tieAfterScore) {
+              playSfxClip(
+                "/music/mike-breen-double-bang.mp3",
+                49,
+                52.5,
+              );
+            } else {
+              playSfxClip(
+                "/music/mike-breen-double-bang.mp3",
+                92,
+                95.5,
+              );
+            }
           }
           if (scoreSoundId !== "default") {
             playScoreSound(scoreSoundId);
