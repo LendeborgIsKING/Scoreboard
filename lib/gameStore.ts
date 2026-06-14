@@ -485,6 +485,7 @@ export const useGameStore = create<GameStore>()(
           targetScoreEnabled,
           targetScore,
           buzzerBeaterWindowActive,
+          timerVariantId,
         } = get();
         const cfg = resolveSportConfig(sportId, customSport);
         const action = cfg.scoring.find((a) => a.id === actionId);
@@ -569,6 +570,7 @@ export const useGameStore = create<GameStore>()(
           // - go-ahead win: 1:32–1:35.5
           const { teamA, teamB } = get();
           const tieAfterScore = teamA.score === teamB.score;
+          const inBuzzerWindow = buzzerBeaterWindowActive;
           if (buzzerBeaterWindowActive) {
             if (tieAfterScore) {
               playSfxClip(
@@ -584,7 +586,10 @@ export const useGameStore = create<GameStore>()(
               );
             }
           }
-          if (scoreSoundId !== "default") {
+          // Don't immediately override the Breen call with normal score SFX.
+          if (inBuzzerWindow) {
+            // no-op; Breen clip already played above
+          } else if (scoreSoundId !== "default") {
             playScoreSound(scoreSoundId);
           } else if (sportId === "basketball") {
             playSfxClip(BASKETBALL_SCORE_SFX_SRC);
@@ -609,6 +614,26 @@ export const useGameStore = create<GameStore>()(
           } else if (action.value >= 6) playSfx("tada");
           else if (action.value >= 3) playSfx("swoosh");
           else playSfx("chime");
+        }
+
+        // If someone takes the lead during the 5-second buzzer window, end game
+        // immediately (no need to wait for the remainder of the window).
+        if (buzzerBeaterWindowActive && action.value > 0) {
+          const { teamA, teamB } = get();
+          if (teamA.score !== teamB.score) {
+            const cfgNow = resolveSportConfig(sportId, customSport);
+            const max =
+              effectiveMaxPeriods(cfgNow, timerVariantId) ?? cfgNow.maxPeriods;
+            const isFinalPeriod = max != null && period >= max;
+            if (isFinalPeriod) {
+              get().triggerGameOver();
+              set({
+                buzzerBeaterWindowActive: false,
+                buzzerBeaterWindowEndsAt: null,
+                buzzerBeaterWindowSettling: false,
+              });
+            }
+          }
         }
         // Quick haptic on every score for tactile feedback on phones.
         if (action.value > 0 && vibrationEnabled) vibrate(20);
@@ -1206,6 +1231,9 @@ export const useGameStore = create<GameStore>()(
 
       playFinalCountdown: () => {
         // Start at 13 s to skip the spoken intro and hit the iconic synth.
+        // Final Countdown should take over: stop any looping music first.
+        setAudioMusic("none");
+        set({ musicEnabled: false });
         playSfxClip("/music/final-countdown.mp3", 13);
         set({ finalCountdownPromptVisible: false });
       },

@@ -445,7 +445,7 @@ function MusicPanel() {
         ))}
       </div>
       <p className="text-xs text-zinc-500">
-        Background music is disabled. Only Final Countdown can play when triggered.
+        Background music plays normally. Final Countdown interrupts and turns other music off.
       </p>
     </PanelShell>
   );

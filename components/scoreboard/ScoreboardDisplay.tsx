@@ -277,9 +277,10 @@ export function ScoreboardDisplay() {
     setPossession(possession === side ? null : side);
   };
 
-  // Ensure any background track stays off (Final Countdown is a separate one-shot clip).
+  // Keep chosen background music state in sync with the audio engine.
   useEffect(() => {
-    setAudioMusic("none");
+    if (musicEnabled) setAudioMusic(musicTrack);
+    else setAudioMusic("none");
     return () => setAudioMusic("none");
   }, [musicEnabled, musicTrack]);
 
