@@ -133,8 +133,9 @@ function AutoFitGameShell({ children }: { children: ReactNode }) {
   const measureRef = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(1);
   const displayFlipped = useGameStore((s) => s.displayFlipped);
-  // Base portrait rotation is 90° CW; flipping adds 180° → 270°.
-  const rotation = displayFlipped ? 270 : 90;
+  // Base portrait rotation is 270° (CCW) — this is upright for the common grip
+  // (rotating the phone clockwise into landscape). Flipping adds 180° → 90°.
+  const rotation = displayFlipped ? 90 : 270;
 
   useEffect(() => {
     const compute = () => {
