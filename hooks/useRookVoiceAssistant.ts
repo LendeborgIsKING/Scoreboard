@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 
 type TeamSide = "a" | "b";
 type MusicTrackId = "none" | "hype" | "anthem";
@@ -117,8 +117,7 @@ export function useRookVoiceAssistant(options: VoiceOptions) {
   const enabled = options.enabled ?? true;
   const optsRef = useRef(options);
   const recognitionRef = useRef<InstanceType<SpeechRecognitionCtor> | null>(null);
-  const activeRef = useRef(false);
-  const armedUntilRef = useRef(0);
+  const [isListening, setIsListening] = useState(false);
   const dedupeRef = useRef<{ text: string; ts: number }>({ text: "", ts: 0 });
 
   useEffect(() => {
@@ -142,17 +141,15 @@ export function useRookVoiceAssistant(options: VoiceOptions) {
         }
       ).webkitSpeechRecognition;
 
-    if (!Ctor) {
-      options.showBanner("Rook voice unavailable", "This browser does not support speech recognition.", "warn");
-      return;
-    }
+    if (!Ctor) return;
 
     const runCommand = (raw: string) => {
       const now = Date.now();
       const normalized = ` ${normalize(raw)} `;
       if (!normalized.trim()) return;
 
-      const hasWakeWord = normalized.includes(" rook ");
+      // Because it's push-to-talk now, we don't require the "Rook" wake word,
+      // but we strip it out if they naturally say it.
       let commandText = normalized.replace(/\brook\b/g, " ").replace(/\s+/g, " ").trim();
       if (includesAny(commandText, ["look", "book", "route", "brooke"])) {
         commandText = commandText
@@ -164,16 +161,7 @@ export function useRookVoiceAssistant(options: VoiceOptions) {
           .trim();
       }
 
-      if (hasWakeWord) {
-        armedUntilRef.current = now + 12000;
-        if (!commandText) {
-          optsRef.current.showBanner("Rook listening", "Say a command.", "info");
-          speak("Yes?");
-          return;
-        }
-      } else if (now > armedUntilRef.current) {
-        return;
-      }
+      if (!commandText) return;
 
       if (
         dedupeRef.current.text === commandText &&
@@ -355,7 +343,7 @@ export function useRookVoiceAssistant(options: VoiceOptions) {
 
       opts.showBanner(
         "Rook command not recognized",
-        "Try: 'Rook start timer', 'Rook add 2 to home', 'Rook whistle'.",
+        "Try: 'add 2 to home', 'start timer', 'whistle'.",
         "warn",
       );
     };
@@ -363,7 +351,9 @@ export function useRookVoiceAssistant(options: VoiceOptions) {
     const recognition = new Ctor();
     recognitionRef.current = recognition;
     recognition.lang = "en-US";
-    recognition.continuous = true;
+    // For tap-to-talk on mobile, continuous should be false so it turns off
+    // automatically when they finish speaking.
+    recognition.continuous = false;
     recognition.interimResults = true;
     recognition.maxAlternatives = 1;
 
@@ -376,7 +366,7 @@ export function useRookVoiceAssistant(options: VoiceOptions) {
     };
 
     recognition.onerror = (ev) => {
-      // Handle permission / unsupported errors quietly with one visible hint.
+      setIsListening(false);
       if (ev.error === "not-allowed" || ev.error === "service-not-allowed") {
         optsRef.current.showBanner(
           "Rook mic blocked",
@@ -387,24 +377,11 @@ export function useRookVoiceAssistant(options: VoiceOptions) {
     };
 
     recognition.onend = () => {
-      if (!activeRef.current) return;
-      try {
-        recognition.start();
-      } catch {
-        // Ignore restart race conditions.
-      }
+      setIsListening(false);
     };
 
-    activeRef.current = true;
-    try {
-      recognition.start();
-      options.showBanner("Rook ready", "Say 'Rook' + a command.", "info");
-    } catch {
-      options.showBanner("Rook unavailable", "Tap screen and allow mic to use voice commands.", "warn");
-    }
-
     return () => {
-      activeRef.current = false;
+      setIsListening(false);
       try {
         recognition.stop();
       } catch {
@@ -413,5 +390,23 @@ export function useRookVoiceAssistant(options: VoiceOptions) {
       recognitionRef.current = null;
     };
   }, [enabled]);
+
+  const listen = () => {
+    if (!recognitionRef.current) {
+      optsRef.current.showBanner("Voice commands not supported", "Please try a different browser.", "warn");
+      return;
+    }
+    if (isListening) return;
+    try {
+      recognitionRef.current.start();
+      setIsListening(true);
+      optsRef.current.showBanner("Listening...", "Say a command like 'Add 2 to home'.", "info");
+      speak("Listening.");
+    } catch {
+      optsRef.current.showBanner("Rook unavailable", "Please try again.", "warn");
+    }
+  };
+
+  return { listen, isListening };
 }
 

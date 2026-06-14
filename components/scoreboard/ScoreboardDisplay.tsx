@@ -328,7 +328,7 @@ export function ScoreboardDisplay() {
     (editing || foulsResetPrompt) &&
     (teamA.fouls > 0 || teamB.fouls > 0 || foulsResetPrompt);
 
-  useRookVoiceAssistant({
+  const { listen, isListening } = useRookVoiceAssistant({
     teamAName: teamA.name,
     teamBName: teamB.name,
     hasFouls,
@@ -433,6 +433,15 @@ export function ScoreboardDisplay() {
               icon={<MenuIcon className="h-5 w-5" />}
               onClick={() => setUiPhase("menu")}
               ariaLabel="Exit to menu"
+            />
+            <CircleBtn
+              icon={
+                <MicrophoneIcon
+                  className={`h-5 w-5 ${isListening ? "text-red-500 animate-pulse" : ""}`}
+                />
+              }
+              onClick={listen}
+              ariaLabel="Voice Command"
             />
             <MusicToggleButton
               playing={musicEnabled && musicTrack !== "none"}
