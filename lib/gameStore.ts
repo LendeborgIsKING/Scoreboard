@@ -576,13 +576,13 @@ export const useGameStore = create<GameStore>()(
               playSfxClip(
                 "/music/mike-breen-double-bang.mp3",
                 49,
-                52.5,
+                53.5,
               );
             } else {
               playSfxClip(
                 "/music/mike-breen-double-bang.mp3",
                 92,
-                95.5,
+                96.5,
               );
             }
           }
@@ -650,7 +650,7 @@ export const useGameStore = create<GameStore>()(
       },
 
       triggerGameOver: () => {
-        const { teamA, teamB, sfxEnabled, gameOverCelebration } = get();
+        const { teamA, teamB, gameOverCelebration } = get();
         if (gameOverCelebration) return;
         if (teamA.score === teamB.score) return;
         const winnerSide: "a" | "b" = teamA.score > teamB.score ? "a" : "b";
@@ -665,10 +665,6 @@ export const useGameStore = create<GameStore>()(
           },
           confettiKey: state.confettiKey + 1,
         }));
-        if (sfxEnabled) {
-          playSfx("tada");
-          setTimeout(() => playSfx("cheer"), 250);
-        }
       },
 
       adjustFouls: (team, delta) => {
@@ -1052,10 +1048,6 @@ export const useGameStore = create<GameStore>()(
                 flavor: "win",
               },
             });
-            if (sfxEnabled) {
-              setTimeout(() => playSfx("tada"), 200);
-              setTimeout(() => playSfx("cheer"), 400);
-            }
             // 3-second delay then trigger the full celebration overlay.
             const finalA = teamA.score;
             const finalB = teamB.score;
@@ -1072,10 +1064,6 @@ export const useGameStore = create<GameStore>()(
                 },
                 confettiKey: state.confettiKey + 1,
               }));
-              if (get().sfxEnabled) {
-                playSfx("tada");
-                setTimeout(() => playSfx("cheer"), 250);
-              }
             }, 3000);
           } else {
             // Automatically advance period and reset the clock for the next one after a 3 second delay.
