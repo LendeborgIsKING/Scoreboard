@@ -441,7 +441,7 @@ function MusicPanel() {
         ))}
       </div>
       <p className="text-xs text-zinc-500">
-        Looping arena tracks — adjust the volume to taste.
+        Background music is disabled. Only Final Countdown can play when triggered.
       </p>
     </PanelShell>
   );

@@ -20,6 +20,10 @@ export type SfxName =
 
 export type MusicTrack = "none" | "hype" | "anthem";
 
+// Product decision: keep background music off and only allow the
+// "Final Countdown" one-shot clip when it is explicitly triggered.
+const FINAL_COUNTDOWN_ONLY_MODE = true;
+
 let ctx: AudioContext | null = null;
 let masterSfxGain: GainNode | null = null;
 let masterMusicGain: GainNode | null = null;
@@ -515,14 +519,15 @@ const ANTHEM_MP3 = "/music/star-spangled-banner-anthem.mp3";
 export function setMusic(track: MusicTrack) {
   const c = ensureCtx();
   if (!c || !masterMusicGain) return;
-  if (track === currentTrack) return;
   if (c.state === "suspended") c.resume().catch(() => {});
+  if (track === currentTrack) return;
   if (musicNodes) {
     musicNodes.stop();
     musicNodes = null;
   }
+  currentTrack = "none";
+  if (track === "none" || FINAL_COUNTDOWN_ONLY_MODE) return;
   currentTrack = track;
-  if (track === "none") return;
   if (track === "hype")
     musicNodes = startTrackFromFile(
       c,
@@ -553,6 +558,14 @@ const THEME_AMBIENTS: Record<string, { src: string; loopStart: number; loopEnd: 
 };
 
 export function setThemeAmbient(themeId: string) {
+  if (FINAL_COUNTDOWN_ONLY_MODE) {
+    if (themeAmbientNodes) {
+      themeAmbientNodes.stop();
+      themeAmbientNodes = null;
+    }
+    currentThemeAmbient = "none";
+    return;
+  }
   if (themeId === currentThemeAmbient) return;
   if (themeAmbientNodes) {
     themeAmbientNodes.stop();

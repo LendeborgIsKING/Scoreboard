@@ -271,9 +271,9 @@ export function ScoreboardDisplay() {
     setPossession(possession === side ? null : side);
   };
 
-  // Auto-resume music when entering the game
+  // Ensure any background track stays off (Final Countdown is a separate one-shot clip).
   useEffect(() => {
-    if (musicEnabled) setAudioMusic(musicTrack);
+    setAudioMusic("none");
     return () => setAudioMusic("none");
   }, [musicEnabled, musicTrack]);
 
