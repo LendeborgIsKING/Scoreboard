@@ -528,110 +528,115 @@ function startShufflePlaylist(
   dest: AudioNode
 ): { stop: () => void } {
   let stopped = false;
-  let activeAudio: HTMLAudioElement | null = null;
+  
+  const activeAudio = new Audio();
+  activeAudio.crossOrigin = "anonymous";
+  activeAudio.preload = "auto";
+  activeAudio.loop = false;
+
+  const activeGain = c.createGain();
+  activeGain.gain.value = 1;
+  activeGain.connect(dest);
+
   let activeSource: MediaElementAudioSourceNode | null = null;
-  let activeGain: GainNode | null = null;
+  try {
+    activeSource = c.createMediaElementSource(activeAudio);
+    activeSource.connect(activeGain);
+  } catch {
+    // Fallback
+  }
+
   let timeoutId: number | null = null;
   let fadeTimeoutId: number | null = null;
-
   let lastIndex = -1;
+  let currentSong: ShuffleSong | null = null;
+  let fadeTriggered = false;
 
-  // Needed because event listeners on the audio element might fire after cleanup
-  // if not carefully removed, but we want an explicit reference to the current
-  // functions so they can be cleaned up cleanly.
-  let onTimeUpdate: () => void = () => {};
-  let onEnded: () => void = () => {};
-
-  const cleanup = () => {
-    if (timeoutId !== null) window.clearTimeout(timeoutId);
-    if (fadeTimeoutId !== null) window.clearTimeout(fadeTimeoutId);
-    if (activeAudio) {
-      activeAudio.removeEventListener("timeupdate", onTimeUpdate);
-      activeAudio.removeEventListener("ended", onEnded);
-      try { activeAudio.pause(); } catch {}
-      try { activeAudio.removeAttribute("src"); } catch {}
-      try { activeAudio.load(); } catch {}
+  const cleanupTimers = () => {
+    if (timeoutId !== null) {
+      window.clearTimeout(timeoutId);
+      timeoutId = null;
     }
-    try { activeSource?.disconnect(); } catch {}
-    try { activeGain?.disconnect(); } catch {}
-    activeAudio = null;
-    activeSource = null;
-    activeGain = null;
-    timeoutId = null;
-    fadeTimeoutId = null;
+    if (fadeTimeoutId !== null) {
+      window.clearTimeout(fadeTimeoutId);
+      fadeTimeoutId = null;
+    }
   };
 
   const playNext = () => {
     if (stopped) return;
-    cleanup();
+    cleanupTimers();
     
     let index = Math.floor(Math.random() * SHUFFLE_PLAYLIST.length);
     if (SHUFFLE_PLAYLIST.length > 1 && index === lastIndex) {
       index = (index + 1) % SHUFFLE_PLAYLIST.length;
     }
     lastIndex = index;
-    const song = SHUFFLE_PLAYLIST[index];
+    currentSong = SHUFFLE_PLAYLIST[index];
+    fadeTriggered = false;
 
-    activeAudio = new Audio(song.src);
-    activeAudio.crossOrigin = "anonymous";
-    activeAudio.preload = "auto";
-    activeAudio.currentTime = song.start;
-    activeAudio.loop = false;
+    // Reset gain in case it was faded out
+    activeGain.gain.cancelScheduledValues(c.currentTime);
+    activeGain.gain.setValueAtTime(1, c.currentTime);
 
-    activeGain = c.createGain();
-    activeGain.gain.value = 1;
-    activeGain.connect(dest);
+    activeAudio.src = currentSong.src;
+    activeAudio.currentTime = currentSong.start;
 
-    try {
-      activeSource = c.createMediaElementSource(activeAudio);
-      activeSource.connect(activeGain);
-    } catch {
-      // Fallback
-    }
-
-    let fadeTriggered = false;
-
-    onTimeUpdate = () => {
-      if (stopped || !activeAudio || !activeGain) return;
-      if (song.end && song.fade && !fadeTriggered) {
-        if (activeAudio.currentTime >= song.end - song.fade) {
-          fadeTriggered = true;
-          activeGain.gain.setValueAtTime(activeGain.gain.value, c.currentTime);
-          activeGain.gain.linearRampToValueAtTime(0.001, c.currentTime + song.fade);
-          fadeTimeoutId = window.setTimeout(playNext, song.fade * 1000);
-        }
-      } else if (song.end && !song.fade && activeAudio.currentTime >= song.end) {
-        playNext();
-      }
-    };
-
-    onEnded = () => {
-      if (!stopped) playNext();
-    };
-
-    activeAudio.addEventListener("timeupdate", onTimeUpdate);
-    activeAudio.addEventListener("ended", onEnded);
-
-    const onCanPlay = () => {
+    // We must wait for 'canplay' before setting currentTime sometimes, but usually 
+    // setting it immediately is fine. Play returns a promise.
+    const attemptPlay = () => {
       if (stopped) return;
-      if (activeAudio) {
-        activeAudio.currentTime = song.start;
-        activeAudio.play().catch(() => {
-          if (!stopped) timeoutId = window.setTimeout(playNext, 2000);
-        });
-      }
+      activeAudio.play().catch(() => {
+        // If play fails (e.g. lack of user gesture on some strict browsers despite reuse),
+        // wait and try next song.
+        if (!stopped) timeoutId = window.setTimeout(playNext, 2000);
+      });
     };
 
-    if (activeAudio.readyState >= 2) onCanPlay();
-    else activeAudio.addEventListener("canplay", onCanPlay, { once: true });
+    if (activeAudio.readyState >= 2) {
+      attemptPlay();
+    } else {
+      activeAudio.addEventListener("canplay", attemptPlay, { once: true });
+      activeAudio.load();
+    }
   };
+
+  const onTimeUpdate = () => {
+    if (stopped || !currentSong) return;
+    const song = currentSong;
+    if (song.end && song.fade && !fadeTriggered) {
+      if (activeAudio.currentTime >= song.end - song.fade) {
+        fadeTriggered = true;
+        activeGain.gain.cancelScheduledValues(c.currentTime);
+        activeGain.gain.setValueAtTime(activeGain.gain.value, c.currentTime);
+        activeGain.gain.linearRampToValueAtTime(0.001, c.currentTime + song.fade);
+        fadeTimeoutId = window.setTimeout(playNext, song.fade * 1000);
+      }
+    } else if (song.end && !song.fade && activeAudio.currentTime >= song.end) {
+      playNext();
+    }
+  };
+
+  const onEnded = () => {
+    if (!stopped) playNext();
+  };
+
+  activeAudio.addEventListener("timeupdate", onTimeUpdate);
+  activeAudio.addEventListener("ended", onEnded);
 
   playNext();
 
   return {
     stop: () => {
       stopped = true;
-      cleanup();
+      cleanupTimers();
+      activeAudio.removeEventListener("timeupdate", onTimeUpdate);
+      activeAudio.removeEventListener("ended", onEnded);
+      try { activeAudio.pause(); } catch {}
+      try { activeAudio.removeAttribute("src"); } catch {}
+      try { activeAudio.load(); } catch {}
+      try { activeSource?.disconnect(); } catch {}
+      try { activeGain?.disconnect(); } catch {}
     },
   };
 }
