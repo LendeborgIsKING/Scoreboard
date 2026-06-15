@@ -290,11 +290,14 @@ export function ScoreboardDisplay() {
     return () => stopThemeAmbient();
   }, [theme]);
 
-  // Pre-decode hockey horns so the first tap fires instantly with zero lag.
+  // Pre-decode frequently used audio clips so taps fire instantly with zero lag.
   useEffect(() => {
+    void prefetchSfxClip("/sfx/horn.mp3");
+    void prefetchSfxClip("/sfx/whistle.mp3");
+    void prefetchSfxClip("/music/mike-breen-double-bang.mp3");
+    void prefetchSfxClip("/sfx/basketball-swish.mp3");
     if (sportId === "hockey") {
       void prefetchSfxClip(NHL_HORN_SRC);
-      void prefetchSfxClip("/sfx/horn.mp3");
     }
   }, [sportId]);
 
@@ -1031,7 +1034,8 @@ function CircleBtn({
   return (
     <motion.button
       type="button"
-      onClick={() => {
+      onPointerDown={(e) => {
+        if (e.button !== undefined && e.button !== 0) return;
         pressFeedback();
         onClick();
       }}
@@ -1164,7 +1168,10 @@ function MusicToggleButton({
   return (
     <motion.button
       type="button"
-      onClick={onToggle}
+      onPointerDown={(e) => {
+        if (e.button !== undefined && e.button !== 0) return;
+        onToggle();
+      }}
       whileTap={{ scale: 0.9 }}
       whileHover={{ scale: 1.06 }}
       transition={{ type: "spring", stiffness: 700, damping: 22 }}
