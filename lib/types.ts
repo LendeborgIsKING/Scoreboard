@@ -76,7 +76,7 @@ export type ScoreSoundId =
   | "tada"
   | "none";
 
-export type MusicTrackId = "none" | "hype" | "anthem" | "shuffle";
+export type MusicTrackId = "none" | "hype" | "anthem" | "shuffle" | "youtube";
 
 export interface ShotClockState {
   enabled: boolean;
@@ -91,6 +91,31 @@ export interface BannerMessage {
   text: string;
   subtext?: string;
   flavor?: "score" | "win" | "info" | "warn";
+}
+
+export interface JumbotronState {
+  type: "timeout" | "halftime" | "custom";
+  text: string;
+  subtext?: string;
+  durationSeconds: number;
+  runStartedAt: number;
+  teamId?: TeamId | null;
+}
+
+export interface BracketMatch {
+  id: string;
+  round: number; // e.g. 1 (Quarterfinals), 2 (Semifinals), 3 (Finals)
+  position: number; // Top-to-bottom position in the round
+  teamA: string | null; // Name of team A, null if TBD
+  teamB: string | null; // Name of team B, null if TBD
+  winner?: "a" | "b" | null;
+}
+
+export interface BracketState {
+  id: string;
+  name: string;
+  teamCount: 4 | 8;
+  matches: BracketMatch[];
 }
 
 export interface GameHistoryEntry {
@@ -125,7 +150,7 @@ export interface TimerState {
   countdownFromSeconds: number;
 }
 
-export type UiPhase = "menu" | "setup" | "game";
+export type UiPhase = "menu" | "setup" | "game" | "bracket" | "custom-builder";
 
 export interface GameSnapshot {
   sportId: string;

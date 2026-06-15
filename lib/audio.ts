@@ -18,7 +18,7 @@ export type SfxName =
   | "click"
   | "tick";
 
-export type MusicTrack = "none" | "hype" | "anthem" | "shuffle";
+export type MusicTrack = import("./types").MusicTrackId;
 
 let ctx: AudioContext | null = null;
 let masterSfxGain: GainNode | null = null;
@@ -230,6 +230,20 @@ function tickSfx(c: AudioContext, dest: AudioNode) {
   o.connect(g).connect(dest);
   o.start();
   o.stop(c.currentTime + 0.04);
+}
+
+export function speakAnnouncement(text: string) {
+  if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
+  try {
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.rate = 1;
+    utterance.pitch = 1;
+    utterance.volume = 0.85;
+    window.speechSynthesis.speak(utterance);
+  } catch {
+    // No-op
+  }
 }
 
 export function playSfx(name: SfxName) {

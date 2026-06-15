@@ -46,6 +46,7 @@ import { Confetti } from "./Confetti";
 import { StopHornOverlay } from "./StopHornOverlay";
 import { FinalCountdownPrompt } from "./FinalCountdownPrompt";
 import { GameOverOverlay } from "./GameOverOverlay";
+import { JumbotronOverlay } from "./JumbotronOverlay";
 import {
   BuzzerIcon,
   CheckIcon,
@@ -62,7 +63,7 @@ import {
 
 
 type Side = "a" | "b";
-type Popover = null | "period" | "clock" | "teamA" | "teamB" | "shotclock";
+type Popover = null | "period" | "clock" | "teamA" | "teamB" | "shotclock" | "timeoutA" | "timeoutB";
 
 const PERIOD_VALUES = Array.from({ length: 20 }, (_, i) => i + 1);
 const MIN_VALUES = Array.from({ length: 61 }, (_, i) => i);
@@ -186,6 +187,7 @@ export function ScoreboardDisplay() {
   const sfxEnabled = useGameStore((s) => s.sfxEnabled);
   const musicEnabled = useGameStore((s) => s.musicEnabled);
   const musicTrack = useGameStore((s) => s.musicTrack);
+  const youtubeVideoId = useGameStore((s) => s.youtubeVideoId);
 
   const possession = useGameStore((s) => s.possession);
   const balls = useGameStore((s) => s.balls);
@@ -658,7 +660,7 @@ export function ScoreboardDisplay() {
                 remaining={teamB.timeouts}
                 teamLabel={teamB.name}
                 editing={editing}
-                onAdjust={(d) => adjustTimeouts("b", d)}
+                onAdjust={(d) => editing ? adjustTimeouts("b", d) : setPopover("timeoutB")}
               />
             )}
           </section>
@@ -777,7 +779,7 @@ export function ScoreboardDisplay() {
                 remaining={teamA.timeouts}
                 teamLabel={teamA.name}
                 editing={editing}
-                onAdjust={(d) => adjustTimeouts("a", d)}
+                onAdjust={(d) => editing ? adjustTimeouts("a", d) : setPopover("timeoutA")}
               />
             )}
             {/* Sits at the right edge of the home column, just to the left of the action column —
@@ -857,6 +859,16 @@ export function ScoreboardDisplay() {
         <FinalCountdownPrompt />
         <StopHornOverlay />
         <GameOverOverlay />
+        <JumbotronOverlay />
+
+        {musicEnabled && musicTrack === "youtube" && youtubeVideoId && (
+          <div className="hidden">
+            <iframe
+              src={`https://www.youtube.com/embed/${youtubeVideoId}?autoplay=1&enablejsapi=1`}
+              allow="autoplay; encrypted-media"
+            />
+          </div>
+        )}
 
         <AnimatePresence>
           {popover && (
@@ -874,6 +886,52 @@ export function ScoreboardDisplay() {
                 onClick={(e) => e.stopPropagation()}
                 className="mx-auto max-w-[calc(100vw-2rem)] rounded-2xl border border-white/20 bg-zinc-900/95 p-4 shadow-2xl"
               >
+                {popover === "timeoutA" || popover === "timeoutB" ? (
+                  <div className="flex w-full flex-col gap-3">
+                    <h3 className="text-center font-bold uppercase tracking-widest text-zinc-400">
+                      Select Timeout
+                    </h3>
+                    <div className="flex gap-3">
+                      <button
+                        onClick={() => {
+                          const team = popover === "timeoutA" ? "a" : "b";
+                          adjustTimeouts(team, -1);
+                          useGameStore.getState().setJumbotron({
+                            type: "timeout",
+                            text: "TIMEOUT",
+                            subtext: "FULL TIMEOUT",
+                            durationSeconds: 60,
+                            runStartedAt: Date.now(),
+                            teamId: team,
+                          });
+                          closePopover();
+                        }}
+                        className="flex-1 rounded-xl border border-white/20 bg-white/5 py-4 font-bold text-white hover:bg-white/10"
+                      >
+                        60 Seconds
+                      </button>
+                      <button
+                        onClick={() => {
+                          const team = popover === "timeoutA" ? "a" : "b";
+                          adjustTimeouts(team, -1);
+                          useGameStore.getState().setJumbotron({
+                            type: "timeout",
+                            text: "TIMEOUT",
+                            subtext: "30-SEC TIMEOUT",
+                            durationSeconds: 30,
+                            runStartedAt: Date.now(),
+                            teamId: team,
+                          });
+                          closePopover();
+                        }}
+                        className="flex-1 rounded-xl border border-white/20 bg-white/5 py-4 font-bold text-white hover:bg-white/10"
+                      >
+                        30 Seconds
+                      </button>
+                    </div>
+                  </div>
+                ) : null}
+
                 {popover === "period" && (
                   <PickerWheel
                     values={PERIOD_VALUES}

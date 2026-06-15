@@ -27,6 +27,7 @@ import {
   BASKETBALL_SCORE_SFX_SRC,
   playSfx,
   playSfxClip,
+  speakAnnouncement,
   setMusic as setAudioMusic,
   setMusicVolume,
   setSfxVolume,
@@ -174,6 +175,10 @@ export interface GameState extends GameStateSlice {
   buzzerBeaterWindowEndsAt: number | null;
   /** Guard so we don't schedule multiple end-of-window timers. */
   buzzerBeaterWindowSettling: boolean;
+  announcerEnabled: boolean;
+  youtubeVideoId: string | null;
+  jumbotron: import("./types").JumbotronState | null;
+  bracket: import("./types").BracketState | null;
 }
 
 interface GameStateSlice {
@@ -285,6 +290,10 @@ type GameStore = GameState & {
   finalizeGame: () => void;
   clearHistory: () => void;
   swapTeams: () => void;
+  setAnnouncerEnabled: (v: boolean) => void;
+  setYoutubeVideoId: (id: string | null) => void;
+  setJumbotron: (jumbo: import("./types").JumbotronState | null) => void;
+  setBracket: (bracket: import("./types").BracketState | null) => void;
 };
 
 const initialShotClock: ShotClockState = {
@@ -360,6 +369,10 @@ export const useGameStore = create<GameStore>()(
       buzzerBeaterWindowActive: false,
       buzzerBeaterWindowEndsAt: null,
       buzzerBeaterWindowSettling: false,
+      announcerEnabled: false,
+      youtubeVideoId: null,
+      jumbotron: null,
+      bracket: null,
 
       pushUndo: () => {
         const snap = snapshotFrom(get());
@@ -521,6 +534,13 @@ export const useGameStore = create<GameStore>()(
           const isBig = action.value >= 6 || milestone || isBuzzerBeater;
           const isMid = action.value >= 3;
           let banner = state.banner;
+          
+          if (get().announcerEnabled && action.value > 0) {
+            const flavor = action.value >= 3 ? "for three!" : "scores!";
+            const teamName = team === "a" ? get().teamA.name : get().teamB.name;
+            speakAnnouncement(`${teamName} ${flavor}`);
+          }
+
           if (bannersEnabled && (isBig || isMid || isBuzzerBeater)) {
             bannerCounter += 1;
             banner = {
@@ -654,6 +674,10 @@ export const useGameStore = create<GameStore>()(
         if (gameOverCelebration) return;
         if (teamA.score === teamB.score) return;
         const winnerSide: "a" | "b" = teamA.score > teamB.score ? "a" : "b";
+        const winnerName = winnerSide === "a" ? teamA.name : teamB.name;
+        if (get().announcerEnabled) {
+          speakAnnouncement(`Game over! ${winnerName} wins!`);
+        }
         get().pauseTimer();
         set((state) => ({
           gameOverCelebration: {
@@ -682,6 +706,10 @@ export const useGameStore = create<GameStore>()(
 
       adjustTimeouts: (team, delta) => {
         get().pushUndo();
+        if (delta < 0 && get().announcerEnabled) {
+          const teamName = team === "a" ? get().teamA.name : get().teamB.name;
+          speakAnnouncement(`Timeout, ${teamName}`);
+        }
         set((state) => {
           const key = team === "a" ? "teamA" : "teamB";
           return {
@@ -748,6 +776,12 @@ export const useGameStore = create<GameStore>()(
         const cfg = resolveSportConfig(sportId, customSport);
         const max = effectiveMaxPeriods(cfg, timerVariantId) ?? cfg.maxPeriods;
         const nextPeriodNum = max ? Math.min(period + 1, max) : period + 1;
+        if (get().announcerEnabled) {
+          const cfgNow = resolveSportConfig(sportId, customSport);
+          const varNow = resolveActiveVariant(cfgNow, timerVariantId);
+          const pLabel = varNow?.periodLabel ?? cfgNow.periodLabel;
+          speakAnnouncement(`Starting ${pLabel} ${nextPeriodNum}`);
+        }
         const a = [...periodScores.a];
         const b = [...periodScores.b];
         while (a.length < nextPeriodNum) a.push(0);
@@ -1179,6 +1213,7 @@ export const useGameStore = create<GameStore>()(
 
       setMusicTrack: (t) => {
         set({ musicTrack: t });
+        if (t !== "youtube") set({ youtubeVideoId: null });
         if (get().musicEnabled) setAudioMusic(t);
       },
 
@@ -1285,6 +1320,11 @@ export const useGameStore = create<GameStore>()(
                 : null,
         }));
       },
+
+      setAnnouncerEnabled: (v) => set({ announcerEnabled: v }),
+      setYoutubeVideoId: (id) => set({ youtubeVideoId: id }),
+      setJumbotron: (jumbo) => set({ jumbotron: jumbo }),
+      setBracket: (bracket) => set({ bracket }),
     }),
     {
       name: "scoreboard-game-v1",
@@ -1326,6 +1366,8 @@ export const useGameStore = create<GameStore>()(
         bannersEnabled: state.bannersEnabled,
         scoreSoundId: state.scoreSoundId,
         displayFlipped: state.displayFlipped,
+        announcerEnabled: state.announcerEnabled,
+        bracket: state.bracket,
       }),
       skipHydration: true,
       merge: (persisted, current) => {
@@ -1382,6 +1424,11 @@ export const useGameStore = create<GameStore>()(
         if (!merged.history) merged.history = [];
         merged.banner = null;
         if (typeof merged.confettiKey !== "number") merged.confettiKey = 0;
+        if (typeof merged.announcerEnabled !== "boolean")
+          merged.announcerEnabled = false;
+        merged.youtubeVideoId = null;
+        merged.jumbotron = null;
+        if (!merged.bracket) merged.bracket = null;
         merged.buzzerBeaterWindowActive = false;
         merged.buzzerBeaterWindowEndsAt = null;
         merged.buzzerBeaterWindowSettling = false;

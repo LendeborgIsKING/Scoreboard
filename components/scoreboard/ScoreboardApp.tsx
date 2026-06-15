@@ -7,6 +7,8 @@ import { primeAudioOnFirstGesture } from "@/lib/audio";
 import { ScoreboardDisplay } from "./ScoreboardDisplay";
 import { SportMenu } from "./SportMenu";
 import { SportSetup } from "./SportSetup";
+import { TournamentBracket } from "./TournamentBracket";
+import { CustomSportBuilder } from "./CustomSportBuilder";
 import { MobileAppShell } from "./MobileAppShell";
 
 type ScreenOrientationWithLock = ScreenOrientation & {
@@ -43,6 +45,10 @@ export function ScoreboardApp() {
     content = <SportMenu />;
   } else if (uiPhase === "setup") {
     content = <SportSetup />;
+  } else if (uiPhase === "bracket") {
+    content = <TournamentBracket />;
+  } else if (uiPhase === "custom-builder") {
+    content = <CustomSportBuilder />;
   } else {
     content = <ScoreboardDisplay />;
   }

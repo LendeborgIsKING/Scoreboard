@@ -19,6 +19,8 @@ import {
   PencilIcon,
 } from "./UiIcons";
 
+import { searchYouTube, type YouTubeSearchResult } from "@/app/actions/youtube";
+
 type Props = {
   onClose: () => void;
   onEdit: () => void;
@@ -263,6 +265,8 @@ function SoundPanel() {
   const setVibrationEnabled = useGameStore((s) => s.setVibrationEnabled);
   const pressTickEnabled = useGameStore((s) => s.pressTickEnabled);
   const setPressTickEnabled = useGameStore((s) => s.setPressTickEnabled);
+  const announcerEnabled = useGameStore((s) => s.announcerEnabled);
+  const setAnnouncerEnabled = useGameStore((s) => s.setAnnouncerEnabled);
   return (
     <PanelShell title="Sound & feedback">
       <ToggleRow
@@ -306,6 +310,11 @@ function SoundPanel() {
         </div>
       </div>
 
+      <ToggleRow
+        label="Auto-Announcer (Voice)"
+        checked={announcerEnabled}
+        onChange={setAnnouncerEnabled}
+      />
       <ToggleRow
         label="Vibration (haptics)"
         checked={vibrationEnabled}
@@ -418,9 +427,25 @@ function MusicPanel() {
   const enabled = useGameStore((s) => s.musicEnabled);
   const track = useGameStore((s) => s.musicTrack);
   const volume = useGameStore((s) => s.musicVolume);
+  const youtubeVideoId = useGameStore((s) => s.youtubeVideoId);
   const setEnabled = useGameStore((s) => s.setMusicEnabled);
   const setTrack = useGameStore((s) => s.setMusicTrack);
   const setVol = useGameStore((s) => s.setMusicVolumePref);
+  const setYoutubeVideoId = useGameStore((s) => s.setYoutubeVideoId);
+
+  const [query, setQuery] = useState("");
+  const [results, setResults] = useState<YouTubeSearchResult[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  const handleSearch = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!query.trim()) return;
+    setLoading(true);
+    const res = await searchYouTube(query);
+    setResults(res);
+    setLoading(false);
+  };
+
   return (
     <PanelShell title="Music">
       <ToggleRow
@@ -436,7 +461,7 @@ function MusicPanel() {
             type="button"
             onClick={() => setTrack(t.id)}
             className={`rounded-full border-2 border-white/50 px-3 py-1.5 text-sm font-bold transition ${
-              track === t.id
+              track === t.id && !youtubeVideoId
                 ? "bg-white/20 text-white"
                 : "bg-transparent text-zinc-300 hover:border-white hover:bg-white/10 hover:text-white"
             }`}
@@ -445,7 +470,71 @@ function MusicPanel() {
           </button>
         ))}
       </div>
-      <p className="text-xs text-zinc-500">
+      
+      {/* Mini YouTube Screen */}
+      <div className="mt-4 rounded-xl border border-white/10 bg-black/40 p-3">
+        <h3 className="mb-2 text-sm font-bold uppercase tracking-wider text-zinc-400">YouTube Player</h3>
+        <form onSubmit={handleSearch} className="flex gap-2">
+          <input
+            type="text"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search YouTube..."
+            className="flex-1 rounded-lg border border-white/20 bg-black/60 px-3 py-1.5 text-sm text-white placeholder-zinc-500 outline-none focus:border-white/50"
+          />
+          <button
+            type="submit"
+            disabled={loading}
+            className="rounded-lg bg-white/10 px-4 py-1.5 text-sm font-bold transition hover:bg-white/20 disabled:opacity-50"
+          >
+            Search
+          </button>
+        </form>
+        
+        {results.length > 0 && !youtubeVideoId && (
+          <div className="mt-3 flex flex-col gap-2 max-h-48 overflow-y-auto pr-1">
+            {results.map((vid) => (
+              <button
+                key={vid.id}
+                type="button"
+                onClick={() => {
+                  setTrack("youtube");
+                  setYoutubeVideoId(vid.id);
+                  setEnabled(true);
+                  setResults([]); // clear results once playing
+                }}
+                className="flex items-center gap-3 rounded-lg border border-white/10 p-2 text-left hover:bg-white/5 transition"
+              >
+                {vid.thumbnail && (
+                  <img src={vid.thumbnail} alt="" className="h-10 w-16 rounded object-cover" />
+                )}
+                <div className="flex-1 overflow-hidden">
+                  <div className="truncate text-sm font-bold text-zinc-200">{vid.title}</div>
+                  <div className="text-xs text-zinc-500">{vid.channelName} • {vid.durationFormatted}</div>
+                </div>
+              </button>
+            ))}
+          </div>
+        )}
+
+        {youtubeVideoId && (
+          <div className="mt-3 flex flex-col gap-2">
+            <div className="text-sm text-green-400 font-bold mb-1">▶ Playing YouTube Audio</div>
+            <button
+              type="button"
+              onClick={() => {
+                setYoutubeVideoId(null);
+                setTrack("none");
+              }}
+              className="mt-1 rounded-lg bg-red-600/20 px-3 py-1.5 text-sm font-bold text-red-300 transition hover:bg-red-600/30"
+            >
+              Stop YouTube
+            </button>
+          </div>
+        )}
+      </div>
+
+      <p className="mt-3 text-xs text-zinc-500">
         Background music plays normally. Final Countdown interrupts and turns other music off.
       </p>
     </PanelShell>
