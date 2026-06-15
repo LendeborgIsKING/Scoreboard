@@ -64,13 +64,12 @@ const SCORE_SOUNDS: { id: ScoreSoundId; label: string }[] = [
 const TARGET_PRESETS = [11, 15, 21];
 
 const TRACKS: {
-  id: "none" | "hype" | "anthem" | "journey" | "shuffle";
+  id: "none" | "hype" | "anthem" | "shuffle";
   label: string;
 }[] = [
   { id: "none", label: "Off" },
   { id: "hype", label: "Hype (Kernkraft)" },
   { id: "anthem", label: "Anthem (Star-Spangled Banner)" },
-  { id: "journey", label: "Journey (Don't Stop Believin')" },
   { id: "shuffle", label: "Song Shuffle" },
 ];
 

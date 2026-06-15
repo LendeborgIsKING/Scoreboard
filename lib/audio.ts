@@ -18,7 +18,7 @@ export type SfxName =
   | "click"
   | "tick";
 
-export type MusicTrack = "none" | "hype" | "anthem" | "journey" | "shuffle";
+export type MusicTrack = "none" | "hype" | "anthem" | "shuffle";
 
 let ctx: AudioContext | null = null;
 let masterSfxGain: GainNode | null = null;
@@ -451,8 +451,6 @@ function startTrackFromFile(
   src: string,
   loopStart: number,
   loopEnd?: number,
-  fadeOutSec?: number,
-  onEndCallback?: () => void,
 ): { stop: () => void } {
   const audio = new Audio(src);
   audio.crossOrigin = "anonymous";
@@ -460,49 +458,22 @@ function startTrackFromFile(
   audio.loop = false;
   audio.currentTime = loopStart;
 
-  const trackGain = c.createGain();
-  trackGain.connect(dest);
-
   let source: MediaElementAudioSourceNode | null = null;
   try {
     source = c.createMediaElementSource(audio);
-    source.connect(trackGain);
+    source.connect(dest);
   } catch {
     // Fallback: route through default destination if Web Audio routing fails.
   }
 
-  let fading = false;
-
   const onTimeUpdate = () => {
-    if (loopEnd != null) {
-      if (fadeOutSec != null && !fading && audio.currentTime >= loopEnd - fadeOutSec) {
-        fading = true;
-        trackGain.gain.setValueAtTime(1, c.currentTime);
-        trackGain.gain.linearRampToValueAtTime(0, c.currentTime + fadeOutSec);
-      }
-      if (audio.currentTime >= loopEnd) {
-        if (onEndCallback) {
-          onEndCallback();
-        } else {
-          audio.currentTime = loopStart;
-          fading = false;
-          trackGain.gain.cancelScheduledValues(c.currentTime);
-          trackGain.gain.setValueAtTime(1, c.currentTime);
-          audio.play().catch(() => {});
-        }
-      }
+    if (loopEnd != null && audio.currentTime >= loopEnd) {
+      audio.currentTime = loopStart;
     }
   };
   const onEnded = () => {
-    if (onEndCallback) {
-      onEndCallback();
-    } else {
-      audio.currentTime = loopStart;
-      fading = false;
-      trackGain.gain.cancelScheduledValues(c.currentTime);
-      trackGain.gain.setValueAtTime(1, c.currentTime);
-      audio.play().catch(() => {});
-    }
+    audio.currentTime = loopStart;
+    audio.play().catch(() => {});
   };
   audio.addEventListener("timeupdate", onTimeUpdate);
   audio.addEventListener("ended", onEnded);
@@ -538,6 +509,133 @@ function startTrackFromFile(
   };
 }
 
+type ShuffleSong = {
+  src: string;
+  start: number;
+  end?: number;
+  fade?: number;
+};
+
+const SHUFFLE_PLAYLIST: ShuffleSong[] = [
+  { src: "/music/dont-stop-believin.mp3", start: 0, end: 195, fade: 4 },
+  { src: "/music/enter-sandman.mp3", start: 0, end: 120, fade: 4 },
+  { src: "/music/we-will-rock-you.mp3", start: 0 },
+  { src: "/music/mr-brightside.mp3", start: 0, end: 97, fade: 4 },
+];
+
+function startShufflePlaylist(
+  c: AudioContext,
+  dest: AudioNode
+): { stop: () => void } {
+  let stopped = false;
+  let activeAudio: HTMLAudioElement | null = null;
+  let activeSource: MediaElementAudioSourceNode | null = null;
+  let activeGain: GainNode | null = null;
+  let timeoutId: number | null = null;
+  let fadeTimeoutId: number | null = null;
+
+  let lastIndex = -1;
+
+  // Needed because event listeners on the audio element might fire after cleanup
+  // if not carefully removed, but we want an explicit reference to the current
+  // functions so they can be cleaned up cleanly.
+  let onTimeUpdate: () => void = () => {};
+  let onEnded: () => void = () => {};
+
+  const cleanup = () => {
+    if (timeoutId !== null) window.clearTimeout(timeoutId);
+    if (fadeTimeoutId !== null) window.clearTimeout(fadeTimeoutId);
+    if (activeAudio) {
+      activeAudio.removeEventListener("timeupdate", onTimeUpdate);
+      activeAudio.removeEventListener("ended", onEnded);
+      try { activeAudio.pause(); } catch {}
+      try { activeAudio.removeAttribute("src"); } catch {}
+      try { activeAudio.load(); } catch {}
+    }
+    try { activeSource?.disconnect(); } catch {}
+    try { activeGain?.disconnect(); } catch {}
+    activeAudio = null;
+    activeSource = null;
+    activeGain = null;
+    timeoutId = null;
+    fadeTimeoutId = null;
+  };
+
+  const playNext = () => {
+    if (stopped) return;
+    cleanup();
+    
+    let index = Math.floor(Math.random() * SHUFFLE_PLAYLIST.length);
+    if (SHUFFLE_PLAYLIST.length > 1 && index === lastIndex) {
+      index = (index + 1) % SHUFFLE_PLAYLIST.length;
+    }
+    lastIndex = index;
+    const song = SHUFFLE_PLAYLIST[index];
+
+    activeAudio = new Audio(song.src);
+    activeAudio.crossOrigin = "anonymous";
+    activeAudio.preload = "auto";
+    activeAudio.currentTime = song.start;
+    activeAudio.loop = false;
+
+    activeGain = c.createGain();
+    activeGain.gain.value = 1;
+    activeGain.connect(dest);
+
+    try {
+      activeSource = c.createMediaElementSource(activeAudio);
+      activeSource.connect(activeGain);
+    } catch {
+      // Fallback
+    }
+
+    let fadeTriggered = false;
+
+    onTimeUpdate = () => {
+      if (stopped || !activeAudio || !activeGain) return;
+      if (song.end && song.fade && !fadeTriggered) {
+        if (activeAudio.currentTime >= song.end - song.fade) {
+          fadeTriggered = true;
+          activeGain.gain.setValueAtTime(activeGain.gain.value, c.currentTime);
+          activeGain.gain.linearRampToValueAtTime(0.001, c.currentTime + song.fade);
+          fadeTimeoutId = window.setTimeout(playNext, song.fade * 1000);
+        }
+      } else if (song.end && !song.fade && activeAudio.currentTime >= song.end) {
+        playNext();
+      }
+    };
+
+    onEnded = () => {
+      if (!stopped) playNext();
+    };
+
+    activeAudio.addEventListener("timeupdate", onTimeUpdate);
+    activeAudio.addEventListener("ended", onEnded);
+
+    const onCanPlay = () => {
+      if (stopped) return;
+      if (activeAudio) {
+        activeAudio.currentTime = song.start;
+        activeAudio.play().catch(() => {
+          if (!stopped) timeoutId = window.setTimeout(playNext, 2000);
+        });
+      }
+    };
+
+    if (activeAudio.readyState >= 2) onCanPlay();
+    else activeAudio.addEventListener("canplay", onCanPlay, { once: true });
+  };
+
+  playNext();
+
+  return {
+    stop: () => {
+      stopped = true;
+      cleanup();
+    },
+  };
+}
+
 /** PD US Gov — Army Field Band; source .oga: https://commons.wikimedia.org/wiki/File:%22The_Star-Spangled_Banner%22_-_Choral_with_band_accompaniment_-_United_States_Army_Field_Band.oga */
 const ANTHEM_MP3 = "/music/star-spangled-banner-anthem.mp3";
 
@@ -552,32 +650,18 @@ export function setMusic(track: MusicTrack) {
   }
   currentTrack = track;
   if (track === "none") return;
-
-  function playInternal(t: "hype" | "anthem" | "journey", isShuffle: boolean) {
-    if (musicNodes) {
-      musicNodes.stop();
-      musicNodes = null;
-    }
-    const onEnd = isShuffle ? () => {
-      const tracks: ("hype" | "anthem" | "journey")[] = ["hype", "anthem", "journey"];
-      const next = tracks.filter(x => x !== t)[Math.floor(Math.random() * 2)];
-      playInternal(next, true);
-    } : undefined;
-
-    if (t === "hype")
-      musicNodes = startTrackFromFile(c!, masterMusicGain!, "/music/kernkraft.mp3", 45, 105, undefined, onEnd);
-    else if (t === "anthem")
-      musicNodes = startTrackFromFile(c!, masterMusicGain!, ANTHEM_MP3, 0, undefined, undefined, onEnd);
-    else if (t === "journey")
-      musicNodes = startTrackFromFile(c!, masterMusicGain!, "/music/journey-dont-stop-believin.mp3", 0, 195, 5, onEnd);
-  }
-
-  if (track === "shuffle") {
-    const tracks: ("hype" | "anthem" | "journey")[] = ["hype", "anthem", "journey"];
-    playInternal(tracks[Math.floor(Math.random() * tracks.length)], true);
-  } else {
-    playInternal(track as "hype" | "anthem" | "journey", false);
-  }
+  if (track === "hype")
+    musicNodes = startTrackFromFile(
+      c,
+      masterMusicGain,
+      "/music/kernkraft.mp3",
+      45,
+      105,
+    );
+  if (track === "anthem")
+    musicNodes = startTrackFromFile(c, masterMusicGain, ANTHEM_MP3, 0);
+  if (track === "shuffle")
+    musicNodes = startShufflePlaylist(c, masterMusicGain);
 }
 
 export function getCurrentTrack(): MusicTrack {
