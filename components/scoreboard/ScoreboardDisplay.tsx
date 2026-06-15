@@ -292,7 +292,7 @@ export function ScoreboardDisplay() {
 
   // Pre-decode frequently used audio clips so taps fire instantly with zero lag.
   useEffect(() => {
-    void prefetchSfxClip("/sfx/horn.mp3");
+    void prefetchSfxClip("/sfx/nba-horn.mp3");
     void prefetchSfxClip("/sfx/whistle.mp3");
     void prefetchSfxClip("/music/mike-breen-double-bang.mp3");
     void prefetchSfxClip("/sfx/basketball-swish.mp3");
@@ -350,7 +350,7 @@ export function ScoreboardDisplay() {
     nextPeriod,
     prevPeriod,
     resetScoresOnly,
-    playHorn: () => playSfxClip("/sfx/horn.mp3"),
+    playHorn: () => playSfxClip("/sfx/nba-horn.mp3"),
     playWhistle: () => playSfxClip("/sfx/whistle.mp3"),
     playFinalCountdown,
     setMusicEnabled,
@@ -785,7 +785,7 @@ export function ScoreboardDisplay() {
             <div className="mt-1 flex max-w-[120px] flex-wrap justify-end gap-2 self-end">
               <CircleBtn
                 icon={<BuzzerIcon className="h-5 w-5" />}
-                onClick={() => playSfxClip("/sfx/horn.mp3")}
+                onClick={() => playSfxClip("/sfx/nba-horn.mp3")}
                 ariaLabel="Horn"
               />
               <CircleBtn

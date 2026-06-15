@@ -40,7 +40,7 @@ function playScoreSound(id: ScoreSoundId) {
       playSfxClip(BASKETBALL_SCORE_SFX_SRC);
       break;
     case "horn":
-      playSfxClip("/sfx/horn.mp3");
+      playSfxClip("/sfx/nba-horn.mp3");
       break;
     case "chime":
       playSfx("chime");
@@ -606,10 +606,10 @@ export const useGameStore = create<GameStore>()(
                 const end = start + hornTeam.defaultDuration;
                 playSfxClip(NHL_HORN_SRC, start, end, { onEnded: clearHornFlag });
               } else {
-                playSfxClip("/sfx/horn.mp3", 0, undefined, { onEnded: clearHornFlag });
+                playSfxClip("/sfx/nba-horn.mp3", 0, undefined, { onEnded: clearHornFlag });
               }
             } else {
-              playSfxClip("/sfx/horn.mp3", 0, undefined, { onEnded: clearHornFlag });
+              playSfxClip("/sfx/nba-horn.mp3", 0, undefined, { onEnded: clearHornFlag });
             }
           } else if (action.value >= 6) playSfx("tada");
           else if (action.value >= 3) playSfx("swoosh");
@@ -1008,7 +1008,7 @@ export const useGameStore = create<GameStore>()(
               buzzerBeaterWindowEndsAt: endsAt,
               buzzerBeaterWindowSettling: false,
             });
-            if (sfxEnabled) playSfxClip("/sfx/horn.mp3");
+            if (sfxEnabled) playSfxClip("/sfx/nba-horn.mp3");
             return;
           }
 

@@ -290,7 +290,7 @@ function SoundPanel() {
                 setScoreSound(s.id);
                 if (sfxEnabled && s.id !== "none" && s.id !== "default") {
                   if (s.id === "swish") playSfxClip("/sfx/basketball-swish.mp3");
-                  else if (s.id === "horn") playSfxClip("/sfx/horn.mp3");
+                  else if (s.id === "horn") playSfxClip("/sfx/nba-horn.mp3");
                   else playSfx(s.id);
                 }
               }}
