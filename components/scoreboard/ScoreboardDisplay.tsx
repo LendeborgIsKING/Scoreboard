@@ -862,7 +862,7 @@ export function ScoreboardDisplay() {
         <JumbotronOverlay />
 
         {musicEnabled && musicTrack === "youtube" && youtubeVideoId && (
-          <div className="hidden">
+          <div className="absolute top-0 left-0 w-1 h-1 opacity-0 pointer-events-none overflow-hidden">
             <iframe
               src={`https://www.youtube.com/embed/${youtubeVideoId}?autoplay=1&enablejsapi=1`}
               allow="autoplay; encrypted-media"
