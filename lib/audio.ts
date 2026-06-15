@@ -18,7 +18,7 @@ export type SfxName =
   | "click"
   | "tick";
 
-export type MusicTrack = "none" | "hype" | "anthem";
+export type MusicTrack = "none" | "hype" | "anthem" | "journey" | "shuffle";
 
 let ctx: AudioContext | null = null;
 let masterSfxGain: GainNode | null = null;
@@ -451,6 +451,8 @@ function startTrackFromFile(
   src: string,
   loopStart: number,
   loopEnd?: number,
+  fadeOutSec?: number,
+  onEndCallback?: () => void,
 ): { stop: () => void } {
   const audio = new Audio(src);
   audio.crossOrigin = "anonymous";
@@ -458,22 +460,49 @@ function startTrackFromFile(
   audio.loop = false;
   audio.currentTime = loopStart;
 
+  const trackGain = c.createGain();
+  trackGain.connect(dest);
+
   let source: MediaElementAudioSourceNode | null = null;
   try {
     source = c.createMediaElementSource(audio);
-    source.connect(dest);
+    source.connect(trackGain);
   } catch {
     // Fallback: route through default destination if Web Audio routing fails.
   }
 
+  let fading = false;
+
   const onTimeUpdate = () => {
-    if (loopEnd != null && audio.currentTime >= loopEnd) {
-      audio.currentTime = loopStart;
+    if (loopEnd != null) {
+      if (fadeOutSec != null && !fading && audio.currentTime >= loopEnd - fadeOutSec) {
+        fading = true;
+        trackGain.gain.setValueAtTime(1, c.currentTime);
+        trackGain.gain.linearRampToValueAtTime(0, c.currentTime + fadeOutSec);
+      }
+      if (audio.currentTime >= loopEnd) {
+        if (onEndCallback) {
+          onEndCallback();
+        } else {
+          audio.currentTime = loopStart;
+          fading = false;
+          trackGain.gain.cancelScheduledValues(c.currentTime);
+          trackGain.gain.setValueAtTime(1, c.currentTime);
+          audio.play().catch(() => {});
+        }
+      }
     }
   };
   const onEnded = () => {
-    audio.currentTime = loopStart;
-    audio.play().catch(() => {});
+    if (onEndCallback) {
+      onEndCallback();
+    } else {
+      audio.currentTime = loopStart;
+      fading = false;
+      trackGain.gain.cancelScheduledValues(c.currentTime);
+      trackGain.gain.setValueAtTime(1, c.currentTime);
+      audio.play().catch(() => {});
+    }
   };
   audio.addEventListener("timeupdate", onTimeUpdate);
   audio.addEventListener("ended", onEnded);
@@ -523,16 +552,32 @@ export function setMusic(track: MusicTrack) {
   }
   currentTrack = track;
   if (track === "none") return;
-  if (track === "hype")
-    musicNodes = startTrackFromFile(
-      c,
-      masterMusicGain,
-      "/music/kernkraft.mp3",
-      45,
-      105,
-    );
-  if (track === "anthem")
-    musicNodes = startTrackFromFile(c, masterMusicGain, ANTHEM_MP3, 0);
+
+  function playInternal(t: "hype" | "anthem" | "journey", isShuffle: boolean) {
+    if (musicNodes) {
+      musicNodes.stop();
+      musicNodes = null;
+    }
+    const onEnd = isShuffle ? () => {
+      const tracks: ("hype" | "anthem" | "journey")[] = ["hype", "anthem", "journey"];
+      const next = tracks.filter(x => x !== t)[Math.floor(Math.random() * 2)];
+      playInternal(next, true);
+    } : undefined;
+
+    if (t === "hype")
+      musicNodes = startTrackFromFile(c!, masterMusicGain!, "/music/kernkraft.mp3", 45, 105, undefined, onEnd);
+    else if (t === "anthem")
+      musicNodes = startTrackFromFile(c!, masterMusicGain!, ANTHEM_MP3, 0, undefined, undefined, onEnd);
+    else if (t === "journey")
+      musicNodes = startTrackFromFile(c!, masterMusicGain!, "/music/journey-dont-stop-believin.mp3", 0, 195, 5, onEnd);
+  }
+
+  if (track === "shuffle") {
+    const tracks: ("hype" | "anthem" | "journey")[] = ["hype", "anthem", "journey"];
+    playInternal(tracks[Math.floor(Math.random() * tracks.length)], true);
+  } else {
+    playInternal(track as "hype" | "anthem" | "journey", false);
+  }
 }
 
 export function getCurrentTrack(): MusicTrack {
