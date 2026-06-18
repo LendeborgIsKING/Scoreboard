@@ -50,6 +50,7 @@ import { JumbotronOverlay } from "./JumbotronOverlay";
 import {
   BuzzerIcon,
   CheckIcon,
+  CloseIcon,
   GearIcon,
   MenuIcon,
   MicSlashIcon,
@@ -862,11 +863,24 @@ export function ScoreboardDisplay() {
         <JumbotronOverlay />
 
         {musicEnabled && musicTrack === "youtube" && youtubeVideoId && (
-          <div className="absolute top-0 left-0 w-1 h-1 opacity-0 pointer-events-none overflow-hidden">
-            <iframe
-              src={`https://www.youtube.com/embed/${youtubeVideoId}?autoplay=1&enablejsapi=1`}
-              allow="autoplay; encrypted-media"
-            />
+          <div className="absolute z-[60] bottom-4 left-4 w-48 overflow-hidden rounded-xl border border-white/20 bg-black shadow-2xl transition-all duration-500">
+            <div className="relative w-full" style={{ paddingTop: '56.25%' }}>
+              <iframe
+                src={`https://www.youtube.com/embed/${youtubeVideoId}?autoplay=1&playsinline=1`}
+                className="absolute inset-0 w-full h-full"
+                allow="autoplay; encrypted-media; picture-in-picture"
+                allowFullScreen
+              />
+            </div>
+            <button
+              onClick={() => {
+                useGameStore.getState().setYoutubeVideoId(null);
+                useGameStore.getState().setMusicTrack("none");
+              }}
+              className="absolute top-1 right-1 flex h-6 w-6 items-center justify-center rounded-full bg-black/60 text-white hover:bg-red-500/80 backdrop-blur-sm"
+            >
+              <CloseIcon className="h-4 w-4" />
+            </button>
           </div>
         )}
 
