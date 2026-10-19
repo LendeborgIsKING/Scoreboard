@@ -43,7 +43,13 @@ const TOGGLE_LABELS: Record<keyof HockeyFeatureToggles, string> = {
   lastGoalTicker: "Last goal ticker",
 };
 
-export function HockeyPanel({ view }: { view: "main" | "periods" }) {
+export function HockeyPanel({
+  view,
+  onReturnToScoreboard,
+}: {
+  view: "main" | "periods";
+  onReturnToScoreboard?: () => void;
+}) {
   const toggles = useGameStore((s) => s.hockeyToggles);
   const setToggle = useGameStore((s) => s.setHockeyToggle);
   const puckSec = useGameStore((s) => s.puckDropDelaySeconds);
@@ -143,8 +149,22 @@ export function HockeyPanel({ view }: { view: "main" | "periods" }) {
       {toggles.penaltyBox && (
         <div className="mt-4 rounded-xl border border-white/10 bg-white/5 p-3">
           <p className="text-sm font-bold">Penalties</p>
-          <PenaltyRow team="a" name={teamA.name} onAdd={addPenalty} />
-          <PenaltyRow team="b" name={teamB.name} onAdd={addPenalty} />
+          <PenaltyRow
+            team="a"
+            name={teamA.name}
+            onAdd={(t, m) => {
+              addPenalty(t, m);
+              onReturnToScoreboard?.();
+            }}
+          />
+          <PenaltyRow
+            team="b"
+            name={teamB.name}
+            onAdd={(t, m) => {
+              addPenalty(t, m);
+              onReturnToScoreboard?.();
+            }}
+          />
           <button
             type="button"
             onClick={clearPenalties}
@@ -159,14 +179,20 @@ export function HockeyPanel({ view }: { view: "main" | "periods" }) {
         <div className="mt-4 flex flex-wrap gap-2">
           <button
             type="button"
-            onClick={() => setDelayed(delayed === "a" ? null : "a")}
+            onClick={() => {
+              setDelayed(delayed === "a" ? null : "a");
+              onReturnToScoreboard?.();
+            }}
             className={`rounded-full border px-3 py-1 text-xs font-bold ${delayed === "a" ? "border-amber-400 text-amber-300" : "border-white/30"}`}
           >
             Delayed {teamA.name}
           </button>
           <button
             type="button"
-            onClick={() => setDelayed(delayed === "b" ? null : "b")}
+            onClick={() => {
+              setDelayed(delayed === "b" ? null : "b");
+              onReturnToScoreboard?.();
+            }}
             className={`rounded-full border px-3 py-1 text-xs font-bold ${delayed === "b" ? "border-amber-400 text-amber-300" : "border-white/30"}`}
           >
             Delayed {teamB.name}
@@ -197,7 +223,10 @@ export function HockeyPanel({ view }: { view: "main" | "periods" }) {
             <button
               key={m}
               type="button"
-              onClick={() => startIntermission(m)}
+              onClick={() => {
+                startIntermission(m);
+                onReturnToScoreboard?.();
+              }}
               className="rounded-full border border-white/30 px-3 py-1 text-xs font-bold hover:bg-white/10"
             >
               {m} min intermission
@@ -216,7 +245,10 @@ export function HockeyPanel({ view }: { view: "main" | "periods" }) {
             <button
               key={p.sec}
               type="button"
-              onClick={() => applyOt(p.sec)}
+              onClick={() => {
+                applyOt(p.sec);
+                onReturnToScoreboard?.();
+              }}
               className="rounded-full border border-white/30 px-3 py-1 text-xs font-bold hover:bg-white/10"
             >
               {p.label}
@@ -232,7 +264,10 @@ export function HockeyPanel({ view }: { view: "main" | "periods" }) {
         </p>
         <button
           type="button"
-          onClick={() => startShootout("hockey")}
+          onClick={() => {
+            startShootout("hockey");
+            onReturnToScoreboard?.();
+          }}
           className="mt-3 w-full rounded-xl bg-sky-600 py-2.5 text-sm font-bold text-white hover:bg-sky-500"
         >
           Start shootout

@@ -62,7 +62,14 @@ export function RefereeTimerOverlay() {
   );
 }
 
-export function RefereeQuickTimers({ compact }: { compact?: boolean }) {
+export function RefereeQuickTimers({
+  compact,
+  onAfterStart,
+}: {
+  compact?: boolean;
+  /** Close settings / return to scoreboard after starting a timer */
+  onAfterStart?: () => void;
+}) {
   const start = useGameStore((s) => s.startRefereeTimer);
   const presets = [
     { sec: 20, label: "20s" },
@@ -76,7 +83,10 @@ export function RefereeQuickTimers({ compact }: { compact?: boolean }) {
         <button
           key={p.sec}
           type="button"
-          onClick={() => start(p.sec, `${p.label} Timer`)}
+          onClick={() => {
+            start(p.sec, `${p.label} Timer`);
+            onAfterStart?.();
+          }}
           className="rounded-full border border-white/30 px-3 py-1 text-xs font-bold text-white hover:bg-white/10"
         >
           {p.label}

@@ -166,10 +166,12 @@ export function SettingsModal({
         {panel === "theme" && <ThemePanel />}
         {panel === "shotclock" && <ShotClockPanel />}
         {panel === "boxscore" && <BoxScorePanel />}
-        {panel === "game" && <GamePanel />}
+        {panel === "game" && <GamePanel onReturnToScoreboard={onClose} />}
         {panel === "team-colors" && <TeamColorsPanel />}
         {panel === "hockey-horn" && <HockeyHornPanel />}
-        {panel === "hockey" && <HockeyPanel view="main" />}
+        {panel === "hockey" && (
+          <HockeyPanel view="main" onReturnToScoreboard={onClose} />
+        )}
         {panel === "hockey-periods" && <HockeyPanel view="periods" />}
       </motion.div>
     </motion.div>
@@ -404,7 +406,11 @@ function SoundPanel() {
   );
 }
 
-function GamePanel() {
+function GamePanel({
+  onReturnToScoreboard,
+}: {
+  onReturnToScoreboard?: () => void;
+}) {
   const autoStart = useGameStore((s) => s.autoStartClockOnScore);
   const setAutoStart = useGameStore((s) => s.setAutoStartClockOnScore);
   const keepAwake = useGameStore((s) => s.keepAwakeEnabled);
@@ -490,7 +496,7 @@ function GamePanel() {
       {showRefereeTimers && (
         <div className="rounded-xl border border-white/10 bg-white/5 px-3 py-2">
           <span className="text-sm font-bold">Referee quick timers</span>
-          <RefereeQuickTimers />
+          <RefereeQuickTimers onAfterStart={onReturnToScoreboard} />
         </div>
       )}
 
@@ -498,7 +504,10 @@ function GamePanel() {
         <div className="flex flex-wrap gap-2">
           <button
             type="button"
-            onClick={() => startShootout("soccer")}
+            onClick={() => {
+              startShootout("soccer");
+              onReturnToScoreboard?.();
+            }}
             className="rounded-full border-2 border-white/50 px-4 py-1.5 text-sm font-bold text-white hover:bg-white/10"
           >
             Start Penalty Shootout
