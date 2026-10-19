@@ -53,6 +53,7 @@ import { TargetScoreBar } from "./TargetScoreBar";
 import { StoppageTimeDisplay } from "./StoppageTimeDisplay";
 import { IntroSequence } from "./IntroSequence";
 import { LEDScore } from "./LEDScore";
+import { BaseballCountDisplay } from "./BaseballCountDisplay";
 import {
   HockeySogDisplay,
   HockeyStatusStrip,
@@ -206,16 +207,10 @@ export function ScoreboardDisplay() {
   const musicVolume = useGameStore((s) => s.musicVolume);
   const youtubeVideoId = useGameStore((s) => s.youtubeVideoId);
   const ledScoreAnimation = useGameStore((s) => s.ledScoreAnimation);
-  const pitchCountA = useGameStore((s) => s.pitchCountA);
-  const pitchCountB = useGameStore((s) => s.pitchCountB);
-  const adjustPitchCount = useGameStore((s) => s.adjustPitchCount);
   const crowdIntensity = useGameStore((s) => s.crowdIntensity);
   const setCrowdIntensity = useGameStore((s) => s.setCrowdIntensity);
 
   const possession = useGameStore((s) => s.possession);
-  const balls = useGameStore((s) => s.balls);
-  const strikes = useGameStore((s) => s.strikes);
-  const outs = useGameStore((s) => s.outs);
   const down = useGameStore((s) => s.down);
 
   const addScore = useGameStore((s) => s.addScore);
@@ -227,7 +222,6 @@ export function ScoreboardDisplay() {
   const startTimer = useGameStore((s) => s.startTimer);
   const pauseTimer = useGameStore((s) => s.pauseTimer);
   const nextPeriod = useGameStore((s) => s.nextPeriod);
-  const adjustBSO = useGameStore((s) => s.adjustBSO);
   const toggleHalfInning = useGameStore((s) => s.toggleHalfInning);
   const setPossession = useGameStore((s) => s.setPossession);
   const setSfxEnabled = useGameStore((s) => s.setSfxEnabled);
@@ -710,29 +704,7 @@ export function ScoreboardDisplay() {
               <StatPill label="Down" value={String(down)} />
             )}
 
-            {hasFeature(cfg, "ballsStrikesOuts") && (
-              <>
-              <div className="flex max-w-[min(100%,280px)] flex-wrap items-center justify-center gap-x-2 gap-y-1 text-xs text-yellow-300">
-                <button type="button" onClick={() => adjustBSO("balls", -1)} className="flex h-5 w-5 items-center justify-center rounded-full border border-white/50 bg-transparent text-white transition hover:bg-white/10 hover:border-white">-</button>
-                B {balls}
-                <button type="button" onClick={() => adjustBSO("balls", 1)} className="flex h-5 w-5 items-center justify-center rounded-full border border-white/50 bg-transparent text-white transition hover:bg-white/10 hover:border-white">+</button>
-                <span className="mx-1">|</span>
-                <button type="button" onClick={() => adjustBSO("strikes", -1)} className="flex h-5 w-5 items-center justify-center rounded-full border border-white/50 bg-transparent text-white transition hover:bg-white/10 hover:border-white">-</button>
-                S {strikes}
-                <button type="button" onClick={() => adjustBSO("strikes", 1)} className="flex h-5 w-5 items-center justify-center rounded-full border border-white/50 bg-transparent text-white transition hover:bg-white/10 hover:border-white">+</button>
-                <span className="mx-1">|</span>
-                <button type="button" onClick={() => adjustBSO("outs", -1)} className="flex h-5 w-5 items-center justify-center rounded-full border border-white/50 bg-transparent text-white transition hover:bg-white/10 hover:border-white">-</button>
-                O {outs}
-                <button type="button" onClick={() => adjustBSO("outs", 1)} className="flex h-5 w-5 items-center justify-center rounded-full border border-white/50 bg-transparent text-white transition hover:bg-white/10 hover:border-white">+</button>
-              </div>
-              <div className="mt-1 flex gap-4 text-[10px] font-bold uppercase tracking-wider text-zinc-400">
-                <span>Pitch {teamB.name}: {pitchCountB}</span>
-                <button type="button" onClick={() => adjustPitchCount("b", 1)} className="text-white/60 hover:text-white">+</button>
-                <span>Pitch {teamA.name}: {pitchCountA}</span>
-                <button type="button" onClick={() => adjustPitchCount("a", 1)} className="text-white/60 hover:text-white">+</button>
-              </div>
-              </>
-            )}
+            {hasFeature(cfg, "ballsStrikesOuts") && <BaseballCountDisplay />}
 
             {hasFeature(cfg, "halfInning") && (
               <button type="button" onClick={() => toggleHalfInning()} className="rounded-full border border-white/50 bg-transparent px-3 py-1 text-xs uppercase text-white transition hover:bg-white/10 hover:border-white">
