@@ -29,7 +29,6 @@ import { useCountdownTick } from "@/hooks/useCountdownTick";
 import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
 import { useWakeLock } from "@/hooks/useWakeLock";
 import { useIsMobileDevice } from "@/hooks/useIsMobileDevice";
-import { useRookVoiceAssistant } from "@/hooks/useRookVoiceAssistant";
 import { pressFeedback } from "@/lib/feedback";
 import { SettingsModal } from "./SettingsModal";
 import { StatsModal } from "./StatsModal";
@@ -250,10 +249,7 @@ export function ScoreboardDisplay() {
   );
   const keepAwakeEnabled = useGameStore((s) => s.keepAwakeEnabled);
   const resetTimer = useGameStore((s) => s.resetTimer);
-  const resetScoresOnly = useGameStore((s) => s.resetScoresOnly);
   const prevPeriod = useGameStore((s) => s.prevPeriod);
-  const showBanner = useGameStore((s) => s.showBanner);
-  const playFinalCountdown = useGameStore((s) => s.playFinalCountdown);
   const { isMobile } = useIsMobileDevice();
 
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -365,35 +361,6 @@ export function ScoreboardDisplay() {
     (editing || foulsResetPrompt) &&
     (teamA.fouls > 0 || teamB.fouls > 0 || foulsResetPrompt);
 
-  const { listen, isListening } = useRookVoiceAssistant({
-    teamAName: teamA.name,
-    teamBName: teamB.name,
-    hasFouls,
-    hasTimeouts,
-    hasPossession: showPossession,
-    enabled: true,
-    startTimer,
-    pauseTimer,
-    resetTimer,
-    adjustScore,
-    adjustFouls,
-    adjustTimeouts,
-    setPossession,
-    startShotClock: hasShotClock ? startShotClock : () => {},
-    pauseShotClock: hasShotClock ? pauseShotClock : () => {},
-    nextPeriod,
-    prevPeriod,
-    resetScoresOnly,
-    playHorn: () => playSfxClip("/sfx/nba-horn.mp3"),
-    playWhistle: () => playSfxClip("/sfx/whistle.mp3"),
-    playFinalCountdown,
-    setMusicEnabled,
-    setMusicTrack,
-    showBanner: (text, subtext, flavor = "info") => {
-      showBanner({ text, subtext, flavor });
-    },
-  });
-
   const openClockPicker = () => {
     setMinDraft(Math.floor(timer.countdownFromSeconds / 60));
     setSecDraft(timer.countdownFromSeconds % 60);
@@ -473,15 +440,6 @@ export function ScoreboardDisplay() {
               icon={<MenuIcon className="h-5 w-5" />}
               onClick={() => setUiPhase("menu")}
               ariaLabel="Exit to menu"
-            />
-            <CircleBtn
-              icon={
-                <MicrophoneIcon
-                  className={`h-5 w-5 ${isListening ? "text-red-500 animate-pulse" : ""}`}
-                />
-              }
-              onClick={listen}
-              ariaLabel="Voice Command"
             />
             <MusicToggleButton
               playing={musicEnabled && musicTrack !== "none"}
