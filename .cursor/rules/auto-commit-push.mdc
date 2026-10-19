@@ -3,18 +3,19 @@ description: Always commit and push after substantive edits without asking
 alwaysApply: true
 ---
 
-# Git: commit and push (always)
+# Git: commit, push, and Vercel (always)
 
-The project owner wants **automatic commit and push** after substantive work—do not ask for permission.
+The project owner wants **automatic commit, push, and production deploy on Vercel** after substantive work—do not ask for permission.
 
 When you finish a **substantive** change set in this repo (new files, features, refactors, or multi-file fixes):
 
 1. Run `git status` to confirm what changed.
 2. If there are changes to commit: `git add -A`, then `git commit -m "<clear imperative message>"` (complete sentence, describe what changed).
 3. Push: `git push origin` with the current branch (use `git branch --show-current` if needed; default branch is often `master`).
-4. Do this **automatically** at the end of the session — do not ask the user for permission to commit or push.
-5. If there is **nothing to commit**, skip git steps.
-6. If push fails (auth, network), report the error once and stop; do not loop.
+4. **Vercel:** Production should update from Git. After a successful push, run `npx vercel deploy --prod --yes` when the CLI is authenticated (non-interactive). If that fails with missing auth, note once that the push will deploy via [Vercel Git integration](https://vercel.com/docs/deployments/git) once `LendeborgIsKING/Scoreboard` is imported and `master` is the production branch.
+5. Do steps 2–4 **automatically** at the end of the session — do not ask for permission.
+6. If there is **nothing to commit**, skip git steps (optional: `vercel deploy` only if user asked to redeploy).
+7. If push or deploy fails (auth, network), report the error once and stop; do not loop.
 
 Do **not** commit for: empty sessions, pure questions with no edits.
 
