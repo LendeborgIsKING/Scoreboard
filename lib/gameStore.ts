@@ -102,6 +102,28 @@ function playHockeyGoalHornForTeam(
   }
 }
 
+/** Regulation score stays tied; award the game on the main scoreboard to SO winner. */
+function scoresAfterShootoutWin(
+  teamA: TeamState,
+  teamB: TeamState,
+  winner: TeamId,
+): { teamA: TeamState; teamB: TeamState } {
+  let a = teamA.score;
+  let b = teamB.score;
+  if (a === b) {
+    if (winner === "a") a += 1;
+    else b += 1;
+  } else if (winner === "a" && a <= b) {
+    a = b + 1;
+  } else if (winner === "b" && b <= a) {
+    b = a + 1;
+  }
+  return {
+    teamA: { ...teamA, score: a },
+    teamB: { ...teamB, score: b },
+  };
+}
+
 function playShootoutScoredSfx(
   team: TeamId,
   sport: import("./types").ShootoutSport,
@@ -1743,19 +1765,23 @@ export const useGameStore = create<GameStore>()(
         const winner = shootoutWinnerAfterShot(updated);
         if (winner) {
           const { teamA, teamB, announcerEnabled } = get();
-          const winnerName = winner === "a" ? teamA.name : teamB.name;
+          const scored = scoresAfterShootoutWin(teamA, teamB, winner);
+          const winnerName =
+            winner === "a" ? scored.teamA.name : scored.teamB.name;
           if (announcerEnabled) {
             speakAnnouncement(`${winnerName} wins the shootout!`);
           }
           get().pauseTimer();
           set((state) => ({
             shootout: null,
+            teamA: scored.teamA,
+            teamB: scored.teamB,
             gameOverCelebration: {
               winnerSide: winner,
               winnerName,
-              loserName: winner === "a" ? teamB.name : teamA.name,
-              finalScoreA: teamA.score,
-              finalScoreB: teamB.score,
+              loserName: winner === "a" ? scored.teamB.name : scored.teamA.name,
+              finalScoreA: scored.teamA.score,
+              finalScoreB: scored.teamB.score,
               shootoutScoreA: teamAScore,
               shootoutScoreB: teamBScore,
             },
