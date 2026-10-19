@@ -66,6 +66,8 @@ export type SportConfig = {
   rulesReference?: string;
   /** Hide shot clock UI — use stopwatch manually or rallies only */
   noGameClock?: boolean;
+  /** Match clock counts elapsed time up to period length (soccer) */
+  countUpClock?: boolean;
 };
 
 export type ThemeId =
@@ -248,6 +250,8 @@ export interface PreGameSetupPrefs {
   overtimeThenShootoutEnabled: boolean;
   overtimeMinutes: number;
   overtimeSecondsRemainder: number;
+  /** Soccer: enable penalty shootout tracker (5 kicks per team) */
+  penaltyShootoutEnabled: boolean;
 }
 
 export interface GameHistoryEntry {

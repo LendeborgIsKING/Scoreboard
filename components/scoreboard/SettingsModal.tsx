@@ -316,6 +316,8 @@ function GamePanel({
   const bannersEnabled = useGameStore((s) => s.bannersEnabled);
   const setBannersEnabled = useGameStore((s) => s.setBannersEnabled);
   const resetScoresOnly = useGameStore((s) => s.resetScoresOnly);
+  const startShootout = useGameStore((s) => s.startShootout);
+  const preGameSetup = useGameStore((s) => s.preGameSetup);
   const sportId = useGameStore((s) => s.sportId);
   const customSport = useGameStore((s) => s.customSport);
   const cfg = resolveSportConfig(sportId, customSport);
@@ -391,6 +393,24 @@ function GamePanel({
         </div>
       )}
 
+      {sportId === "soccer" && preGameSetup.penaltyShootoutEnabled && (
+        <div className="rounded-xl border border-white/10 bg-white/5 p-3">
+          <p className="text-sm font-bold text-white">Penalty shootout</p>
+          <p className="mt-1 text-xs text-zinc-500">
+            Five kicks per team, then sudden death if still tied.
+          </p>
+          <button
+            type="button"
+            onClick={() => {
+              startShootout("soccer");
+              onReturnToScoreboard?.();
+            }}
+            className="mt-3 w-full rounded-xl bg-emerald-700 py-2.5 text-sm font-bold text-white hover:bg-emerald-600"
+          >
+            Start penalties
+          </button>
+        </div>
+      )}
       {sportId === "hockey" && (
         <p className="text-xs text-zinc-500">
           Shootout and overtime options are in Settings → Hockey.

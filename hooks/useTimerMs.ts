@@ -1,29 +1,29 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useGameStore, getElapsedMs } from "@/lib/gameStore";
+import { useGameStore, getTimerDisplayMs } from "@/lib/gameStore";
+import { resolveSportConfig, usesCountUpClock } from "@/lib/sportRegistry";
 
 /**
- * Remaining clock time in milliseconds, updated on every animation frame while
- * the timer is running so the display can show smooth tenths of a second.
- * When paused it stops updating (and returns the static remaining ms).
+ * Clock display in milliseconds — counts up (soccer) or down (most sports).
  */
 export function useTimerMs(): number {
   const timer = useGameStore((s) => s.timer);
-  const compute = () =>
-    Math.max(0, timer.countdownFromSeconds * 1000 - getElapsedMs(timer));
+  const sportId = useGameStore((s) => s.sportId);
+  const customSport = useGameStore((s) => s.customSport);
+  const cfg = resolveSportConfig(sportId, customSport);
+  const countUp = usesCountUpClock(cfg);
+
+  const compute = () => getTimerDisplayMs(timer, countUp);
   const [ms, setMs] = useState(compute);
   const rafRef = useRef<number | null>(null);
 
   useEffect(() => {
-    // Always reflect the latest static value immediately.
-    setMs(Math.max(0, timer.countdownFromSeconds * 1000 - getElapsedMs(timer)));
+    setMs(getTimerDisplayMs(timer, countUp));
     if (!timer.running) return;
 
     const loop = () => {
-      setMs(
-        Math.max(0, timer.countdownFromSeconds * 1000 - getElapsedMs(timer)),
-      );
+      setMs(getTimerDisplayMs(timer, countUp));
       rafRef.current = requestAnimationFrame(loop);
     };
     rafRef.current = requestAnimationFrame(loop);
@@ -31,7 +31,7 @@ export function useTimerMs(): number {
       if (rafRef.current != null) cancelAnimationFrame(rafRef.current);
       rafRef.current = null;
     };
-  }, [timer]);
+  }, [timer, countUp]);
 
   return ms;
 }

@@ -6,6 +6,7 @@ import {
   resolveSportConfig,
   hasFeature,
   resolveActiveVariant,
+  usesCountUpClock,
 } from "@/lib/sportRegistry";
 import { formatSeconds } from "@/lib/format";
 import { useTimerDisplay } from "@/hooks/useTimerDisplay";
@@ -30,11 +31,12 @@ export function GameInfo() {
   );
   const periodLabel =
     activeVariant?.periodLabel ?? cfg.periodLabel;
+  const countUp = usesCountUpClock(cfg);
   const displaySec = useTimerDisplay();
   const running = timer.running;
   const bigClock = cfg.timerEmphasis;
 
-  const lowTime = displaySec <= 60 && displaySec > 0;
+  const lowTime = !countUp && displaySec <= 60 && displaySec > 0;
 
   return (
     <div className="flex w-full max-w-4xl flex-col items-center gap-3">
@@ -58,7 +60,7 @@ export function GameInfo() {
         >
           {formatSeconds(displaySec)}
           <span className="ml-2 align-middle text-sm font-normal text-zinc-500">
-            left
+            {countUp ? "elapsed" : "left"}
           </span>
         </motion.div>
       ) : (

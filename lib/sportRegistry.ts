@@ -42,7 +42,13 @@ export function gatePreGamePrefs(
       cfg.id === "hockey" &&
       !cfg.noGameClock &&
       prefs.overtimeThenShootoutEnabled,
+    penaltyShootoutEnabled:
+      cfg.id === "soccer" && prefs.penaltyShootoutEnabled,
   };
+}
+
+export function usesCountUpClock(cfg: SportConfig): boolean {
+  return cfg.countUpClock === true;
 }
 
 export function resolveActiveVariant(

@@ -477,6 +477,7 @@ const defaultPreGameSetup: import("./types").PreGameSetupPrefs = {
   overtimeThenShootoutEnabled: true,
   overtimeMinutes: 5,
   overtimeSecondsRemainder: 0,
+  penaltyShootoutEnabled: false,
 };
 
 const initialStoppageTime: import("./types").StoppageTimeState = {
@@ -1378,6 +1379,7 @@ export const useGameStore = create<GameStore>()(
         // is already up.
         if (
           !cfg.noGameClock &&
+          !cfg.countUpClock &&
           isFinalPeriod &&
           !finalCountdownPromptShownThisGame &&
           !finalCountdownPromptVisible &&
@@ -1877,11 +1879,14 @@ export const useGameStore = create<GameStore>()(
       dismissIntroSequence: () => set({ introSequence: null }),
 
       startShootout: (sport) => {
-        if (get().sportId !== "hockey" || sport !== "hockey") return;
+        const { sportId } = get();
+        if (sport === "hockey" && sportId !== "hockey") return;
+        if (sport === "soccer" && sportId !== "soccer") return;
+        if (sport !== "hockey" && sport !== "soccer") return;
         set({
           shootout: {
             active: true,
-            sport: "hockey",
+            sport,
             shots: [],
             teamAScore: 0,
             teamBScore: 0,
@@ -1917,7 +1922,11 @@ export const useGameStore = create<GameStore>()(
           const winnerName =
             winner === "a" ? scored.teamA.name : scored.teamB.name;
           if (announcerEnabled) {
-            speakAnnouncement(`${winnerName} wins the shootout!`);
+            const winLine =
+              so.sport === "soccer"
+                ? `${winnerName} wins on penalties!`
+                : `${winnerName} wins the shootout!`;
+            speakAnnouncement(winLine);
           }
           get().pauseTimer();
           set((state) => ({
@@ -2312,6 +2321,9 @@ export const useGameStore = create<GameStore>()(
           if (pg.overtimeSecondsRemainder === undefined) {
             pg.overtimeSecondsRemainder = 0;
           }
+          if (pg.penaltyShootoutEnabled === undefined) {
+            pg.penaltyShootoutEnabled = false;
+          }
         }
         if (merged.inOvertime === undefined) merged.inOvertime = false;
         if (merged.regulationPeriodCount === undefined) {
@@ -2415,10 +2427,23 @@ export function formatClockFromMs(ms: number): string {
   return `${m}:${s.toString().padStart(2, "0")}`;
 }
 
-export function getDisplaySeconds(timer: TimerState): number {
+export function getTimerDisplayMs(
+  timer: TimerState,
+  countUp: boolean,
+): number {
   const total = timer.countdownFromSeconds * 1000;
-  const rem = Math.max(0, total - getElapsedMs(timer));
-  return Math.ceil(rem / 1000);
+  const elapsed = getElapsedMs(timer);
+  if (countUp) return Math.min(total, elapsed);
+  return Math.max(0, total - elapsed);
+}
+
+export function getDisplaySeconds(
+  timer: TimerState,
+  countUp = false,
+): number {
+  const ms = getTimerDisplayMs(timer, countUp);
+  if (countUp) return Math.floor(ms / 1000);
+  return Math.ceil(ms / 1000);
 }
 
 /** @deprecated kept for compatibility — audio engine now handles SFX via store actions */

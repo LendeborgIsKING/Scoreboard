@@ -12,9 +12,13 @@ export function ShootoutOverlay() {
   const teamA = useGameStore((s) => s.teamA);
   const teamB = useGameStore((s) => s.teamB);
 
-  if (!shootout?.active || sportId !== "hockey" || shootout.sport !== "hockey") {
-    return null;
-  }
+  if (!shootout?.active) return null;
+  if (shootout.sport === "hockey" && sportId !== "hockey") return null;
+  if (shootout.sport === "soccer" && sportId !== "soccer") return null;
+
+  const heading = shootout.sport === "hockey" ? "Shootout" : "Penalties";
+  const endLabel =
+    shootout.sport === "hockey" ? "End shootout" : "End penalties";
 
   const currentTeam = shootout.nextTeam === "a" ? teamA : teamB;
 
@@ -28,7 +32,7 @@ export function ShootoutOverlay() {
       >
         <div className="w-[min(92vw,28rem)] rounded-2xl border border-white/20 bg-zinc-900 p-6 text-center text-white shadow-2xl">
           <p className="text-xs font-bold uppercase tracking-[0.25em] text-zinc-400">
-            Shootout
+            {heading}
           </p>
           <p className="mt-1 text-sm font-semibold text-amber-400/90">
             {shootoutStatusLabel(shootout)}
@@ -62,7 +66,7 @@ export function ShootoutOverlay() {
             onClick={endShootout}
             className="mt-4 text-sm text-zinc-500 hover:text-white"
           >
-            End shootout
+            {endLabel}
           </button>
         </div>
       </motion.div>

@@ -364,6 +364,14 @@ export function SportSetup() {
               </>
             )}
 
+            {sportId === "soccer" && (
+              <Toggle
+                label="Penalty shootout tracker (5 kicks per team)"
+                checked={prefs.penaltyShootoutEnabled}
+                onChange={(v) => update("penaltyShootoutEnabled", v)}
+              />
+            )}
+
             <Toggle
               label="Walk-out intro sequence"
               checked={prefs.introSequenceEnabled}

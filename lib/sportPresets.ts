@@ -109,6 +109,7 @@ export const SOCCER: SportConfig = {
   periodLabel: "Half",
   maxPeriods: 2,
   timerEmphasis: true,
+  countUpClock: true,
   defaultVariantId: "fifa",
   timerVariants: [
     {
@@ -136,7 +137,7 @@ export const SOCCER: SportConfig = {
     },
   ],
   rulesReference:
-    "FIFA standard: 2 halves × 45 min. Youth / high school often 2×40 min. Extra time: 2 halves × 15 min. Stoppage time is added by the referee and is not shown on a simple countdown.",
+    "FIFA standard: 2 halves × 45 min. Youth / high school often 2×40 min. Extra time: 2 halves × 15 min. The match clock counts up to each half length. Stoppage time is added at the referee’s discretion.",
 };
 
 export const BASEBALL: SportConfig = {
