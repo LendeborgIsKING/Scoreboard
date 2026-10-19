@@ -15,6 +15,7 @@ import type {
   TimerState,
   UiPhase,
 } from "./types";
+import { EMPTY_BASEBALL_BASES } from "./types";
 import { BASKETBALL } from "./sportPresets";
 import { NHL_TEAMS, NHL_HORN_SRC } from "./nhlTeams";
 import {
@@ -191,6 +192,7 @@ function snapshotFrom(
     balls: s.balls,
     strikes: s.strikes,
     outs: s.outs,
+    baseballBases: { ...s.baseballBases },
     down: s.down,
     possession: s.possession,
     timer: { ...s.timer },
@@ -279,6 +281,7 @@ export interface GameState extends GameStateSlice {
   introSequence: import("./types").IntroSequenceState | null;
   pitchCountA: number;
   pitchCountB: number;
+  baseballBases: import("./types").BaseballBases;
   teamChantA: string;
   teamChantB: string;
   crowdIntensity: number;
@@ -329,6 +332,7 @@ const initialSlice: GameStateSlice = {
   balls: 0,
   strikes: 0,
   outs: 0,
+  baseballBases: { ...EMPTY_BASEBALL_BASES },
   down: 1,
   possession: "a",
   timer: defaultTimerForSport(
@@ -364,6 +368,7 @@ type GameStore = GameState & {
   nextPeriod: () => void;
   prevPeriod: () => void;
   adjustBSO: (key: "balls" | "strikes" | "outs", delta: number) => void;
+  toggleBaseRunner: (base: keyof import("./types").BaseballBases) => void;
   resetCount: () => void;
   adjustDown: (delta: number) => void;
   setPeriod: (value: number) => void;
@@ -566,6 +571,7 @@ export const useGameStore = create<GameStore>()(
       introSequence: null,
       pitchCountA: 0,
       pitchCountB: 0,
+      baseballBases: { ...EMPTY_BASEBALL_BASES },
       teamChantA: "",
       teamChantB: "",
       crowdIntensity: 0.4,
@@ -607,6 +613,7 @@ export const useGameStore = create<GameStore>()(
           balls: prev.balls,
           strikes: prev.strikes,
           outs: prev.outs,
+          baseballBases: { ...prev.baseballBases },
           down: prev.down,
           possession: prev.possession,
           timer: prev.timer,
@@ -1105,7 +1112,12 @@ export const useGameStore = create<GameStore>()(
           hasFeature(cfg, "halfInning")
         ) {
           set((state) => {
-            const cleared = { balls: 0, strikes: 0, outs: 0 };
+            const cleared = {
+              balls: 0,
+              strikes: 0,
+              outs: 0,
+              baseballBases: { ...EMPTY_BASEBALL_BASES },
+            };
             if (state.halfInning === "top") {
               return { ...cleared, halfInning: "bottom" as const };
             }
@@ -1146,6 +1158,16 @@ export const useGameStore = create<GameStore>()(
           if (key === "strikes") return { strikes: next };
           return { outs: next };
         });
+      },
+
+      toggleBaseRunner: (base) => {
+        get().pushUndo();
+        set((state) => ({
+          baseballBases: {
+            ...state.baseballBases,
+            [base]: !state.baseballBases[base],
+          },
+        }));
       },
 
       resetCount: () => {
@@ -1198,6 +1220,7 @@ export const useGameStore = create<GameStore>()(
           balls: 0,
           strikes: 0,
           outs: 0,
+          baseballBases: { ...EMPTY_BASEBALL_BASES },
           down: 1,
           periodScores: { a: [0], b: [0] },
           shotClock: {
@@ -2178,6 +2201,7 @@ export const useGameStore = create<GameStore>()(
         balls: state.balls,
         strikes: state.strikes,
         outs: state.outs,
+        baseballBases: state.baseballBases,
         down: state.down,
         possession: state.possession,
         timer: state.timer,
@@ -2329,6 +2353,10 @@ export const useGameStore = create<GameStore>()(
         merged.hockeyPenalties = merged.hockeyPenalties ?? [];
         merged.hockeyDelayedTeam = null;
         merged.hockeyEmptyNetTeam = merged.hockeyEmptyNetTeam ?? null;
+        merged.baseballBases = {
+          ...EMPTY_BASEBALL_BASES,
+          ...(merged.baseballBases ?? {}),
+        };
         merged.hockeyGoalCelebrationKey = 0;
         if (!merged.stoppageTime) merged.stoppageTime = initialStoppageTime;
         merged.buzzerBeaterWindowActive = false;

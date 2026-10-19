@@ -284,6 +284,19 @@ export interface TimerState {
 
 export type UiPhase = "menu" | "setup" | "game" | "bracket" | "round-robin" | "custom-builder";
 
+/** Runners on first / second / third for the baseball diamond. */
+export interface BaseballBases {
+  first: boolean;
+  second: boolean;
+  third: boolean;
+}
+
+export const EMPTY_BASEBALL_BASES: BaseballBases = {
+  first: false,
+  second: false,
+  third: false,
+};
+
 export interface GameSnapshot {
   sportId: string;
   customSport: SportConfig | null;
@@ -295,6 +308,7 @@ export interface GameSnapshot {
   balls: number;
   strikes: number;
   outs: number;
+  baseballBases: BaseballBases;
   down: number;
   possession: TeamId | null;
   timer: TimerState;

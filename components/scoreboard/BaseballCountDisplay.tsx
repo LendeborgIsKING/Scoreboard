@@ -1,6 +1,7 @@
 "use client";
 
 import { useGameStore } from "@/lib/gameStore";
+import { BaseballDiamond } from "./BaseballDiamond";
 
 const plusBtn =
   "flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-white/40 text-xs font-bold text-white transition hover:border-white hover:bg-white/10";
@@ -18,7 +19,9 @@ export function BaseballCountDisplay() {
   const adjustPitchCount = useGameStore((s) => s.adjustPitchCount);
 
   return (
-    <div className="mx-auto flex w-full max-w-[min(100%,300px)] flex-col items-center gap-3 px-2">
+    <div className="mx-auto flex w-full max-w-[min(100%,320px)] flex-col items-center gap-3 px-2">
+      <BaseballDiamond />
+
       <div className="flex w-full items-center justify-center gap-5">
         <span className="font-mono text-2xl font-black tabular-nums tracking-wide text-yellow-300">
           {balls}-{strikes}
