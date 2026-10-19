@@ -346,14 +346,14 @@ export function ScoreboardDisplay() {
     : hasFeature(cfg, "halfInning")
       ? `${halfInning === "top" ? "Top" : "Bot"} ${periodLabel} ${period}`
       : `${periodLabel} ${period}`;
+  const countUpClock = usesCountUpClock(cfg);
+  const showGameClock = !cfg.noGameClock;
   const lowTime = !countUpClock && clockSec <= 60 && clockSec > 0;
   const hasFouls = hasFeature(cfg, "fouls");
   const hasTimeouts = hasFeature(cfg, "timeouts");
   const showPossession = hasFeature(cfg, "possession");
   const isBasketball = cfg.id === "basketball";
   const hasShotClock = hasFeature(cfg, "shotClock");
-  const showGameClock = !cfg.noGameClock;
-  const countUpClock = usesCountUpClock(cfg);
   const showFoulsReset =
     isBasketball &&
     hasFouls &&
