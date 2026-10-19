@@ -316,6 +316,7 @@ interface GameStateSlice {
   balls: number;
   strikes: number;
   outs: number;
+  baseballBases: import("./types").BaseballBases;
   down: number;
   possession: TeamId | null;
   timer: TimerState;
