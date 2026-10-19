@@ -38,6 +38,10 @@ export function gatePreGamePrefs(
       hasFeature(cfg, "stoppageTime") && prefs.stoppageTimeEnabled,
     targetScoreEnabled:
       hasFeature(cfg, "targetScore") && prefs.targetScoreEnabled,
+    overtimeThenShootoutEnabled:
+      cfg.id === "hockey" &&
+      !cfg.noGameClock &&
+      prefs.overtimeThenShootoutEnabled,
   };
 }
 

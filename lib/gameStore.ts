@@ -1475,23 +1475,27 @@ export const useGameStore = create<GameStore>()(
             return;
           }
 
-          if (
-            tied &&
-            atRegEnd &&
+          const hockeyOtShootout =
+            sportId === "hockey" &&
             !cfg.noGameClock &&
-            preGameSetup.overtimeThenShootoutEnabled
-          ) {
+            preGameSetup.overtimeThenShootoutEnabled;
+
+          if (tied && atRegEnd && hockeyOtShootout) {
             setTimeout(() => get().beginOvertimePeriod(), 3000);
             return;
           }
 
           if (
             tied &&
+            sportId === "hockey" &&
             (atOTEnd ||
-              (atRegEnd &&
-                (!preGameSetup.overtimeThenShootoutEnabled ||
-                  cfg.noGameClock)))
+              (atRegEnd && !preGameSetup.overtimeThenShootoutEnabled))
           ) {
+            setTimeout(() => get().beginAutomaticShootout(), 3000);
+            return;
+          }
+
+          if (tied && (atRegEnd || atOTEnd) && sportId !== "hockey") {
             setTimeout(() => get().beginAutomaticShootout(), 3000);
             return;
           }
@@ -1834,11 +1838,6 @@ export const useGameStore = create<GameStore>()(
           get().startShootout("hockey");
           return;
         }
-        if (sportId === "soccer") {
-          if (announcerEnabled) speakAnnouncement("Penalty shootout");
-          get().startShootout("soccer");
-          return;
-        }
         bannerCounter += 1;
         set({
           banner: {
@@ -1878,6 +1877,7 @@ export const useGameStore = create<GameStore>()(
       dismissIntroSequence: () => set({ introSequence: null }),
 
       startShootout: (sport) => {
+        if (get().sportId !== "hockey" || sport !== "hockey") return;
         const cfg = resolveSportConfig(get().sportId, get().customSport);
         if (sport === "hockey" && cfg.id !== "hockey") return;
         if (sport === "soccer" && cfg.id !== "soccer") return;

@@ -316,7 +316,6 @@ function GamePanel({
   const bannersEnabled = useGameStore((s) => s.bannersEnabled);
   const setBannersEnabled = useGameStore((s) => s.setBannersEnabled);
   const resetScoresOnly = useGameStore((s) => s.resetScoresOnly);
-  const startShootout = useGameStore((s) => s.startShootout);
   const sportId = useGameStore((s) => s.sportId);
   const customSport = useGameStore((s) => s.customSport);
   const cfg = resolveSportConfig(sportId, customSport);
@@ -392,23 +391,9 @@ function GamePanel({
         </div>
       )}
 
-      {sportId === "soccer" && (
-        <div className="flex flex-wrap gap-2">
-          <button
-            type="button"
-            onClick={() => {
-              startShootout("soccer");
-              onReturnToScoreboard?.();
-            }}
-            className="rounded-full border-2 border-white/50 px-4 py-1.5 text-sm font-bold text-white hover:bg-white/10"
-          >
-            Start Penalty Shootout
-          </button>
-        </div>
-      )}
       {sportId === "hockey" && (
         <p className="text-xs text-zinc-500">
-          Shootout, penalties, and OT presets are in Settings → Hockey.
+          Shootout and overtime options are in Settings → Hockey.
         </p>
       )}
 

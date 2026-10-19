@@ -202,7 +202,7 @@ export function SportSetup() {
               </ul>
             )}
 
-            {!cfg.noGameClock && (
+            {sportId === "hockey" && !cfg.noGameClock && (
               <div className="mt-3 space-y-3 rounded-xl border border-cyan-400/25 bg-cyan-400/5 p-3">
                 <Toggle
                   label="If tied: one overtime, then shootout"
@@ -242,7 +242,7 @@ export function SportSetup() {
                 )}
                 <p className="text-xs text-zinc-500">
                   Overtime runs once if regulation ends tied. Still tied after OT
-                  starts an automatic shootout (hockey & soccer).
+                  starts an automatic shootout.
                 </p>
               </div>
             )}
