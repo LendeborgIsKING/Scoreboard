@@ -65,7 +65,6 @@ import {
   CheckIcon,
   CloseIcon,
   GearIcon,
-  MenuIcon,
   MicSlashIcon,
   MicrophoneIcon,
   MusicNoteIcon,
@@ -226,7 +225,6 @@ export function ScoreboardDisplay() {
   const setTeamName = useGameStore((s) => s.setTeamName);
   const startTimer = useGameStore((s) => s.startTimer);
   const pauseTimer = useGameStore((s) => s.pauseTimer);
-  const setUiPhase = useGameStore((s) => s.setUiPhase);
   const setPresentation = useGameStore((s) => s.setPresentationMode);
   const nextPeriod = useGameStore((s) => s.nextPeriod);
   const adjustBSO = useGameStore((s) => s.adjustBSO);
@@ -436,11 +434,6 @@ export function ScoreboardDisplay() {
         <div className="relative z-10 grid grid-cols-[1fr_auto_1fr] items-start gap-2 px-4 pt-4 text-white">
           {!presentation && (
           <div className="flex items-center justify-start gap-2 pt-1.5">
-            <CircleBtn
-              icon={<MenuIcon className="h-5 w-5" />}
-              onClick={() => setUiPhase("menu")}
-              ariaLabel="Exit to menu"
-            />
             <MusicToggleButton
               playing={musicEnabled && musicTrack !== "none"}
               onToggle={() => {
