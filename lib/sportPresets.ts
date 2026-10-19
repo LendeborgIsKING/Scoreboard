@@ -43,9 +43,22 @@ export const BASKETBALL: SportConfig = {
       overtimeSeconds: 5 * 60,
       hints: ["Overtime: often 4 min (league-dependent).", "Stop-clock varies by state."],
     },
+    {
+      id: "ncaa",
+      label: "College — 2×20 min",
+      periodSeconds: 20 * 60,
+      regulationPeriods: 2,
+      periodLabel: "Half",
+      overtimeSeconds: 5 * 60,
+      hints: [
+        "NCAA-style: two 20-minute halves.",
+        "Overtime: 5 min (repeat if tied).",
+        "Stop-clock on fouls, timeouts, out-of-bounds.",
+      ],
+    },
   ],
   rulesReference:
-    "NBA / FIBA: 4 quarters — 12 min (NBA) or 10 min (FIBA). High school: 4×8 min. Overtime: typically 5 min. Clock stops on fouls, timeouts, and out-of-bounds (league rules apply).",
+    "NBA / FIBA: 4 quarters — 12 min (NBA) or 10 min (FIBA). College (NCAA): 2×20 min halves. High school: 4×8 min. Overtime: typically 5 min. Clock stops on fouls, timeouts, and out-of-bounds (league rules apply).",
 };
 
 export const FOOTBALL: SportConfig = {
