@@ -2,7 +2,12 @@
 
 import { useState } from "react";
 import { useGameStore } from "@/lib/gameStore";
-import { motion } from "framer-motion";
+import type { BracketFormat } from "@/lib/types";
+import {
+  generateSingleElimBracket,
+  generateDoubleElimBracket,
+} from "@/lib/bracketUtils";
+import { renderBracketCanvas, shareBracketImage } from "@/lib/bracketImage";
 
 export function TournamentBracket() {
   const setUiPhase = useGameStore((s) => s.setUiPhase);
@@ -13,120 +18,82 @@ export function TournamentBracket() {
 
   const [setupMode, setSetupMode] = useState(!bracket);
   const [teamCount, setTeamCount] = useState<4 | 8>(8);
+  const [format, setFormat] = useState<BracketFormat>("single");
   const [teams, setTeams] = useState<string[]>(Array(8).fill(""));
+  const [tournamentName, setTournamentName] = useState("Tournament");
 
   const startTournament = () => {
-    const matches: import("@/lib/types").BracketMatch[] = [];
-    const count = teamCount;
-    // Round 1
-    for (let i = 0; i < count / 2; i++) {
-      matches.push({
-        id: `r1-m${i}`,
-        round: 1,
-        position: i,
-        teamA: teams[i * 2] || `Team ${i * 2 + 1}`,
-        teamB: teams[i * 2 + 1] || `Team ${i * 2 + 2}`,
-        winner: null,
-      });
-    }
-    // Round 2 (Semifinals if 8 teams, Finals if 4 teams)
-    for (let i = 0; i < count / 4; i++) {
-      matches.push({
-        id: `r2-m${i}`,
-        round: 2,
-        position: i,
-        teamA: null,
-        teamB: null,
-        winner: null,
-      });
-    }
-    // Round 3 (Finals if 8 teams)
-    if (count === 8) {
-      matches.push({
-        id: `r3-m0`,
-        round: 3,
-        position: 0,
-        teamA: null,
-        teamB: null,
-        winner: null,
-      });
-    }
+    const names = Array.from({ length: teamCount }, (_, i) =>
+      teams[i]?.trim() || `Team ${i + 1}`,
+    );
+    const matches =
+      format === "double-elim" && teamCount === 8
+        ? generateDoubleElimBracket(names)
+        : generateSingleElimBracket(names, teamCount);
 
     setBracket({
       id: Date.now().toString(),
-      name: "Tournament",
-      teamCount: count,
+      name: tournamentName || "Tournament",
+      teamCount,
+      format,
       matches,
+      activeMatchId: null,
     });
     setSetupMode(false);
   };
 
-  const playMatch = (match: import("@/lib/types").BracketMatch) => {
-    if (!match.teamA || !match.teamB) return;
+  const playMatch = (matchId: string) => {
+    if (!bracket) return;
+    const match = bracket.matches.find((m) => m.id === matchId);
+    if (!match?.teamA || !match.teamB) return;
     setTeamName("a", match.teamA);
     setTeamName("b", match.teamB);
     resetScoresOnly();
+    setBracket({ ...bracket, activeMatchId: matchId });
     setUiPhase("game");
   };
 
-  const advanceWinner = (match: import("@/lib/types").BracketMatch, winnerSide: "a" | "b") => {
+  const exportPng = async () => {
     if (!bracket) return;
-    const winnerName = winnerSide === "a" ? match.teamA : match.teamB;
-    if (!winnerName) return;
-
-    const nextMatches = bracket.matches.map((m) => {
-      if (m.id === match.id) {
-        return { ...m, winner: winnerSide };
-      }
-      return m;
-    });
-
-    const nextRound = match.round + 1;
-    const nextPos = Math.floor(match.position / 2);
-    const isTeamA = match.position % 2 === 0;
-
-    const targetIndex = nextMatches.findIndex(
-      (m) => m.round === nextRound && m.position === nextPos
-    );
-
-    if (targetIndex !== -1) {
-      nextMatches[targetIndex] = {
-        ...nextMatches[targetIndex],
-        teamA: isTeamA ? winnerName : nextMatches[targetIndex].teamA,
-        teamB: !isTeamA ? winnerName : nextMatches[targetIndex].teamB,
-      };
-    }
-
-    setBracket({ ...bracket, matches: nextMatches });
+    const canvas = renderBracketCanvas(bracket);
+    await shareBracketImage(canvas, bracket.name.replace(/\s+/g, "-"));
   };
 
   if (setupMode) {
     return (
-      <div className="flex min-h-full flex-1 flex-col bg-black px-5 py-6 text-white pb-[env(safe-area-inset-bottom)] overflow-auto">
+      <div className="flex min-h-full flex-1 flex-col overflow-auto bg-black px-5 py-6 pb-[env(safe-area-inset-bottom)] text-white">
         <div className="mb-6 flex items-center justify-between">
           <h1 className="text-3xl font-black">New Bracket</h1>
-          <button
-            onClick={() => setUiPhase("menu")}
-            className="text-sm font-bold text-zinc-400 hover:text-white"
-          >
+          <button type="button" onClick={() => setUiPhase("menu")} className="text-sm font-bold text-zinc-400 hover:text-white">
             Cancel
           </button>
         </div>
-        
-        <div className="mb-6 flex gap-4">
-          <button
-            onClick={() => setTeamCount(4)}
-            className={`flex-1 rounded-xl border-2 p-3 font-bold ${teamCount === 4 ? "border-amber-400 text-amber-400" : "border-white/20 text-white/50"}`}
-          >
-            4 Teams
+
+        <input
+          value={tournamentName}
+          onChange={(e) => setTournamentName(e.target.value)}
+          placeholder="Tournament name"
+          className="mb-4 rounded-lg border border-white/20 bg-white/5 p-3 text-white outline-none focus:border-amber-400"
+        />
+
+        <div className="mb-4 flex gap-2">
+          <button type="button" onClick={() => setFormat("single")} className={`flex-1 rounded-xl border-2 p-2 text-sm font-bold ${format === "single" ? "border-amber-400 text-amber-400" : "border-white/20 text-white/50"}`}>
+            Single Elim
           </button>
-          <button
-            onClick={() => setTeamCount(8)}
-            className={`flex-1 rounded-xl border-2 p-3 font-bold ${teamCount === 8 ? "border-amber-400 text-amber-400" : "border-white/20 text-white/50"}`}
-          >
-            8 Teams
+          <button type="button" onClick={() => { setFormat("double-elim"); setTeamCount(8); }} className={`flex-1 rounded-xl border-2 p-2 text-sm font-bold ${format === "double-elim" ? "border-amber-400 text-amber-400" : "border-white/20 text-white/50"}`}>
+            Double Elim (8)
           </button>
         </div>
+
+        {format === "single" && (
+          <div className="mb-4 flex gap-4">
+            {([4, 8] as const).map((n) => (
+              <button key={n} type="button" onClick={() => setTeamCount(n)} className={`flex-1 rounded-xl border-2 p-3 font-bold ${teamCount === n ? "border-amber-400 text-amber-400" : "border-white/20 text-white/50"}`}>
+                {n} Teams
+              </button>
+            ))}
+          </div>
+        )}
 
         <div className="flex flex-col gap-3">
           {Array.from({ length: teamCount }).map((_, i) => (
@@ -136,19 +103,16 @@ export function TournamentBracket() {
               placeholder={`Seed ${i + 1}`}
               value={teams[i] || ""}
               onChange={(e) => {
-                const newT = [...teams];
-                newT[i] = e.target.value;
-                setTeams(newT);
+                const next = [...teams];
+                next[i] = e.target.value;
+                setTeams(next);
               }}
               className="rounded-lg border border-white/20 bg-white/5 p-3 text-white outline-none focus:border-amber-400"
             />
           ))}
         </div>
 
-        <button
-          onClick={startTournament}
-          className="mt-8 rounded-full bg-amber-400 py-4 font-black uppercase text-black hover:bg-amber-300"
-        >
+        <button type="button" onClick={startTournament} className="mt-8 rounded-full bg-amber-400 py-4 font-black uppercase text-black hover:bg-amber-300">
           Generate Bracket
         </button>
       </div>
@@ -157,50 +121,58 @@ export function TournamentBracket() {
 
   if (!bracket) return null;
 
+  const rounds = [...new Set(bracket.matches.map((m) => m.round))].sort((a, b) => a - b);
+
   return (
-    <div className="flex min-h-full flex-1 flex-col bg-black px-5 py-6 text-white pb-[env(safe-area-inset-bottom)] overflow-hidden">
-      <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-3xl font-black">Tournament</h1>
-        <button
-          onClick={() => setUiPhase("menu")}
-          className="text-sm font-bold text-zinc-400 hover:text-white"
-        >
+    <div className="flex min-h-full flex-1 flex-col overflow-hidden bg-black px-5 py-6 pb-[env(safe-area-inset-bottom)] text-white">
+      <div className="mb-4 flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-black">{bracket.name}</h1>
+          <p className="text-xs text-zinc-500">{bracket.format === "double-elim" ? "Double Elimination" : "Single Elimination"}</p>
+        </div>
+        <button type="button" onClick={() => setUiPhase("menu")} className="text-sm font-bold text-zinc-400 hover:text-white">
           Exit
         </button>
       </div>
 
-      <div className="flex flex-1 overflow-x-auto overflow-y-hidden pb-4 snap-x">
-        {[1, 2, 3].map((round) => {
-          const roundMatches = bracket.matches.filter((m) => m.round === round);
+      <div className="flex flex-1 snap-x snap-mandatory overflow-x-auto overflow-y-hidden pb-4">
+        {rounds.map((round) => {
+          const roundMatches = bracket.matches
+            .filter((m) => m.round === round)
+            .sort((a, b) => a.position - b.position);
           if (roundMatches.length === 0) return null;
+          const label =
+            bracket.format === "double-elim" && roundMatches[0]?.bracketSide === "losers"
+              ? `L-R${round}`
+              : roundMatches[0]?.id === "gf-m0"
+                ? "Grand Final"
+                : `Round ${round}`;
 
           return (
-            <div key={round} className="flex min-w-[240px] shrink-0 snap-center flex-col justify-around px-4 border-r border-white/10 last:border-0">
+            <div key={round} className="flex min-w-[240px] shrink-0 snap-center flex-col justify-around border-r border-white/10 px-4 last:border-0">
+              <p className="mb-2 text-center text-[10px] font-bold uppercase tracking-wider text-zinc-500">{label}</p>
               {roundMatches.map((m) => (
-                <div key={m.id} className="relative flex flex-col my-4">
+                <div key={m.id} className="relative my-3 flex flex-col">
                   <div className="flex overflow-hidden rounded-xl border border-white/20 bg-zinc-900 shadow-xl">
                     <div className="flex w-full flex-col">
                       <div className={`flex items-center justify-between border-b border-white/10 p-3 ${m.winner === "a" ? "bg-amber-400/20 text-amber-300" : m.teamA ? "text-white" : "text-white/30"}`}>
-                        <span className="font-bold truncate">{m.teamA || "TBD"}</span>
-                        {m.winner === null && m.teamA && m.teamB && (
-                          <button onClick={() => advanceWinner(m, "a")} className="ml-2 rounded bg-white/10 px-2 py-1 text-[10px] font-bold uppercase hover:bg-white/30">Win</button>
-                        )}
+                        <span className="truncate font-bold">{m.teamA || "TBD"}</span>
+                        {m.scoreA != null && <span className="ml-2 font-mono text-sm">{m.scoreA}</span>}
                       </div>
                       <div className={`flex items-center justify-between p-3 ${m.winner === "b" ? "bg-amber-400/20 text-amber-300" : m.teamB ? "text-white" : "text-white/30"}`}>
-                        <span className="font-bold truncate">{m.teamB || "TBD"}</span>
-                        {m.winner === null && m.teamA && m.teamB && (
-                          <button onClick={() => advanceWinner(m, "b")} className="ml-2 rounded bg-white/10 px-2 py-1 text-[10px] font-bold uppercase hover:bg-white/30">Win</button>
-                        )}
+                        <span className="truncate font-bold">{m.teamB || "TBD"}</span>
+                        {m.scoreB != null && <span className="ml-2 font-mono text-sm">{m.scoreB}</span>}
                       </div>
                     </div>
                   </div>
                   {m.winner === null && m.teamA && m.teamB && (
                     <button
-                      onClick={() => playMatch(m)}
-                      className="absolute -right-3 top-1/2 -translate-y-1/2 rounded-full border border-amber-400 bg-black p-2 shadow-lg text-amber-400 hover:bg-amber-400 hover:text-black z-10"
+                      type="button"
+                      onClick={() => playMatch(m.id)}
+                      className="absolute -right-3 top-1/2 z-10 -translate-y-1/2 rounded-full border border-amber-400 bg-black p-2 text-amber-400 shadow-lg hover:bg-amber-400 hover:text-black"
                       title="Load into Scoreboard"
                     >
-                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+                      ▶
                     </button>
                   )}
                 </div>
@@ -209,18 +181,21 @@ export function TournamentBracket() {
           );
         })}
       </div>
-      
-      <div className="mt-4 shrink-0 flex justify-center">
+
+      <p className="mb-2 text-center text-[10px] text-zinc-500">
+        Winners auto-advance when a bracket game ends on the scoreboard.
+      </p>
+
+      <div className="flex shrink-0 gap-3">
+        <button type="button" onClick={exportPng} className="flex-1 rounded-xl border border-white/20 py-3 text-sm font-bold hover:bg-white/5">
+          Export PNG
+        </button>
         <button
-          onClick={() => {
-            if (confirm("Are you sure you want to reset the bracket?")) {
-              setBracket(null);
-              setSetupMode(true);
-            }
-          }}
-          className="text-xs uppercase tracking-widest text-red-500 font-bold"
+          type="button"
+          onClick={() => { if (confirm("Reset tournament?")) { setBracket(null); setSetupMode(true); } }}
+          className="text-xs font-bold uppercase tracking-widest text-red-500"
         >
-          Reset Tournament
+          Reset
         </button>
       </div>
     </div>

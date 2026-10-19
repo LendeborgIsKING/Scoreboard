@@ -47,6 +47,20 @@ import { StopHornOverlay } from "./StopHornOverlay";
 import { FinalCountdownPrompt } from "./FinalCountdownPrompt";
 import { GameOverOverlay } from "./GameOverOverlay";
 import { JumbotronOverlay } from "./JumbotronOverlay";
+import { YouTubePlayer } from "./YouTubePlayer";
+import { ShootoutOverlay } from "./ShootoutOverlay";
+import { RefereeTimerOverlay } from "./RefereeTimerOverlay";
+import { TargetScoreBar } from "./TargetScoreBar";
+import { StoppageTimeDisplay } from "./StoppageTimeDisplay";
+import { IntroSequence } from "./IntroSequence";
+import { LEDScore } from "./LEDScore";
+import {
+  HockeyStatusStrip,
+  HockeyLastGoalTicker,
+  HockeyGoalCelebration,
+  HockeyRinkOverlay,
+  HockeyTickBridge,
+} from "./HockeyGameUI";
 import {
   BuzzerIcon,
   CheckIcon,
@@ -177,6 +191,7 @@ export function ScoreboardDisplay() {
   const sportId = useGameStore((s) => s.sportId);
   const customSport = useGameStore((s) => s.customSport);
   const timerVariantId = useGameStore((s) => s.timerVariantId);
+  const customTimerFormat = useGameStore((s) => s.customTimerFormat);
 
   const teamA = useGameStore((s) => s.teamA);
   const teamB = useGameStore((s) => s.teamB);
@@ -188,7 +203,14 @@ export function ScoreboardDisplay() {
   const sfxEnabled = useGameStore((s) => s.sfxEnabled);
   const musicEnabled = useGameStore((s) => s.musicEnabled);
   const musicTrack = useGameStore((s) => s.musicTrack);
+  const musicVolume = useGameStore((s) => s.musicVolume);
   const youtubeVideoId = useGameStore((s) => s.youtubeVideoId);
+  const ledScoreAnimation = useGameStore((s) => s.ledScoreAnimation);
+  const pitchCountA = useGameStore((s) => s.pitchCountA);
+  const pitchCountB = useGameStore((s) => s.pitchCountB);
+  const adjustPitchCount = useGameStore((s) => s.adjustPitchCount);
+  const crowdIntensity = useGameStore((s) => s.crowdIntensity);
+  const setCrowdIntensity = useGameStore((s) => s.setCrowdIntensity);
 
   const possession = useGameStore((s) => s.possession);
   const balls = useGameStore((s) => s.balls);
@@ -259,7 +281,11 @@ export function ScoreboardDisplay() {
   }, [audioMenuOpen]);
 
   const cfg = resolveSportConfig(sportId, customSport);
-  const activeVariant = resolveActiveVariant(cfg, timerVariantId);
+  const activeVariant = resolveActiveVariant(
+    cfg,
+    timerVariantId,
+    customTimerFormat,
+  );
   const tokens = themeTokens(theme);
   const clockMs = useTimerMs();
   const clockSec = Math.ceil(clockMs / 1000);
@@ -290,8 +316,9 @@ export function ScoreboardDisplay() {
   // Theme ambient audio (e.g. stadium roar)
   useEffect(() => {
     setThemeAmbient(theme);
+    setCrowdIntensity(crowdIntensity);
     return () => stopThemeAmbient();
-  }, [theme]);
+  }, [theme, crowdIntensity, setCrowdIntensity]);
 
   // Pre-decode frequently used audio clips so taps fire instantly with zero lag.
   useEffect(() => {
@@ -431,9 +458,12 @@ export function ScoreboardDisplay() {
       <ThemeAmbience theme={theme} />
       <div className="relative z-10 flex w-full min-h-full flex-1 flex-col items-center">
       <div className={scoreboardShellClass}>
+        <HockeyRinkOverlay />
+        <HockeyTickBridge />
         {theme === "court" && <CourtAmbience />}
         {theme === "fire" && <FireAmbience />}
         <div className="relative z-10 grid grid-cols-[1fr_auto_1fr] items-start gap-2 px-4 pt-4 text-white">
+          {!presentation && (
           <div className="flex items-center justify-start gap-2 pt-1.5">
             <CircleBtn
               icon={<MenuIcon className="h-5 w-5" />}
@@ -541,6 +571,7 @@ export function ScoreboardDisplay() {
               )}
             </div>
           </div>
+          )}
 
           <div className="flex flex-col items-center justify-center gap-1">
             <div className="flex items-center justify-center gap-2">
@@ -581,12 +612,15 @@ export function ScoreboardDisplay() {
             <button
               type="button"
               onClick={onPeriodClick}
-              className={`text-center text-2xl font-black text-white ${editDash}`}
+              className={`text-center text-2xl font-black text-white ${presentation ? "" : editDash}`}
             >
               {periodText}
             </button>
+            <StoppageTimeDisplay />
+            <HockeyStatusStrip />
           </div>
 
+          {!presentation && (
           <div className="flex items-center justify-end gap-2 pt-1.5">
             <CircleBtn
               icon={
@@ -605,17 +639,19 @@ export function ScoreboardDisplay() {
               ariaLabel="Open settings"
             />
           </div>
+          )}
         </div>
 
         <div className="relative z-10 mt-0 flex-1">
-          <div className="grid grid-cols-[auto_1fr_auto_1fr_auto] items-start gap-x-5 gap-y-2 px-5 pb-2 pt-1">
-            {/* Away (B) on the left */}
+          <div className={`grid items-start gap-x-5 gap-y-2 px-5 pb-2 pt-1 ${presentation ? "grid-cols-[1fr_auto_1fr]" : "grid-cols-[auto_1fr_auto_1fr_auto]"}`}>
+            {!presentation && (
             <ActionColumn
               side="b"
               actions={scoreActions}
               editing={editing}
               onTap={onScore}
             />
+            )}
 
           <section className="flex w-full flex-col items-center justify-center gap-1.5">
             <div className="flex max-w-full items-center gap-2">
@@ -642,15 +678,16 @@ export function ScoreboardDisplay() {
                 {teamB.name}
               </button>
             </div>
-            <div className="w-full" {...longPressB}>
-              <AnimatedScore
+            <div className="w-full" {...(presentation ? {} : longPressB)}>
+              <LEDScore
                 value={teamB.score}
                 colorClass={tokens.scoreColor}
                 tint={teamB.color}
                 displayFont={tokens.displayFont}
+                ledMode={ledScoreAnimation}
               />
             </div>
-            {editing && (
+            {!presentation && editing && (
               <ScoreAdjust
                 onMinus={() => adjustScore("b", -1)}
                 onPlus={() => adjustScore("b", 1)}
@@ -685,6 +722,7 @@ export function ScoreboardDisplay() {
                 displayFont={tokens.displayFont}
               />
             )}
+            <TargetScoreBar />
 
             {hasFouls && (
               <FoulsBlock
@@ -713,6 +751,7 @@ export function ScoreboardDisplay() {
             )}
 
             {hasFeature(cfg, "ballsStrikesOuts") && (
+              <>
               <div className="flex max-w-[min(100%,280px)] flex-wrap items-center justify-center gap-x-2 gap-y-1 text-xs text-yellow-300">
                 <button type="button" onClick={() => adjustBSO("balls", -1)} className="flex h-5 w-5 items-center justify-center rounded-full border border-white/50 bg-transparent text-white transition hover:bg-white/10 hover:border-white">-</button>
                 B {balls}
@@ -726,6 +765,13 @@ export function ScoreboardDisplay() {
                 O {outs}
                 <button type="button" onClick={() => adjustBSO("outs", 1)} className="flex h-5 w-5 items-center justify-center rounded-full border border-white/50 bg-transparent text-white transition hover:bg-white/10 hover:border-white">+</button>
               </div>
+              <div className="mt-1 flex gap-4 text-[10px] font-bold uppercase tracking-wider text-zinc-400">
+                <span>Pitch {teamB.name}: {pitchCountB}</span>
+                <button type="button" onClick={() => adjustPitchCount("b", 1)} className="text-white/60 hover:text-white">+</button>
+                <span>Pitch {teamA.name}: {pitchCountA}</span>
+                <button type="button" onClick={() => adjustPitchCount("a", 1)} className="text-white/60 hover:text-white">+</button>
+              </div>
+              </>
             )}
 
             {hasFeature(cfg, "halfInning") && (
@@ -761,15 +807,16 @@ export function ScoreboardDisplay() {
                 />
               )}
             </div>
-            <div className="w-full" {...longPressA}>
-              <AnimatedScore
+            <div className="w-full" {...(presentation ? {} : longPressA)}>
+              <LEDScore
                 value={teamA.score}
                 colorClass={tokens.scoreColor}
                 tint={teamA.color}
                 displayFont={tokens.displayFont}
+                ledMode={ledScoreAnimation}
               />
             </div>
-            {editing && (
+            {!presentation && editing && (
               <ScoreAdjust
                 onMinus={() => adjustScore("a", -1)}
                 onPlus={() => adjustScore("a", 1)}
@@ -785,6 +832,7 @@ export function ScoreboardDisplay() {
             )}
             {/* Sits at the right edge of the home column, just to the left of the action column —
                 guarantees no overlap with the +point buttons. */}
+            {!presentation && (
             <div className="mt-1 flex max-w-[120px] flex-wrap justify-end gap-2 self-end">
               <CircleBtn
                 icon={<BuzzerIcon className="h-5 w-5" />}
@@ -807,14 +855,17 @@ export function ScoreboardDisplay() {
                 ariaLabel="Crowd boo"
               />
             </div>
+            )}
           </section>
 
+            {!presentation && (
             <ActionColumn
               side="a"
               actions={scoreActions}
               editing={editing}
               onTap={onScore}
             />
+            )}
           </div>
         </div>
 
@@ -845,13 +896,13 @@ export function ScoreboardDisplay() {
           )}
         </button>
 
-        {!settingsOpen && !editing && (
+        {(presentation || (!settingsOpen && !editing)) && (
           <button
             type="button"
             onClick={() => setPresentation(!presentation)}
-            className="absolute bottom-3 right-4 text-[10px] uppercase tracking-[0.2em] text-zinc-500 hover:text-zinc-200"
+            className={`absolute z-20 text-[10px] uppercase tracking-[0.2em] text-zinc-500 hover:text-zinc-200 ${presentation ? "bottom-6 right-1/2 translate-x-1/2 rounded-full border border-white/30 px-4 py-2 text-sm" : "bottom-3 right-4"}`}
           >
-            {presentation ? "Exit present" : "Present"}
+            {presentation ? "Exit presentation" : "Present"}
           </button>
         )}
 
@@ -861,28 +912,11 @@ export function ScoreboardDisplay() {
         <StopHornOverlay />
         <GameOverOverlay />
         <JumbotronOverlay />
-
-        {musicEnabled && musicTrack === "youtube" && youtubeVideoId && (
-          <div className="absolute z-[60] bottom-4 left-4 w-48 overflow-hidden rounded-xl border border-white/20 bg-black shadow-2xl transition-all duration-500">
-            <div className="relative w-full" style={{ paddingTop: '56.25%' }}>
-              <iframe
-                src={`https://www.youtube.com/embed/${youtubeVideoId}?autoplay=1&playsinline=1`}
-                className="absolute inset-0 w-full h-full"
-                allow="autoplay; encrypted-media; picture-in-picture"
-                allowFullScreen
-              />
-            </div>
-            <button
-              onClick={() => {
-                useGameStore.getState().setYoutubeVideoId(null);
-                useGameStore.getState().setMusicTrack("none");
-              }}
-              className="absolute top-1 right-1 flex h-6 w-6 items-center justify-center rounded-full bg-black/60 text-white hover:bg-red-500/80 backdrop-blur-sm"
-            >
-              <CloseIcon className="h-4 w-4" />
-            </button>
-          </div>
-        )}
+        <IntroSequence />
+        <ShootoutOverlay />
+        <RefereeTimerOverlay />
+        <HockeyGoalCelebration />
+        <HockeyLastGoalTicker />
 
         <AnimatePresence>
           {popover && (
@@ -1031,6 +1065,18 @@ export function ScoreboardDisplay() {
       </div>
       </div>
 
+      <YouTubePlayer
+        active={musicEnabled && musicTrack === "youtube" && !!youtubeVideoId}
+        videoId={youtubeVideoId}
+        volume={musicVolume}
+        expanded={settingsOpen}
+        onClose={() => {
+          useGameStore.getState().setYoutubeVideoId(null);
+          useGameStore.getState().setMusicTrack("none");
+          useGameStore.getState().setMusicEnabled(false);
+        }}
+      />
+
       <AnimatePresence>
         {settingsOpen && (
           <SettingsModal
@@ -1057,36 +1103,6 @@ export function ScoreboardDisplay() {
         {historyOpen && (
           <HistoryModal onClose={() => setHistoryOpen(false)} />
         )}
-      </AnimatePresence>
-    </div>
-  );
-}
-
-function AnimatedScore({
-  value,
-  colorClass,
-  tint,
-  displayFont,
-}: {
-  value: number;
-  colorClass: string;
-  tint?: string;
-  displayFont: string;
-}) {
-  return (
-    <div className="relative h-[130px] w-full overflow-hidden">
-      <AnimatePresence mode="popLayout" initial={false}>
-        <motion.div
-          key={value}
-          initial={{ scale: 1.35, opacity: 0, y: -12 }}
-          animate={{ scale: 1, opacity: 1, y: 0 }}
-          exit={{ scale: 0.85, opacity: 0, y: 12 }}
-          transition={{ type: "spring", stiffness: 380, damping: 26 }}
-          className={`absolute inset-0 flex items-center justify-center ${displayFont} text-[140px] leading-[0.9] tracking-tight ${colorClass}`}
-          style={tint ? { color: tint } : undefined}
-        >
-          {value}
-        </motion.div>
       </AnimatePresence>
     </div>
   );

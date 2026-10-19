@@ -30,10 +30,14 @@ import {
   speakAnnouncement,
   setMusic as setAudioMusic,
   setMusicVolume,
+  setCrowdIntensity as setAudioCrowdIntensity,
   setSfxVolume,
   stopActiveSfxClip,
   vibrate,
 } from "./audio";
+import { stopYouTubeVideo } from "./youtubePlayer";
+import { advanceBracketWinner, pairKey } from "./bracketUtils";
+import { DEFAULT_HOCKEY_TOGGLES } from "./hockeyDefaults";
 
 function playScoreSound(id: ScoreSoundId) {
   switch (id) {
@@ -73,9 +77,10 @@ function defaultTimerForSport(
   sportId: string,
   customSport: SportConfig | null,
   timerVariantId: string,
+  customTimerFormat?: import("./types").CustomTimerFormat | null,
 ): TimerState {
   const cfg = resolveSportConfig(sportId, customSport);
-  const v = resolveActiveVariant(cfg, timerVariantId);
+  const v = resolveActiveVariant(cfg, timerVariantId, customTimerFormat);
   const periodSec =
     v?.periodSeconds && v.periodSeconds > 0 ? v.periodSeconds : 12 * 60;
 
@@ -179,6 +184,29 @@ export interface GameState extends GameStateSlice {
   youtubeVideoId: string | null;
   jumbotron: import("./types").JumbotronState | null;
   bracket: import("./types").BracketState | null;
+  roundRobin: import("./types").RoundRobinState | null;
+  shootout: import("./types").ShootoutState | null;
+  refereeTimer: import("./types").RefereeTimerState | null;
+  stoppageTime: import("./types").StoppageTimeState;
+  introSequence: import("./types").IntroSequenceState | null;
+  pitchCountA: number;
+  pitchCountB: number;
+  teamChantA: string;
+  teamChantB: string;
+  crowdIntensity: number;
+  ledScoreAnimation: boolean;
+  preGameSetup: import("./types").PreGameSetupPrefs;
+  hockeyToggles: import("./types").HockeyFeatureToggles;
+  hockeyPenalties: import("./types").HockeyPenalty[];
+  hockeyDelayedTeam: TeamId | null;
+  hockeyShotsA: number;
+  hockeyShotsB: number;
+  hockeyLastGoal: import("./types").HockeyLastGoal | null;
+  hockeyGoalCelebrationKey: number;
+  hockeyNextGoalEmptyNet: boolean;
+  puckDrop: import("./types").PuckDropState | null;
+  puckDropDelaySeconds: number;
+  customTimerFormat: import("./types").CustomTimerFormat;
 }
 
 interface GameStateSlice {
@@ -294,6 +322,68 @@ type GameStore = GameState & {
   setYoutubeVideoId: (id: string | null) => void;
   setJumbotron: (jumbo: import("./types").JumbotronState | null) => void;
   setBracket: (bracket: import("./types").BracketState | null) => void;
+  setRoundRobin: (rr: import("./types").RoundRobinState | null) => void;
+  applyPreGameSetup: (prefs: import("./types").PreGameSetupPrefs) => void;
+  startIntroSequence: () => void;
+  advanceIntroSequence: () => void;
+  dismissIntroSequence: () => void;
+  startShootout: (sport: import("./types").ShootoutSport) => void;
+  recordShootoutShot: (scored: boolean) => void;
+  endShootout: () => void;
+  startRefereeTimer: (seconds: number, label: string) => void;
+  dismissRefereeTimer: () => void;
+  setStoppageEnabled: (v: boolean) => void;
+  addStoppageSeconds: (sec: number) => void;
+  startStoppageClock: () => void;
+  pauseStoppageClock: () => void;
+  resetStoppageClock: () => void;
+  adjustPitchCount: (team: TeamId, delta: number) => void;
+  resetPitchCounts: () => void;
+  setTeamChant: (team: TeamId, chant: string) => void;
+  setCrowdIntensity: (v: number) => void;
+  setLedScoreAnimation: (v: boolean) => void;
+  autoAdvanceTournament: (winnerSide: TeamId) => void;
+  recordRoundRobinResult: (winnerSide: TeamId | "tie") => void;
+  setHockeyToggle: (
+    key: keyof import("./types").HockeyFeatureToggles,
+    v: boolean,
+  ) => void;
+  setPuckDropDelaySeconds: (sec: number) => void;
+  addHockeyPenalty: (team: TeamId, minutes: 2 | 5) => void;
+  clearHockeyPenalties: () => void;
+  setHockeyDelayedTeam: (team: TeamId | null) => void;
+  adjustHockeyShots: (team: TeamId, delta: number) => void;
+  setHockeyNextGoalEmptyNet: (v: boolean) => void;
+  dismissHockeyGoalCelebration: () => void;
+  tickHockey: () => void;
+  applyHockeyOvertimeSeconds: (seconds: number) => void;
+  startHockeyIntermission: (minutes: number) => void;
+  setCustomTimerFormat: (format: import("./types").CustomTimerFormat) => void;
+};
+
+const defaultPreGameSetup: import("./types").PreGameSetupPrefs = {
+  teamAName: "HOME",
+  teamBName: "AWAY",
+  teamAColor: "#22c55e",
+  teamBColor: "#3b82f6",
+  periodMinutes: 12,
+  periodSecondsRemainder: 0,
+  totalPeriods: 4,
+  targetScoreEnabled: false,
+  targetScore: 21,
+  shotClockEnabled: false,
+  shotClockSeconds: 24,
+  introSequenceEnabled: false,
+  stoppageTimeEnabled: false,
+  defaultStoppageAdd: 3,
+};
+
+const initialStoppageTime: import("./types").StoppageTimeState = {
+  enabled: false,
+  addedSeconds: 0,
+  running: false,
+  runStartedAt: null,
+  accumulatedMs: 0,
 };
 
 const initialShotClock: ShotClockState = {
@@ -305,6 +395,7 @@ const initialShotClock: ShotClockState = {
 };
 
 let bannerCounter = 0;
+let lastHockeyPenaltyTickMs = 0;
 
 function bigPlayLabel(
   delta: number,
@@ -373,6 +464,29 @@ export const useGameStore = create<GameStore>()(
       youtubeVideoId: null,
       jumbotron: null,
       bracket: null,
+      roundRobin: null,
+      shootout: null,
+      refereeTimer: null,
+      stoppageTime: initialStoppageTime,
+      introSequence: null,
+      pitchCountA: 0,
+      pitchCountB: 0,
+      teamChantA: "",
+      teamChantB: "",
+      crowdIntensity: 0.4,
+      ledScoreAnimation: true,
+      preGameSetup: defaultPreGameSetup,
+      hockeyToggles: { ...DEFAULT_HOCKEY_TOGGLES },
+      hockeyPenalties: [],
+      hockeyDelayedTeam: null,
+      hockeyShotsA: 0,
+      hockeyShotsB: 0,
+      hockeyLastGoal: null,
+      hockeyGoalCelebrationKey: 0,
+      hockeyNextGoalEmptyNet: false,
+      puckDrop: null,
+      puckDropDelaySeconds: 4,
+      customTimerFormat: { periodSeconds: 12 * 60, regulationPeriods: 4 },
 
       pushUndo: () => {
         const snap = snapshotFrom(get());
@@ -437,21 +551,45 @@ export const useGameStore = create<GameStore>()(
 
       setTimerVariant: (variantId) => {
         get().pushUndo();
-        const { sportId, customSport, period } = get();
+        const { sportId, customSport, period, customTimerFormat } = get();
         const cfg = resolveSportConfig(sportId, customSport);
-        const cap = effectiveMaxPeriods(cfg, variantId);
+        const cap = effectiveMaxPeriods(cfg, variantId, customTimerFormat);
         set({
           timerVariantId: variantId,
           period: cap != null ? Math.min(period, cap) : period,
-          timer: defaultTimerForSport(sportId, customSport, variantId),
+          timer: defaultTimerForSport(
+            sportId,
+            customSport,
+            variantId,
+            customTimerFormat,
+          ),
         });
+      },
+
+      setCustomTimerFormat: (format) => {
+        const periodSeconds = Math.max(0, format.periodSeconds);
+        const regulationPeriods = Math.max(1, Math.min(20, format.regulationPeriods));
+        const normalized = { periodSeconds, regulationPeriods };
+        set({ customTimerFormat: normalized });
+        if (get().timerVariantId === "custom") {
+          set((state) => ({
+            period: Math.min(state.period, regulationPeriods),
+            timer: {
+              ...state.timer,
+              countdownFromSeconds: periodSeconds,
+              accumulatedMs: 0,
+              running: false,
+              runStartedAt: null,
+            },
+          }));
+        }
       },
 
       applyOfficialPeriodTimer: () => {
         get().pushUndo();
-        const { sportId, customSport, timerVariantId } = get();
+        const { sportId, customSport, timerVariantId, customTimerFormat } = get();
         const cfg = resolveSportConfig(sportId, customSport);
-        const v = resolveActiveVariant(cfg, timerVariantId);
+        const v = resolveActiveVariant(cfg, timerVariantId, customTimerFormat);
         if (!v || v.periodSeconds <= 0) return;
         set((state) => ({
           timer: {
@@ -466,9 +604,9 @@ export const useGameStore = create<GameStore>()(
 
       applyOvertimeTimer: () => {
         get().pushUndo();
-        const { sportId, customSport, timerVariantId } = get();
+        const { sportId, customSport, timerVariantId, customTimerFormat } = get();
         const cfg = resolveSportConfig(sportId, customSport);
-        const v = resolveActiveVariant(cfg, timerVariantId);
+        const v = resolveActiveVariant(cfg, timerVariantId, customTimerFormat);
         const ot = v?.overtimeSeconds;
         if (ot == null || ot <= 0) return;
         set((state) => ({
@@ -536,9 +674,14 @@ export const useGameStore = create<GameStore>()(
           let banner = state.banner;
           
           if (get().announcerEnabled && action.value > 0) {
-            const flavor = action.value >= 3 ? "for three!" : "scores!";
             const teamName = team === "a" ? get().teamA.name : get().teamB.name;
-            speakAnnouncement(`${teamName} ${flavor}`);
+            const chant = team === "a" ? get().teamChantA : get().teamChantB;
+            if (chant?.trim()) {
+              speakAnnouncement(chant.trim());
+            } else {
+              const flavor = action.value >= 3 ? "for three!" : "scores!";
+              speakAnnouncement(`${teamName} ${flavor}`);
+            }
           }
 
           if (bannersEnabled && (isBig || isMid || isBuzzerBeater)) {
@@ -643,7 +786,11 @@ export const useGameStore = create<GameStore>()(
           if (teamA.score !== teamB.score) {
             const cfgNow = resolveSportConfig(sportId, customSport);
             const max =
-              effectiveMaxPeriods(cfgNow, timerVariantId) ?? cfgNow.maxPeriods;
+              effectiveMaxPeriods(
+                cfgNow,
+                timerVariantId,
+                get().customTimerFormat,
+              ) ?? cfgNow.maxPeriods;
             const isFinalPeriod = max != null && period >= max;
             if (isFinalPeriod) {
               get().triggerGameOver();
@@ -665,6 +812,60 @@ export const useGameStore = create<GameStore>()(
             teamA.score >= targetScore || teamB.score >= targetScore;
           if (reached && teamA.score !== teamB.score) {
             get().triggerGameOver();
+          }
+        }
+
+        if (sportId === "hockey" && action.value > 0) {
+          const {
+            hockeyToggles,
+            hockeyNextGoalEmptyNet,
+            period,
+            timer,
+            teamA,
+            teamB,
+          } = get();
+          const clockLabel = formatClockFromMs(
+            Math.max(0, timer.countdownFromSeconds * 1000 - getElapsedMs(timer)),
+          );
+          const teamName = team === "a" ? teamA.name : teamB.name;
+          const emptyNet =
+            hockeyToggles.emptyNetGoals && hockeyNextGoalEmptyNet;
+          set({
+            hockeyDelayedTeam: null,
+            hockeyNextGoalEmptyNet: false,
+            ...(hockeyToggles.shotsOnGoal
+              ? {
+                  hockeyShotsA:
+                    team === "a" ? get().hockeyShotsA + 1 : get().hockeyShotsA,
+                  hockeyShotsB:
+                    team === "b" ? get().hockeyShotsB + 1 : get().hockeyShotsB,
+                }
+              : {}),
+            ...(hockeyToggles.lastGoalTicker
+              ? {
+                  hockeyLastGoal: {
+                    team,
+                    teamName,
+                    period,
+                    clockLabel,
+                    emptyNet,
+                  },
+                }
+              : {}),
+            ...(hockeyToggles.goalCelebration
+              ? { hockeyGoalCelebrationKey: get().hockeyGoalCelebrationKey + 1 }
+              : {}),
+          });
+          if (emptyNet && bannersEnabled) {
+            bannerCounter += 1;
+            set({
+              banner: {
+                id: bannerCounter,
+                text: "GOAL!",
+                subtext: `${teamName} — EMPTY NET`,
+                flavor: "score",
+              },
+            });
           }
         }
       },
@@ -689,6 +890,7 @@ export const useGameStore = create<GameStore>()(
           },
           confettiKey: state.confettiKey + 1,
         }));
+        get().autoAdvanceTournament(winnerSide);
       },
 
       adjustFouls: (team, delta) => {
@@ -774,11 +976,18 @@ export const useGameStore = create<GameStore>()(
           periodScores,
         } = get();
         const cfg = resolveSportConfig(sportId, customSport);
-        const max = effectiveMaxPeriods(cfg, timerVariantId) ?? cfg.maxPeriods;
+        const { customTimerFormat } = get();
+        const max =
+          effectiveMaxPeriods(cfg, timerVariantId, customTimerFormat) ??
+          cfg.maxPeriods;
         const nextPeriodNum = max ? Math.min(period + 1, max) : period + 1;
         if (get().announcerEnabled) {
           const cfgNow = resolveSportConfig(sportId, customSport);
-          const varNow = resolveActiveVariant(cfgNow, timerVariantId);
+          const varNow = resolveActiveVariant(
+            cfgNow,
+            timerVariantId,
+            customTimerFormat,
+          );
           const pLabel = varNow?.periodLabel ?? cfgNow.periodLabel;
           speakAnnouncement(`Starting ${pLabel} ${nextPeriodNum}`);
         }
@@ -938,6 +1147,20 @@ export const useGameStore = create<GameStore>()(
       },
 
       startTimer: () => {
+        const { sportId, hockeyToggles, puckDropDelaySeconds, puckDrop } = get();
+        if (puckDrop) return;
+        if (
+          sportId === "hockey" &&
+          hockeyToggles.puckDropDelay &&
+          puckDropDelaySeconds > 0
+        ) {
+          set({
+            puckDrop: {
+              startsAt: Date.now() + puckDropDelaySeconds * 1000,
+            },
+          });
+          return;
+        }
         set((state) => ({
           timer: {
             ...state.timer,
@@ -1003,7 +1226,8 @@ export const useGameStore = create<GameStore>()(
 
         const cfg = resolveSportConfig(sportId, customSport);
         const max =
-          effectiveMaxPeriods(cfg, timerVariantId) ?? cfg.maxPeriods;
+          effectiveMaxPeriods(cfg, timerVariantId, get().customTimerFormat) ??
+          cfg.maxPeriods;
         const isFinalPeriod = max != null && period >= max;
 
         // ---- Last-minute Final Countdown prompt ----
@@ -1208,12 +1432,16 @@ export const useGameStore = create<GameStore>()(
           setAudioMusic(get().musicTrack);
         } else {
           setAudioMusic("none");
+          stopYouTubeVideo();
         }
       },
 
       setMusicTrack: (t) => {
         set({ musicTrack: t });
-        if (t !== "youtube") set({ youtubeVideoId: null });
+        if (t !== "youtube") {
+          set({ youtubeVideoId: null });
+          stopYouTubeVideo();
+        }
         if (get().musicEnabled) setAudioMusic(t);
       },
 
@@ -1256,7 +1484,8 @@ export const useGameStore = create<GameStore>()(
         // Start at 13 s to skip the spoken intro and hit the iconic synth.
         // Final Countdown should take over: stop any looping music first.
         setAudioMusic("none");
-        set({ musicEnabled: false });
+        stopYouTubeVideo();
+        set({ musicEnabled: false, youtubeVideoId: null, musicTrack: "none" });
         playSfxClip("/music/final-countdown.mp3", 13);
         set({ finalCountdownPromptVisible: false });
       },
@@ -1279,7 +1508,11 @@ export const useGameStore = create<GameStore>()(
           timerVariantId,
         } = get();
         const cfg = resolveSportConfig(sportId, customSport);
-        const variant = resolveActiveVariant(cfg, timerVariantId);
+        const variant = resolveActiveVariant(
+          cfg,
+          timerVariantId,
+          get().customTimerFormat,
+        );
         const periodLabel = variant?.periodLabel ?? cfg.periodLabel;
         const winner: "a" | "b" | "tie" =
           teamA.score === teamB.score
@@ -1322,9 +1555,378 @@ export const useGameStore = create<GameStore>()(
       },
 
       setAnnouncerEnabled: (v) => set({ announcerEnabled: v }),
-      setYoutubeVideoId: (id) => set({ youtubeVideoId: id }),
+      setYoutubeVideoId: (id) => {
+        if (!id) stopYouTubeVideo();
+        set({ youtubeVideoId: id });
+      },
       setJumbotron: (jumbo) => set({ jumbotron: jumbo }),
       setBracket: (bracket) => set({ bracket }),
+
+      setRoundRobin: (rr) => set({ roundRobin: rr }),
+
+      applyPreGameSetup: (prefs) => {
+        const periodSec =
+          prefs.periodMinutes * 60 + prefs.periodSecondsRemainder;
+        const customTimerFormat = {
+          periodSeconds: periodSec,
+          regulationPeriods: prefs.totalPeriods,
+        };
+        set({
+          preGameSetup: prefs,
+          customTimerFormat,
+          teamA: {
+            ...get().teamA,
+            name: prefs.teamAName || "HOME",
+            color: prefs.teamAColor,
+          },
+          teamB: {
+            ...get().teamB,
+            name: prefs.teamBName || "AWAY",
+            color: prefs.teamBColor,
+          },
+          targetScoreEnabled: prefs.targetScoreEnabled,
+          targetScore: prefs.targetScore,
+          shotClock: {
+            ...get().shotClock,
+            enabled: prefs.shotClockEnabled,
+            durationSeconds: prefs.shotClockSeconds,
+          },
+          stoppageTime: {
+            ...initialStoppageTime,
+            enabled: prefs.stoppageTimeEnabled,
+            addedSeconds: prefs.defaultStoppageAdd * 60,
+          },
+          timer: {
+            ...get().timer,
+            countdownFromSeconds: periodSec,
+            accumulatedMs: 0,
+            running: false,
+            runStartedAt: null,
+          },
+          period: 1,
+          pitchCountA: 0,
+          pitchCountB: 0,
+        });
+        if (prefs.introSequenceEnabled) {
+          get().startIntroSequence();
+        }
+      },
+
+      startIntroSequence: () =>
+        set({
+          introSequence: {
+            active: true,
+            phase: "teamA",
+            startedAt: Date.now(),
+          },
+        }),
+
+      advanceIntroSequence: () => {
+        const intro = get().introSequence;
+        if (!intro?.active) return;
+        const next =
+          intro.phase === "teamA"
+            ? "teamB"
+            : intro.phase === "teamB"
+              ? "versus"
+              : "done";
+        if (next === "done") {
+          set({ introSequence: null });
+        } else {
+          set({ introSequence: { ...intro, phase: next } });
+        }
+      },
+
+      dismissIntroSequence: () => set({ introSequence: null }),
+
+      startShootout: (sport) =>
+        set({
+          shootout: {
+            active: true,
+            sport,
+            shots: [],
+            teamAScore: 0,
+            teamBScore: 0,
+            nextTeam: "a",
+          },
+        }),
+
+      recordShootoutShot: (scored) => {
+        const so = get().shootout;
+        if (!so?.active) return;
+        const shots = [...so.shots, { team: so.nextTeam, scored }];
+        let teamAScore = so.teamAScore;
+        let teamBScore = so.teamBScore;
+        if (scored) {
+          if (so.nextTeam === "a") teamAScore++;
+          else teamBScore++;
+        }
+        const nextTeam: TeamId = so.nextTeam === "a" ? "b" : "a";
+        set({
+          shootout: {
+            ...so,
+            shots,
+            teamAScore,
+            teamBScore,
+            nextTeam,
+          },
+        });
+      },
+
+      endShootout: () => set({ shootout: null }),
+
+      startRefereeTimer: (seconds, label) =>
+        set({
+          refereeTimer: {
+            active: true,
+            label,
+            durationSeconds: seconds,
+            runStartedAt: Date.now(),
+          },
+        }),
+
+      dismissRefereeTimer: () => set({ refereeTimer: null }),
+
+      setStoppageEnabled: (v) =>
+        set((s) => ({
+          stoppageTime: { ...s.stoppageTime, enabled: v },
+        })),
+
+      addStoppageSeconds: (sec) =>
+        set((s) => ({
+          stoppageTime: {
+            ...s.stoppageTime,
+            addedSeconds: Math.max(0, s.stoppageTime.addedSeconds + sec),
+          },
+        })),
+
+      startStoppageClock: () =>
+        set((s) => ({
+          stoppageTime: {
+            ...s.stoppageTime,
+            running: true,
+            runStartedAt: Date.now(),
+          },
+        })),
+
+      pauseStoppageClock: () =>
+        set((s) => {
+          const st = s.stoppageTime;
+          if (!st.running || st.runStartedAt == null) return s;
+          return {
+            stoppageTime: {
+              ...st,
+              running: false,
+              accumulatedMs:
+                st.accumulatedMs + (Date.now() - st.runStartedAt),
+              runStartedAt: null,
+            },
+          };
+        }),
+
+      resetStoppageClock: () =>
+        set((s) => ({
+          stoppageTime: {
+            ...s.stoppageTime,
+            running: false,
+            runStartedAt: null,
+            accumulatedMs: 0,
+          },
+        })),
+
+      adjustPitchCount: (team, delta) =>
+        set((s) => ({
+          pitchCountA:
+            team === "a"
+              ? Math.max(0, s.pitchCountA + delta)
+              : s.pitchCountA,
+          pitchCountB:
+            team === "b"
+              ? Math.max(0, s.pitchCountB + delta)
+              : s.pitchCountB,
+        })),
+
+      resetPitchCounts: () => set({ pitchCountA: 0, pitchCountB: 0 }),
+
+      setTeamChant: (team, chant) =>
+        set(team === "a" ? { teamChantA: chant } : { teamChantB: chant }),
+
+      setCrowdIntensity: (v) => {
+        const clamped = Math.max(0, Math.min(1, v));
+        set({ crowdIntensity: clamped });
+        setAudioCrowdIntensity(clamped);
+      },
+
+      setLedScoreAnimation: (v) => set({ ledScoreAnimation: v }),
+
+      autoAdvanceTournament: (winnerSide) => {
+        const { bracket, roundRobin, teamA, teamB } = get();
+        if (bracket?.activeMatchId) {
+          const updated = advanceBracketWinner(
+            bracket,
+            bracket.activeMatchId,
+            winnerSide,
+            teamA.score,
+            teamB.score,
+          );
+          set({ bracket: updated });
+        }
+        if (roundRobin?.activePairKey) {
+          get().recordRoundRobinResult(winnerSide);
+        }
+      },
+
+      recordRoundRobinResult: (winnerSide) => {
+        const rr = get().roundRobin;
+        if (!rr?.activePairKey) return;
+        const key = rr.activePairKey;
+        const [iStr, jStr] = key.split("-");
+        const i = Number(iStr);
+        const j = Number(jStr);
+        const { teamA, teamB } = get();
+        const result = rr.results[key];
+        if (!result) return;
+
+        const teams = rr.teams.map((t) => ({ ...t }));
+        const ti = teams[i];
+        const tj = teams[j];
+        if (!ti || !tj) return;
+
+        ti.played++;
+        tj.played++;
+        ti.goalsFor += teamA.score;
+        ti.goalsAgainst += teamB.score;
+        tj.goalsFor += teamB.score;
+        tj.goalsAgainst += teamA.score;
+
+        if (winnerSide === "tie") {
+          ti.ties++;
+          tj.ties++;
+          ti.points++;
+          tj.points++;
+        } else if (winnerSide === "a") {
+          ti.wins++;
+          tj.losses++;
+          ti.points += 3;
+        } else {
+          tj.wins++;
+          ti.losses++;
+          tj.points += 3;
+        }
+
+        teams.sort((a, b) => b.points - a.points || b.goalsFor - b.goalsAgainst - (a.goalsFor - a.goalsAgainst));
+
+        const results = {
+          ...rr.results,
+          [key]: {
+            scoreA: teamA.score,
+            scoreB: teamB.score,
+            played: true,
+          },
+        };
+
+        set({
+          roundRobin: {
+            ...rr,
+            teams,
+            results,
+            activePairKey: null,
+          },
+        });
+      },
+
+      setHockeyToggle: (key, v) =>
+        set((s) => ({
+          hockeyToggles: { ...s.hockeyToggles, [key]: v },
+        })),
+
+      setPuckDropDelaySeconds: (sec) =>
+        set({ puckDropDelaySeconds: Math.max(0, Math.min(15, sec)) }),
+
+      addHockeyPenalty: (team, minutes) =>
+        set((s) => ({
+          hockeyPenalties: [
+            ...s.hockeyPenalties,
+            {
+              id: `p${Date.now()}`,
+              team,
+              remainingSeconds: minutes * 60,
+            },
+          ],
+        })),
+
+      clearHockeyPenalties: () => set({ hockeyPenalties: [] }),
+
+      setHockeyDelayedTeam: (team) => set({ hockeyDelayedTeam: team }),
+
+      adjustHockeyShots: (team, delta) =>
+        set((s) => ({
+          hockeyShotsA:
+            team === "a"
+              ? Math.max(0, s.hockeyShotsA + delta)
+              : s.hockeyShotsA,
+          hockeyShotsB:
+            team === "b"
+              ? Math.max(0, s.hockeyShotsB + delta)
+              : s.hockeyShotsB,
+        })),
+
+      setHockeyNextGoalEmptyNet: (v) => set({ hockeyNextGoalEmptyNet: v }),
+
+      dismissHockeyGoalCelebration: () =>
+        set({ hockeyGoalCelebrationKey: 0 }),
+
+      tickHockey: () => {
+        const s = get();
+        if (s.sportId !== "hockey") return;
+
+        if (s.puckDrop && Date.now() >= s.puckDrop.startsAt) {
+          set({
+            puckDrop: null,
+            timer: {
+              ...s.timer,
+              running: true,
+              runStartedAt: Date.now(),
+            },
+          });
+        }
+
+        const now = Date.now();
+        if (
+          s.hockeyPenalties.length > 0 &&
+          now - lastHockeyPenaltyTickMs >= 1000
+        ) {
+          lastHockeyPenaltyTickMs = now;
+          const next = s.hockeyPenalties
+            .map((p) => ({
+              ...p,
+              remainingSeconds: Math.max(0, p.remainingSeconds - 1),
+            }))
+            .filter((p) => p.remainingSeconds > 0);
+          if (next.length !== s.hockeyPenalties.length) {
+            set({ hockeyPenalties: next });
+          } else {
+            set({ hockeyPenalties: next });
+          }
+        }
+      },
+
+      applyHockeyOvertimeSeconds: (seconds) => {
+        get().pushUndo();
+        set((state) => ({
+          timer: {
+            ...state.timer,
+            countdownFromSeconds: seconds,
+            accumulatedMs: 0,
+            running: false,
+            runStartedAt: null,
+          },
+        }));
+      },
+
+      startHockeyIntermission: (minutes) => {
+        get().startRefereeTimer(minutes * 60, "Intermission");
+      },
     }),
     {
       name: "scoreboard-game-v1",
@@ -1368,6 +1970,15 @@ export const useGameStore = create<GameStore>()(
         displayFlipped: state.displayFlipped,
         announcerEnabled: state.announcerEnabled,
         bracket: state.bracket,
+        roundRobin: state.roundRobin,
+        teamChantA: state.teamChantA,
+        teamChantB: state.teamChantB,
+        crowdIntensity: state.crowdIntensity,
+        ledScoreAnimation: state.ledScoreAnimation,
+        preGameSetup: state.preGameSetup,
+        hockeyToggles: state.hockeyToggles,
+        puckDropDelaySeconds: state.puckDropDelaySeconds,
+        customTimerFormat: state.customTimerFormat,
       }),
       skipHydration: true,
       merge: (persisted, current) => {
@@ -1429,6 +2040,33 @@ export const useGameStore = create<GameStore>()(
         merged.youtubeVideoId = null;
         merged.jumbotron = null;
         if (!merged.bracket) merged.bracket = null;
+        else if (!merged.bracket.format) merged.bracket.format = "single";
+        if (merged.bracket && merged.bracket.activeMatchId === undefined)
+          merged.bracket.activeMatchId = null;
+        if (!merged.roundRobin) merged.roundRobin = null;
+        if (!merged.preGameSetup) merged.preGameSetup = defaultPreGameSetup;
+        if (typeof merged.crowdIntensity !== "number") merged.crowdIntensity = 0.4;
+        if (typeof merged.ledScoreAnimation !== "boolean") merged.ledScoreAnimation = true;
+        if (typeof merged.teamChantA !== "string") merged.teamChantA = "";
+        if (typeof merged.teamChantB !== "string") merged.teamChantB = "";
+        merged.shootout = null;
+        merged.refereeTimer = null;
+        merged.introSequence = null;
+        merged.puckDrop = null;
+        if (!merged.hockeyToggles)
+          merged.hockeyToggles = { ...DEFAULT_HOCKEY_TOGGLES };
+        if (typeof merged.puckDropDelaySeconds !== "number")
+          merged.puckDropDelaySeconds = 4;
+        if (!merged.customTimerFormat) {
+          merged.customTimerFormat = {
+            periodSeconds: 12 * 60,
+            regulationPeriods: 4,
+          };
+        }
+        merged.hockeyPenalties = merged.hockeyPenalties ?? [];
+        merged.hockeyDelayedTeam = null;
+        merged.hockeyGoalCelebrationKey = 0;
+        if (!merged.stoppageTime) merged.stoppageTime = initialStoppageTime;
         merged.buzzerBeaterWindowActive = false;
         merged.buzzerBeaterWindowEndsAt = null;
         merged.buzzerBeaterWindowSettling = false;

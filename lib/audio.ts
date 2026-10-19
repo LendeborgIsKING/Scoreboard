@@ -42,6 +42,9 @@ function ensureCtx(): AudioContext | null {
     masterMusicGain = ctx.createGain();
     masterMusicGain.gain.value = 0.3;
     masterMusicGain.connect(ctx.destination);
+    ambientGain = ctx.createGain();
+    ambientGain.gain.value = crowdIntensityMultiplier;
+    ambientGain.connect(ctx.destination);
   } catch {
     return null;
   }
@@ -681,6 +684,10 @@ export function setMusic(track: MusicTrack) {
     musicNodes = startTrackFromFile(c, masterMusicGain, ANTHEM_MP3, 0);
   if (track === "shuffle")
     musicNodes = startShufflePlaylist(c, masterMusicGain);
+  if (track === "youtube") {
+    // YouTube audio is handled by the IFrame player component.
+    return;
+  }
 }
 
 export function getCurrentTrack(): MusicTrack {
@@ -694,11 +701,18 @@ export function getCurrentTrack(): MusicTrack {
 
 let themeAmbientNodes: { stop: () => void } | null = null;
 let currentThemeAmbient: string = "none";
+let ambientGain: GainNode | null = null;
+let crowdIntensityMultiplier = 0.4;
 
 /** Theme → ambient config. `loopEnd` = 0 means full file. */
 const THEME_AMBIENTS: Record<string, { src: string; loopStart: number; loopEnd: number }> = {
   stadium: { src: "/sfx/stadium-roar.mp3", loopStart: 0, loopEnd: 22 },
 };
+
+export function setCrowdIntensity(v: number) {
+  crowdIntensityMultiplier = Math.max(0, Math.min(1, v));
+  if (ambientGain) ambientGain.gain.value = crowdIntensityMultiplier;
+}
 
 export function setThemeAmbient(themeId: string) {
   if (themeId === currentThemeAmbient) return;
@@ -710,9 +724,9 @@ export function setThemeAmbient(themeId: string) {
   const cfg = THEME_AMBIENTS[themeId];
   if (!cfg) return;
   const c = ensureCtx();
-  if (!c || !masterMusicGain) return;
+  if (!c || !ambientGain) return;
   if (c.state === "suspended") c.resume().catch(() => {});
-  themeAmbientNodes = startTrackFromFile(c, masterMusicGain, cfg.src, cfg.loopStart, cfg.loopEnd);
+  themeAmbientNodes = startTrackFromFile(c, ambientGain, cfg.src, cfg.loopStart, cfg.loopEnd);
 }
 
 export function stopThemeAmbient() {

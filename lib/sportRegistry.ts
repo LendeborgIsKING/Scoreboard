@@ -1,4 +1,5 @@
-import type { SportConfig, TimerVariant } from "./types";
+import type { SportConfig, TimerVariant, CustomTimerFormat } from "./types";
+import { CUSTOM_TIMER_VARIANT_ID } from "./types";
 import { CUSTOM_TEMPLATE, presetById } from "./sportPresets";
 
 /** Resolve active sport config — never hardcode per-sport UI; consume this object only. */
@@ -27,7 +28,17 @@ export function hasFeature(
 export function resolveActiveVariant(
   cfg: SportConfig,
   timerVariantId: string,
+  customFormat?: CustomTimerFormat | null,
 ): TimerVariant | undefined {
+  if (timerVariantId === CUSTOM_TIMER_VARIANT_ID && customFormat) {
+    return {
+      id: CUSTOM_TIMER_VARIANT_ID,
+      label: "Custom",
+      periodSeconds: customFormat.periodSeconds,
+      regulationPeriods: customFormat.regulationPeriods,
+      periodLabel: cfg.periodLabel,
+    };
+  }
   const list = cfg.timerVariants;
   if (!list?.length) return undefined;
   const found = list.find((t) => t.id === timerVariantId);
@@ -45,9 +56,13 @@ export function defaultVariantId(cfg: SportConfig): string {
 export function effectiveMaxPeriods(
   cfg: SportConfig,
   timerVariantId: string,
+  customFormat?: CustomTimerFormat | null,
 ): number | undefined {
-  const v = resolveActiveVariant(cfg, timerVariantId);
+  const v = resolveActiveVariant(cfg, timerVariantId, customFormat);
   if (v?.periodCap != null) return v.periodCap;
+  if (timerVariantId === CUSTOM_TIMER_VARIANT_ID && customFormat) {
+    return customFormat.regulationPeriods;
+  }
   return cfg.maxPeriods;
 }
 

@@ -15,9 +15,10 @@ export function StatsModal({ onClose }: Props) {
   const sportId = useGameStore((s) => s.sportId);
   const customSport = useGameStore((s) => s.customSport);
   const timerVariantId = useGameStore((s) => s.timerVariantId);
+  const customTimerFormat = useGameStore((s) => s.customTimerFormat);
 
   const cfg = resolveSportConfig(sportId, customSport);
-  const variant = resolveActiveVariant(cfg, timerVariantId);
+  const variant = resolveActiveVariant(cfg, timerVariantId, customTimerFormat);
   const periodLabel = variant?.periodLabel ?? cfg.periodLabel;
 
   const aArr = periodScores.a;

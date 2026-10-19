@@ -56,6 +56,19 @@ export function SportMenu() {
             Tournament Bracket
           </span>
         </button>
+
+        <button
+          type="button"
+          onClick={() => setUiPhase("round-robin")}
+          className="flex w-full items-center gap-5 border-b border-white/[0.08] px-6 py-5 text-left transition active:bg-white/[0.06] max-sm:min-h-[52px] max-sm:py-4 sm:py-[1.35rem]"
+        >
+          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500 to-teal-700">
+            <span className="text-lg font-black text-white">RR</span>
+          </div>
+          <span className="text-xl font-bold leading-none tracking-tight">
+            Round Robin League
+          </span>
+        </button>
         
         <button
           type="button"

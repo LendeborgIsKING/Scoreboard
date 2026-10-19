@@ -20,6 +20,9 @@ import {
 } from "./UiIcons";
 
 import { searchYouTube, type YouTubeSearchResult } from "@/app/actions/youtube";
+import { playYouTubeVideo, stopYouTubeVideo } from "@/lib/youtubePlayer";
+import { RefereeQuickTimers } from "./RefereeTimerOverlay";
+import { HockeyPanel } from "./HockeyPanel";
 
 type Props = {
   onClose: () => void;
@@ -37,7 +40,9 @@ type Panel =
   | "boxscore"
   | "game"
   | "team-colors"
-  | "hockey-horn";
+  | "hockey-horn"
+  | "hockey"
+  | "hockey-periods";
 
 const THEMES: { id: import("@/lib/types").ThemeId; label: string; chip: string }[] = [
   { id: "dark",     label: "Dark",     chip: "bg-zinc-900" },
@@ -84,7 +89,13 @@ export function SettingsModal({
   onHistory,
 }: Props) {
   const [panel, setPanel] = useState<Panel>("menu");
+  const setUiPhase = useGameStore((s) => s.setUiPhase);
   const { isMobile } = useIsMobileDevice();
+
+  const exitToSportMenu = () => {
+    onClose();
+    setUiPhase("menu");
+  };
   const shellClass = isMobile
     ? "absolute inset-0 flex min-h-0 w-full flex-col bg-black text-white"
     : "absolute left-1/2 top-1/2 flex h-[390px] w-[844px] min-h-0 -translate-x-1/2 -translate-y-1/2 rotate-90 flex-col bg-black text-white";
@@ -108,9 +119,9 @@ export function SettingsModal({
       >
         <button
           type="button"
-          onClick={panel === "menu" ? onClose : () => setPanel("menu")}
+          onClick={panel === "menu" ? exitToSportMenu : () => setPanel("menu")}
           className="absolute left-[max(1.5rem,env(safe-area-inset-left))] top-[max(1rem,env(safe-area-inset-top))] flex flex-col items-center text-white"
-          aria-label={panel === "menu" ? "Exit settings" : "Back"}
+          aria-label={panel === "menu" ? "Exit to sport menu" : "Back"}
         >
           <CircleShell>
             <MenuIcon className="h-7 w-7" />
@@ -124,12 +135,12 @@ export function SettingsModal({
           type="button"
           onClick={onClose}
           className="absolute right-[max(1.5rem,env(safe-area-inset-right))] top-[max(1rem,env(safe-area-inset-top))] flex flex-col items-center text-white"
-          aria-label="Close settings"
+          aria-label="Cancel and return to scoreboard"
         >
           <CircleShell>
             <CloseIcon className="h-7 w-7" />
           </CircleShell>
-          <span className="mt-0.5 text-2xl font-black">Close</span>
+          <span className="mt-0.5 text-2xl font-black">Cancel</span>
         </button>
 
         {panel === "menu" && (
@@ -143,6 +154,8 @@ export function SettingsModal({
             onGame={() => setPanel("game")}
             onTeamColors={() => setPanel("team-colors")}
             onHockeyHorn={() => setPanel("hockey-horn")}
+            onHockey={() => setPanel("hockey")}
+            onHockeyPeriods={() => setPanel("hockey-periods")}
             onStats={onStats}
             onHistory={onHistory}
           />
@@ -155,6 +168,8 @@ export function SettingsModal({
         {panel === "game" && <GamePanel />}
         {panel === "team-colors" && <TeamColorsPanel />}
         {panel === "hockey-horn" && <HockeyHornPanel />}
+        {panel === "hockey" && <HockeyPanel view="main" />}
+        {panel === "hockey-periods" && <HockeyPanel view="periods" />}
       </motion.div>
     </motion.div>
   );
@@ -170,6 +185,8 @@ function MenuView({
   onGame,
   onTeamColors,
   onHockeyHorn,
+  onHockey,
+  onHockeyPeriods,
   onStats,
   onHistory,
 }: {
@@ -182,17 +199,24 @@ function MenuView({
   onGame: () => void;
   onTeamColors: () => void;
   onHockeyHorn: () => void;
+  onHockey: () => void;
+  onHockeyPeriods: () => void;
   onStats: () => void;
   onHistory: () => void;
 }) {
   const sportId = useGameStore((s) => s.sportId);
   const isHockey = sportId === "hockey";
   const isBasketball = sportId === "basketball";
+  const hockeyPeriodBox = useGameStore((s) => s.hockeyToggles.periodBoxScore);
 
   const onShare = () => {
     const s = useGameStore.getState();
     const cfg = resolveSportConfig(s.sportId, s.customSport);
-    const variant = resolveActiveVariant(cfg, s.timerVariantId);
+    const variant = resolveActiveVariant(
+      cfg,
+      s.timerVariantId,
+      s.customTimerFormat,
+    );
     void shareScoreboardImage({
       sportName: cfg.name,
       periodLabel: variant?.periodLabel ?? cfg.periodLabel,
@@ -220,7 +244,13 @@ function MenuView({
       <Tile label="History" icon={<ListGlyph />} onClick={onHistory} />
       <Tile label="Share" icon={<ShareGlyph />} onClick={onShare} />
       {isHockey && (
-        <Tile label="Goal Horns" icon={<HornGlyph />} onClick={onHockeyHorn} />
+        <>
+          <Tile label="Hockey" icon={<HornGlyph />} onClick={onHockey} />
+          <Tile label="Goal Horns" icon={<HornGlyph />} onClick={onHockeyHorn} />
+          {hockeyPeriodBox && (
+            <Tile label="Period scores" icon={<BallGlyph />} onClick={onHockeyPeriods} />
+          )}
+        </>
       )}
     </div>
   );
@@ -267,6 +297,13 @@ function SoundPanel() {
   const setPressTickEnabled = useGameStore((s) => s.setPressTickEnabled);
   const announcerEnabled = useGameStore((s) => s.announcerEnabled);
   const setAnnouncerEnabled = useGameStore((s) => s.setAnnouncerEnabled);
+  const crowdIntensity = useGameStore((s) => s.crowdIntensity);
+  const setCrowdIntensity = useGameStore((s) => s.setCrowdIntensity);
+  const teamChantA = useGameStore((s) => s.teamChantA);
+  const teamChantB = useGameStore((s) => s.teamChantB);
+  const setTeamChant = useGameStore((s) => s.setTeamChant);
+  const ledScoreAnimation = useGameStore((s) => s.ledScoreAnimation);
+  const setLedScoreAnimation = useGameStore((s) => s.setLedScoreAnimation);
   return (
     <PanelShell title="Sound & feedback">
       <ToggleRow
@@ -315,6 +352,32 @@ function SoundPanel() {
         checked={announcerEnabled}
         onChange={setAnnouncerEnabled}
       />
+      <SliderRow
+        label="Crowd intensity"
+        value={crowdIntensity}
+        onChange={setCrowdIntensity}
+      />
+      <div className="rounded-xl border border-white/10 bg-white/5 px-3 py-2">
+        <span className="text-sm font-bold">Custom team chants</span>
+        <p className="mt-1 text-xs text-zinc-500">Spoken by announcer when that team scores.</p>
+        <input
+          value={teamChantA}
+          onChange={(e) => setTeamChant("a", e.target.value)}
+          placeholder="Home chant (e.g. Let's go Lakers!)"
+          className="mt-2 w-full rounded-lg border border-white/20 bg-black/40 px-3 py-2 text-sm text-white outline-none"
+        />
+        <input
+          value={teamChantB}
+          onChange={(e) => setTeamChant("b", e.target.value)}
+          placeholder="Away chant"
+          className="mt-2 w-full rounded-lg border border-white/20 bg-black/40 px-3 py-2 text-sm text-white outline-none"
+        />
+      </div>
+      <ToggleRow
+        label="LED score flip animation"
+        checked={ledScoreAnimation}
+        onChange={setLedScoreAnimation}
+      />
       <ToggleRow
         label="Vibration (haptics)"
         checked={vibrationEnabled}
@@ -349,6 +412,8 @@ function GamePanel() {
   const bannersEnabled = useGameStore((s) => s.bannersEnabled);
   const setBannersEnabled = useGameStore((s) => s.setBannersEnabled);
   const resetScoresOnly = useGameStore((s) => s.resetScoresOnly);
+  const startShootout = useGameStore((s) => s.startShootout);
+  const sportId = useGameStore((s) => s.sportId);
 
   return (
     <PanelShell title="Game">
@@ -407,6 +472,28 @@ function GamePanel() {
         checked={bannersEnabled}
         onChange={setBannersEnabled}
       />
+
+      <div className="rounded-xl border border-white/10 bg-white/5 px-3 py-2">
+        <span className="text-sm font-bold">Referee quick timers</span>
+        <RefereeQuickTimers />
+      </div>
+
+      {sportId === "soccer" && (
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={() => startShootout("soccer")}
+            className="rounded-full border-2 border-white/50 px-4 py-1.5 text-sm font-bold text-white hover:bg-white/10"
+          >
+            Start Penalty Shootout
+          </button>
+        </div>
+      )}
+      {sportId === "hockey" && (
+        <p className="text-xs text-zinc-500">
+          Shootout, penalties, and OT presets are in Settings → Hockey.
+        </p>
+      )}
 
       <button
         type="button"
@@ -501,7 +588,8 @@ function MusicPanel() {
                   setTrack("youtube");
                   setYoutubeVideoId(vid.id);
                   setEnabled(true);
-                  setResults([]); // clear results once playing
+                  playYouTubeVideo(vid.id);
+                  setResults([]);
                 }}
                 className="flex items-center gap-3 rounded-lg border border-white/10 p-2 text-left hover:bg-white/5 transition"
               >
@@ -519,12 +607,17 @@ function MusicPanel() {
 
         {youtubeVideoId && (
           <div className="mt-3 flex flex-col gap-2">
-            <div className="text-sm text-green-400 font-bold mb-1">▶ Playing YouTube Audio</div>
+            <div className="text-sm font-bold text-green-400">
+              ▶ A YouTube player opened on screen — tap play if audio does not
+              start automatically.
+            </div>
             <button
               type="button"
               onClick={() => {
+                stopYouTubeVideo();
                 setYoutubeVideoId(null);
                 setTrack("none");
+                setEnabled(false);
               }}
               className="mt-1 rounded-lg bg-red-600/20 px-3 py-1.5 text-sm font-bold text-red-300 transition hover:bg-red-600/30"
             >
@@ -575,12 +668,15 @@ function BoxScorePanel() {
   const sportId = useGameStore((s) => s.sportId);
   const customSport = useGameStore((s) => s.customSport);
   const timerVariantId = useGameStore((s) => s.timerVariantId);
+  const customTimerFormat = useGameStore((s) => s.customTimerFormat);
 
   const cfg = resolveSportConfig(sportId, customSport);
-  const variant = resolveActiveVariant(cfg, timerVariantId);
+  const variant = resolveActiveVariant(cfg, timerVariantId, customTimerFormat);
   const periodLabel = variant?.periodLabel ?? cfg.periodLabel;
   const maxPeriods =
-    effectiveMaxPeriods(cfg, timerVariantId) ?? cfg.maxPeriods ?? 4;
+    effectiveMaxPeriods(cfg, timerVariantId, customTimerFormat) ??
+    cfg.maxPeriods ??
+    4;
 
   return (
     <PanelShell title="Box score">

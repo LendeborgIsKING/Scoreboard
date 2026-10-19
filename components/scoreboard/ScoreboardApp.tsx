@@ -8,6 +8,7 @@ import { ScoreboardDisplay } from "./ScoreboardDisplay";
 import { SportMenu } from "./SportMenu";
 import { SportSetup } from "./SportSetup";
 import { TournamentBracket } from "./TournamentBracket";
+import { RoundRobin } from "./RoundRobin";
 import { CustomSportBuilder } from "./CustomSportBuilder";
 import { MobileAppShell } from "./MobileAppShell";
 
@@ -47,6 +48,8 @@ export function ScoreboardApp() {
     content = <SportSetup />;
   } else if (uiPhase === "bracket") {
     content = <TournamentBracket />;
+  } else if (uiPhase === "round-robin") {
+    content = <RoundRobin />;
   } else if (uiPhase === "custom-builder") {
     content = <CustomSportBuilder />;
   } else {

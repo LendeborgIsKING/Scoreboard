@@ -3,6 +3,7 @@
 import { motion } from "framer-motion";
 import type { SportConfig } from "@/lib/types";
 import { resolveActiveVariant } from "@/lib/sportRegistry";
+import { useGameStore } from "@/lib/gameStore";
 
 type Props = {
   cfg: SportConfig;
@@ -12,8 +13,9 @@ type Props = {
 };
 
 export function RuleNotes({ cfg, timerVariantId, open, onClose }: Props) {
+  const customTimerFormat = useGameStore((s) => s.customTimerFormat);
+  const v = resolveActiveVariant(cfg, timerVariantId, customTimerFormat);
   if (!open) return null;
-  const v = resolveActiveVariant(cfg, timerVariantId);
 
   return (
     <motion.div

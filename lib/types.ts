@@ -1,5 +1,13 @@
 export type TeamId = "a" | "b";
 
+/** Reserved timer variant id — user-defined period length and count */
+export const CUSTOM_TIMER_VARIANT_ID = "custom";
+
+export interface CustomTimerFormat {
+  periodSeconds: number;
+  regulationPeriods: number;
+}
+
 /** Features toggled per sport preset — UI renders from this list */
 export type SportFeature =
   | "fouls"
@@ -104,18 +112,137 @@ export interface JumbotronState {
 
 export interface BracketMatch {
   id: string;
-  round: number; // e.g. 1 (Quarterfinals), 2 (Semifinals), 3 (Finals)
-  position: number; // Top-to-bottom position in the round
-  teamA: string | null; // Name of team A, null if TBD
-  teamB: string | null; // Name of team B, null if TBD
+  round: number;
+  position: number;
+  teamA: string | null;
+  teamB: string | null;
   winner?: "a" | "b" | null;
+  /** Winners or losers side for double-elimination */
+  bracketSide?: "winners" | "losers";
+  /** Final score when match was played via scoreboard */
+  scoreA?: number;
+  scoreB?: number;
 }
+
+export type BracketFormat = "single" | "double-elim";
 
 export interface BracketState {
   id: string;
   name: string;
   teamCount: 4 | 8;
+  format: BracketFormat;
   matches: BracketMatch[];
+  /** Match currently loaded in the scoreboard (for auto-advance) */
+  activeMatchId: string | null;
+}
+
+export interface RoundRobinTeam {
+  name: string;
+  played: number;
+  wins: number;
+  losses: number;
+  ties: number;
+  points: number;
+  goalsFor: number;
+  goalsAgainst: number;
+}
+
+export interface RoundRobinState {
+  id: string;
+  name: string;
+  teams: RoundRobinTeam[];
+  /** Keyed "i-j" where i < j */
+  results: Record<string, { scoreA: number; scoreB: number; played: boolean }>;
+  activePairKey: string | null;
+}
+
+export type ShootoutSport = "soccer" | "hockey";
+
+export interface ShootoutShot {
+  team: TeamId;
+  scored: boolean | null;
+}
+
+export interface ShootoutState {
+  active: boolean;
+  sport: ShootoutSport;
+  shots: ShootoutShot[];
+  teamAScore: number;
+  teamBScore: number;
+  nextTeam: TeamId;
+}
+
+export interface RefereeTimerState {
+  active: boolean;
+  label: string;
+  durationSeconds: number;
+  runStartedAt: number;
+}
+
+export interface StoppageTimeState {
+  enabled: boolean;
+  addedSeconds: number;
+  running: boolean;
+  runStartedAt: number | null;
+  accumulatedMs: number;
+}
+
+export interface IntroSequenceState {
+  active: boolean;
+  phase: "teamA" | "teamB" | "versus" | "done";
+  startedAt: number;
+}
+
+export interface HockeyPenalty {
+  id: string;
+  team: TeamId;
+  /** Seconds remaining on the penalty */
+  remainingSeconds: number;
+}
+
+export interface HockeyFeatureToggles {
+  penaltyBox: boolean;
+  powerPlayIndicator: boolean;
+  delayedPenalty: boolean;
+  shotsOnGoal: boolean;
+  emptyNetGoals: boolean;
+  periodBoxScore: boolean;
+  intermissionTimer: boolean;
+  overtimePresets: boolean;
+  puckDropDelay: boolean;
+  goalCelebration: boolean;
+  rinkVisual: boolean;
+  lastGoalTicker: boolean;
+}
+
+export interface HockeyLastGoal {
+  team: TeamId;
+  teamName: string;
+  period: number;
+  clockLabel: string;
+  emptyNet: boolean;
+}
+
+export interface PuckDropState {
+  /** Wall-clock ms when the game clock should start */
+  startsAt: number;
+}
+
+export interface PreGameSetupPrefs {
+  teamAName: string;
+  teamBName: string;
+  teamAColor: string;
+  teamBColor: string;
+  periodMinutes: number;
+  periodSecondsRemainder: number;
+  totalPeriods: number;
+  targetScoreEnabled: boolean;
+  targetScore: number;
+  shotClockEnabled: boolean;
+  shotClockSeconds: number;
+  introSequenceEnabled: boolean;
+  stoppageTimeEnabled: boolean;
+  defaultStoppageAdd: number;
 }
 
 export interface GameHistoryEntry {
@@ -150,7 +277,7 @@ export interface TimerState {
   countdownFromSeconds: number;
 }
 
-export type UiPhase = "menu" | "setup" | "game" | "bracket" | "custom-builder";
+export type UiPhase = "menu" | "setup" | "game" | "bracket" | "round-robin" | "custom-builder";
 
 export interface GameSnapshot {
   sportId: string;

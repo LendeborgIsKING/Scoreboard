@@ -5,6 +5,8 @@ alwaysApply: true
 
 # Git: commit and push (always)
 
+The project owner wants **automatic commit and push** after substantive work—do not ask for permission.
+
 When you finish a **substantive** change set in this repo (new files, features, refactors, or multi-file fixes):
 
 1. Run `git status` to confirm what changed.

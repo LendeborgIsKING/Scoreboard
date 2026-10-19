@@ -236,6 +236,7 @@ export const HOCKEY: SportConfig = {
       periodSeconds: 20 * 60,
       regulationPeriods: 3,
       periodLabel: "Period",
+      overtimeSeconds: 5 * 60,
       hints: ["Overtime / shootouts per league rules."],
     },
     {

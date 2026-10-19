@@ -1,6 +1,14 @@
 "use client";
 
-/** Minimal white line-art icons (reference: high-contrast mobile menu) */
+import Image from "next/image";
+
+const SPORT_IMAGE_SRC: Partial<Record<string, string>> = {
+  basketball: "/sports/basketball.png",
+  football: "/sports/football.png",
+  baseball: "/sports/baseball.png",
+};
+
+/** Sport menu icons — PNG artwork where provided, else minimal line SVG */
 export function SportLineIcon({
   sportId,
   className = "h-10 w-10",
@@ -8,6 +16,20 @@ export function SportLineIcon({
   sportId: string;
   className?: string;
 }) {
+  const imageSrc = SPORT_IMAGE_SRC[sportId];
+  if (imageSrc) {
+    return (
+      <Image
+        src={imageSrc}
+        alt=""
+        width={48}
+        height={48}
+        className={`${className} shrink-0 object-contain`}
+        aria-hidden
+      />
+    );
+  }
+
   const stroke = "currentColor";
   const common = {
     className: `${className} shrink-0 text-white`,
@@ -17,29 +39,6 @@ export function SportLineIcon({
   };
 
   switch (sportId) {
-    case "baseball":
-      return (
-        <svg {...common}>
-          <circle cx="24" cy="24" r="14" stroke={stroke} strokeWidth="2" />
-          <path
-            d="M18 16c2 4 2 12 0 16M30 16c-2 4-2 12 0 16"
-            stroke={stroke}
-            strokeWidth="1.5"
-          />
-        </svg>
-      );
-    case "football":
-      return (
-        <svg {...common}>
-          <ellipse cx="24" cy="24" rx="16" ry="10" stroke={stroke} strokeWidth="2" />
-          <path
-            d="M24 18v12M20 22h8M20 26h8"
-            stroke={stroke}
-            strokeWidth="1.5"
-            strokeLinecap="round"
-          />
-        </svg>
-      );
     case "hockey":
       return (
         <svg {...common}>
@@ -50,17 +49,6 @@ export function SportLineIcon({
             strokeLinejoin="round"
           />
           <ellipse cx="34" cy="34" rx="5" ry="3" stroke={stroke} strokeWidth="2" />
-        </svg>
-      );
-    case "basketball":
-      return (
-        <svg {...common}>
-          <circle cx="24" cy="24" r="14" stroke={stroke} strokeWidth="2" />
-          <path
-            d="M24 10v28M14 16c6 4 14 4 20 0M14 32c6-4 14-4 20 0"
-            stroke={stroke}
-            strokeWidth="1.5"
-          />
         </svg>
       );
     case "soccer":

@@ -14,6 +14,7 @@ export function GameInfo() {
   const sportId = useGameStore((s) => s.sportId);
   const customSport = useGameStore((s) => s.customSport);
   const timerVariantId = useGameStore((s) => s.timerVariantId);
+  const customTimerFormat = useGameStore((s) => s.customTimerFormat);
   const period = useGameStore((s) => s.period);
   const halfInning = useGameStore((s) => s.halfInning);
   const down = useGameStore((s) => s.down);
@@ -22,7 +23,11 @@ export function GameInfo() {
   const outs = useGameStore((s) => s.outs);
   const timer = useGameStore((s) => s.timer);
   const cfg = resolveSportConfig(sportId, customSport);
-  const activeVariant = resolveActiveVariant(cfg, timerVariantId);
+  const activeVariant = resolveActiveVariant(
+    cfg,
+    timerVariantId,
+    customTimerFormat,
+  );
   const periodLabel =
     activeVariant?.periodLabel ?? cfg.periodLabel;
   const displaySec = useTimerDisplay();

@@ -49,10 +49,11 @@ export function GameOverOverlay() {
   const sportId = useGameStore((s) => s.sportId);
   const customSport = useGameStore((s) => s.customSport);
   const timerVariantId = useGameStore((s) => s.timerVariantId);
+  const customTimerFormat = useGameStore((s) => s.customTimerFormat);
   const period = useGameStore((s) => s.period);
 
   const cfg = resolveSportConfig(sportId, customSport);
-  const variant = resolveActiveVariant(cfg, timerVariantId);
+  const variant = resolveActiveVariant(cfg, timerVariantId, customTimerFormat);
   const periodLabel = variant?.periodLabel ?? cfg.periodLabel;
   const recapCols = Math.max(
     periodScores.a.length,
