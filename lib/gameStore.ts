@@ -64,6 +64,66 @@ function playScoreSound(id: ScoreSoundId) {
   }
 }
 
+type HornStoreSlice = {
+  sfxEnabled: boolean;
+  hockeyGoalHornHome: string | null;
+  hockeyGoalHornAway: string | null;
+  nhlHornOffsets: Record<string, number>;
+  scoreSoundId: ScoreSoundId;
+};
+
+type HornStoreSet = (partial: { hornPlaying: boolean }) => void;
+
+/** NHL team horn for the scoring side, or default horn if none assigned. */
+function playHockeyGoalHornForTeam(
+  team: TeamId,
+  state: HornStoreSlice,
+  set: HornStoreSet,
+) {
+  if (!state.sfxEnabled) return;
+
+  const hornTeamId =
+    team === "a" ? state.hockeyGoalHornHome : state.hockeyGoalHornAway;
+  const clearHornFlag = () => set({ hornPlaying: false });
+  set({ hornPlaying: true });
+  if (hornTeamId) {
+    const hornTeam = NHL_TEAMS.find((t) => t.id === hornTeamId);
+    if (hornTeam) {
+      const start =
+        state.nhlHornOffsets[hornTeamId] ?? hornTeam.defaultStart;
+      const end = start + hornTeam.defaultDuration;
+      playSfxClip(NHL_HORN_SRC, start, end, { onEnded: clearHornFlag });
+    } else {
+      playSfxClip("/sfx/nba-horn.mp3", 0, undefined, { onEnded: clearHornFlag });
+    }
+  } else {
+    playSfxClip("/sfx/nba-horn.mp3", 0, undefined, { onEnded: clearHornFlag });
+  }
+}
+
+function playShootoutScoredSfx(
+  team: TeamId,
+  sport: import("./types").ShootoutSport,
+  state: HornStoreSlice,
+  set: HornStoreSet,
+) {
+  if (!state.sfxEnabled) return;
+
+  if (sport === "hockey") {
+    playHockeyGoalHornForTeam(team, state, set);
+    return;
+  }
+
+  if (state.scoreSoundId === "horn") {
+    playSfxClip("/sfx/nba-horn.mp3");
+  } else if (
+    state.scoreSoundId !== "none" &&
+    state.scoreSoundId !== "default"
+  ) {
+    playScoreSound(state.scoreSoundId);
+  }
+}
+
 const UNDO_MAX = 40;
 
 const defaultTeam = (name: string, color: string): TeamState => ({
@@ -765,23 +825,7 @@ export const useGameStore = create<GameStore>()(
           } else if (sportId === "basketball") {
             playSfxClip(BASKETBALL_SCORE_SFX_SRC);
           } else if (sportId === "hockey") {
-            const { hockeyGoalHornHome, hockeyGoalHornAway, nhlHornOffsets } = get();
-            const hornTeamId = team === "a" ? hockeyGoalHornHome : hockeyGoalHornAway;
-            const clearHornFlag = () => set({ hornPlaying: false });
-            // Flag goes up immediately so the STOP HORN overlay appears the same frame.
-            set({ hornPlaying: true });
-            if (hornTeamId) {
-              const hornTeam = NHL_TEAMS.find((t) => t.id === hornTeamId);
-              if (hornTeam) {
-                const start = nhlHornOffsets[hornTeamId] ?? hornTeam.defaultStart;
-                const end = start + hornTeam.defaultDuration;
-                playSfxClip(NHL_HORN_SRC, start, end, { onEnded: clearHornFlag });
-              } else {
-                playSfxClip("/sfx/nba-horn.mp3", 0, undefined, { onEnded: clearHornFlag });
-              }
-            } else {
-              playSfxClip("/sfx/nba-horn.mp3", 0, undefined, { onEnded: clearHornFlag });
-            }
+            playHockeyGoalHornForTeam(team, get(), set);
           } else if (action.value >= 6) playSfx("tada");
           else if (action.value >= 3) playSfx("swoosh");
           else playSfx("chime");
@@ -1675,14 +1719,16 @@ export const useGameStore = create<GameStore>()(
       recordShootoutShot: (scored) => {
         const so = get().shootout;
         if (!so?.active) return;
-        const shots = [...so.shots, { team: so.nextTeam, scored }];
+        const shootingTeam = so.nextTeam;
+        const shots = [...so.shots, { team: shootingTeam, scored }];
         let teamAScore = so.teamAScore;
         let teamBScore = so.teamBScore;
         if (scored) {
-          if (so.nextTeam === "a") teamAScore++;
+          if (shootingTeam === "a") teamAScore++;
           else teamBScore++;
+          playShootoutScoredSfx(shootingTeam, so.sport, get(), set);
         }
-        const nextTeam: TeamId = so.nextTeam === "a" ? "b" : "a";
+        const nextTeam: TeamId = shootingTeam === "a" ? "b" : "a";
         set({
           shootout: {
             ...so,
