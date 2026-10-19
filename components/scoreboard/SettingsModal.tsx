@@ -124,6 +124,18 @@ export function SettingsModal({
           left={
             <button
               type="button"
+              onClick={onClose}
+              className="flex flex-col items-center text-white"
+              aria-label="Cancel and return to scoreboard"
+            >
+              <CircleShell>
+                <CloseIcon className="h-7 w-7" />
+              </CircleShell>
+            </button>
+          }
+          right={
+            <button
+              type="button"
               onClick={
                 panel === "menu" ? exitToSportMenu : () => setPanel("menu")
               }
@@ -132,18 +144,6 @@ export function SettingsModal({
             >
               <CircleShell>
                 <MenuIcon className="h-7 w-7" />
-              </CircleShell>
-            </button>
-          }
-          right={
-            <button
-              type="button"
-              onClick={onClose}
-              className="flex flex-col items-center text-white"
-              aria-label="Cancel and return to scoreboard"
-            >
-              <CircleShell>
-                <CloseIcon className="h-7 w-7" />
               </CircleShell>
             </button>
           }
