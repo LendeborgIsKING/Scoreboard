@@ -225,7 +225,6 @@ export function ScoreboardDisplay() {
   const setTeamName = useGameStore((s) => s.setTeamName);
   const startTimer = useGameStore((s) => s.startTimer);
   const pauseTimer = useGameStore((s) => s.pauseTimer);
-  const setPresentation = useGameStore((s) => s.setPresentationMode);
   const nextPeriod = useGameStore((s) => s.nextPeriod);
   const adjustBSO = useGameStore((s) => s.adjustBSO);
   const toggleHalfInning = useGameStore((s) => s.toggleHalfInning);
@@ -845,16 +844,6 @@ export function ScoreboardDisplay() {
           <p className="absolute bottom-3 left-1/2 -translate-x-1/2 text-[10px] uppercase tracking-[0.2em] text-zinc-500">
             {cfg.name}
           </p>
-        )}
-
-        {(presentation || (!settingsOpen && !editing)) && (
-          <button
-            type="button"
-            onClick={() => setPresentation(!presentation)}
-            className={`absolute z-20 text-[10px] uppercase tracking-[0.2em] text-zinc-500 hover:text-zinc-200 ${presentation ? "bottom-6 right-1/2 translate-x-1/2 rounded-full border border-white/30 px-4 py-2 text-sm" : "bottom-3 right-4"}`}
-          >
-            {presentation ? "Exit presentation" : "Present"}
-          </button>
         )}
 
         <BannerOverlay />
