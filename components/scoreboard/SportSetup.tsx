@@ -131,7 +131,9 @@ export function SportSetup() {
                   {v.label}
                 </option>
               ))}
-              <option value={CUSTOM_TIMER_VARIANT_ID}>Custom</option>
+              {!cfg.noGameClock && (
+                <option value={CUSTOM_TIMER_VARIANT_ID}>Custom</option>
+              )}
             </select>
 
             {isCustomFormat && (

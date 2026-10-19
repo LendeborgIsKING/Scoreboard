@@ -353,6 +353,7 @@ export function ScoreboardDisplay() {
   const showPossession = hasFeature(cfg, "possession");
   const isBasketball = cfg.id === "basketball";
   const hasShotClock = hasFeature(cfg, "shotClock");
+  const showGameClock = !cfg.noGameClock;
   const showFoulsReset =
     isBasketball &&
     hasFouls &&
@@ -390,6 +391,7 @@ export function ScoreboardDisplay() {
   };
 
   const onClockClick = () => {
+    if (!showGameClock) return;
     if (editing) openClockPicker();
     else setCountdownDuration(timer.countdownFromSeconds);
   };
@@ -528,41 +530,43 @@ export function ScoreboardDisplay() {
           )}
 
           <div className="flex flex-col items-center justify-center gap-1">
-            <div className="flex items-center justify-center gap-2">
-              <ShotClock onClick={onShotClockClick} fontClass={tokens.displayFont} />
-              <div className="flex items-center gap-1">
-                <CircleBtn
-                  icon={
-                    timer.running ? (
-                      <PauseIcon className="h-5 w-5" />
-                    ) : (
-                      <PlayIcon className="h-5 w-5" />
-                    )
-                  }
-                  onClick={() => (timer.running ? pauseTimer() : startTimer())}
-                  ariaLabel={timer.running ? "Pause clock" : "Start clock"}
-                />
-                <motion.button
-                  type="button"
-                  onClick={onClockClick}
-                  className={`${tokens.displayFont} text-6xl leading-none tracking-[0.08em] ${
-                    lowTime ? tokens.lowTimeColor : tokens.clockColor
-                  } ${editDashRed}`}
-                  animate={
-                    lowTime
-                      ? { opacity: [1, 0.5, 1], scale: [1, 1.02, 1] }
-                      : { opacity: 1, scale: 1 }
-                  }
-                  transition={
-                    lowTime
-                      ? { duration: 1, repeat: Infinity, ease: "easeInOut" }
-                      : { duration: 0.2 }
-                  }
-                >
-                  {!cfg.noGameClock ? formatClockSmart(clockMs) : "--:--"}
-                </motion.button>
+            {showGameClock && (
+              <div className="flex items-center justify-center gap-2">
+                <ShotClock onClick={onShotClockClick} fontClass={tokens.displayFont} />
+                <div className="flex items-center gap-1">
+                  <CircleBtn
+                    icon={
+                      timer.running ? (
+                        <PauseIcon className="h-5 w-5" />
+                      ) : (
+                        <PlayIcon className="h-5 w-5" />
+                      )
+                    }
+                    onClick={() => (timer.running ? pauseTimer() : startTimer())}
+                    ariaLabel={timer.running ? "Pause clock" : "Start clock"}
+                  />
+                  <motion.button
+                    type="button"
+                    onClick={onClockClick}
+                    className={`${tokens.displayFont} text-6xl leading-none tracking-[0.08em] ${
+                      lowTime ? tokens.lowTimeColor : tokens.clockColor
+                    } ${editDashRed}`}
+                    animate={
+                      lowTime
+                        ? { opacity: [1, 0.5, 1], scale: [1, 1.02, 1] }
+                        : { opacity: 1, scale: 1 }
+                    }
+                    transition={
+                      lowTime
+                        ? { duration: 1, repeat: Infinity, ease: "easeInOut" }
+                        : { duration: 0.2 }
+                    }
+                  >
+                    {formatClockSmart(clockMs)}
+                  </motion.button>
+                </div>
               </div>
-            </div>
+            )}
             <button
               type="button"
               onClick={onPeriodClick}

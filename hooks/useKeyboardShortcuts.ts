@@ -37,10 +37,12 @@ export function useKeyboardShortcuts(active: boolean) {
       };
       switch (e.key) {
         case " ":
-          e.preventDefault();
-          if (s.timer.running) s.pauseTimer();
-          else s.startTimer();
-          playSfx("click");
+          if (!cfg.noGameClock) {
+            e.preventDefault();
+            if (s.timer.running) s.pauseTimer();
+            else s.startTimer();
+            playSfx("click");
+          }
           break;
         case "a":
         case "A":
@@ -80,7 +82,7 @@ export function useKeyboardShortcuts(active: boolean) {
           break;
         case "r":
         case "R":
-          s.resetTimer();
+          if (!cfg.noGameClock) s.resetTimer();
           break;
         case "s":
         case "S":
