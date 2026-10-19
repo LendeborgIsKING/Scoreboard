@@ -225,7 +225,7 @@ export const HOCKEY: SportConfig = {
   id: "hockey",
   name: "Hockey",
   scoring: [{ id: "g", label: "Goal", value: 1 }],
-  features: ["periods", "possession"],
+  features: ["periods"],
   periodLabel: "Period",
   maxPeriods: 3,
   defaultVariantId: "ice",
