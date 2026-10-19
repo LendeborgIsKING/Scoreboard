@@ -1,7 +1,7 @@
 "use client";
 
 import { useGameStore } from "@/lib/gameStore";
-import type { HockeyFeatureToggles, TeamId } from "@/lib/types";
+import type { HockeyFeatureToggles } from "@/lib/types";
 import { BoxScoreTable } from "./BasketballScoreboard";
 import { resolveSportConfig, effectiveMaxPeriods, resolveActiveVariant } from "@/lib/sportRegistry";
 
@@ -29,9 +29,6 @@ function Toggle({
 }
 
 const TOGGLE_LABELS: Record<keyof HockeyFeatureToggles, string> = {
-  penaltyBox: "Penalty box tracker",
-  powerPlayIndicator: "Power play indicator",
-  delayedPenalty: "Delayed penalty flag",
   shotsOnGoal: "Shots on goal",
   emptyNetGoals: "Empty-net goals",
   periodBoxScore: "Period box score (settings page)",
@@ -54,13 +51,6 @@ export function HockeyPanel({
   const setToggle = useGameStore((s) => s.setHockeyToggle);
   const puckSec = useGameStore((s) => s.puckDropDelaySeconds);
   const setPuckSec = useGameStore((s) => s.setPuckDropDelaySeconds);
-  const addPenalty = useGameStore((s) => s.addHockeyPenalty);
-  const clearPenalties = useGameStore((s) => s.clearHockeyPenalties);
-  const delayed = useGameStore((s) => s.hockeyDelayedTeam);
-  const setDelayed = useGameStore((s) => s.setHockeyDelayedTeam);
-  const adjustShots = useGameStore((s) => s.adjustHockeyShots);
-  const shotsA = useGameStore((s) => s.hockeyShotsA);
-  const shotsB = useGameStore((s) => s.hockeyShotsB);
   const nextEn = useGameStore((s) => s.hockeyNextGoalEmptyNet);
   const setNextEn = useGameStore((s) => s.setHockeyNextGoalEmptyNet);
   const startShootout = useGameStore((s) => s.startShootout);
@@ -114,7 +104,7 @@ export function HockeyPanel({
   return (
     <PanelShell title="Hockey">
       <p className="mb-3 text-xs text-zinc-500">
-        Features stay off the scoreboard until you turn them on. Active info appears in one small strip under the clock.
+        Features stay off the scoreboard until you turn them on. Shots on goal appear centered under the clock when enabled.
       </p>
 
       <div className="space-y-2">
@@ -143,67 +133,6 @@ export function HockeyPanel({
             onChange={(e) => setPuckSec(Number(e.target.value))}
             className="mt-2 w-full rounded-lg border border-white/20 bg-black/40 px-3 py-2 text-white"
           />
-        </div>
-      )}
-
-      {toggles.penaltyBox && (
-        <div className="mt-4 rounded-xl border border-white/10 bg-white/5 p-3">
-          <p className="text-sm font-bold">Penalties</p>
-          <PenaltyRow
-            team="a"
-            name={teamA.name}
-            onAdd={(t, m) => {
-              addPenalty(t, m);
-              onReturnToScoreboard?.();
-            }}
-          />
-          <PenaltyRow
-            team="b"
-            name={teamB.name}
-            onAdd={(t, m) => {
-              addPenalty(t, m);
-              onReturnToScoreboard?.();
-            }}
-          />
-          <button
-            type="button"
-            onClick={clearPenalties}
-            className="mt-2 text-xs font-bold text-red-400"
-          >
-            Clear all penalties
-          </button>
-        </div>
-      )}
-
-      {toggles.delayedPenalty && (
-        <div className="mt-4 flex flex-wrap gap-2">
-          <button
-            type="button"
-            onClick={() => {
-              setDelayed(delayed === "a" ? null : "a");
-              onReturnToScoreboard?.();
-            }}
-            className={`rounded-full border px-3 py-1 text-xs font-bold ${delayed === "a" ? "border-amber-400 text-amber-300" : "border-white/30"}`}
-          >
-            Delayed {teamA.name}
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              setDelayed(delayed === "b" ? null : "b");
-              onReturnToScoreboard?.();
-            }}
-            className={`rounded-full border px-3 py-1 text-xs font-bold ${delayed === "b" ? "border-amber-400 text-amber-300" : "border-white/30"}`}
-          >
-            Delayed {teamB.name}
-          </button>
-        </div>
-      )}
-
-      {toggles.shotsOnGoal && (
-        <div className="mt-4 flex gap-4 text-sm">
-          <ShotAdj label={teamA.name} value={shotsA} onDelta={(d) => adjustShots("a", d)} />
-          <ShotAdj label={teamB.name} value={shotsB} onDelta={(d) => adjustShots("b", d)} />
         </div>
       )}
 
@@ -274,57 +203,6 @@ export function HockeyPanel({
         </button>
       </div>
     </PanelShell>
-  );
-}
-
-function PenaltyRow({
-  team,
-  name,
-  onAdd,
-}: {
-  team: TeamId;
-  name: string;
-  onAdd: (team: TeamId, min: 2 | 5) => void;
-}) {
-  return (
-    <div className="mt-2 flex items-center justify-between gap-2">
-      <span className="text-xs font-bold truncate">{name}</span>
-      <div className="flex gap-1">
-        <button
-          type="button"
-          onClick={() => onAdd(team, 2)}
-          className="rounded border border-white/20 px-2 py-0.5 text-[10px] font-bold"
-        >
-          +2:00
-        </button>
-        <button
-          type="button"
-          onClick={() => onAdd(team, 5)}
-          className="rounded border border-white/20 px-2 py-0.5 text-[10px] font-bold"
-        >
-          +5:00
-        </button>
-      </div>
-    </div>
-  );
-}
-
-function ShotAdj({
-  label,
-  value,
-  onDelta,
-}: {
-  label: string;
-  value: number;
-  onDelta: (d: number) => void;
-}) {
-  return (
-    <div className="flex items-center gap-2">
-      <span className="text-xs font-bold">{label}</span>
-      <button type="button" onClick={() => onDelta(-1)} className="h-6 w-6 rounded border border-white/30 text-xs">−</button>
-      <span className="font-mono">{value}</span>
-      <button type="button" onClick={() => onDelta(1)} className="h-6 w-6 rounded border border-white/30 text-xs">+</button>
-    </div>
   );
 }
 

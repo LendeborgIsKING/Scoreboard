@@ -54,6 +54,7 @@ import { StoppageTimeDisplay } from "./StoppageTimeDisplay";
 import { IntroSequence } from "./IntroSequence";
 import { LEDScore } from "./LEDScore";
 import {
+  HockeySogDisplay,
   HockeyStatusStrip,
   HockeyLastGoalTicker,
   HockeyGoalCelebration,
@@ -571,6 +572,7 @@ export function ScoreboardDisplay() {
               {periodText}
             </button>
             <StoppageTimeDisplay />
+            <HockeySogDisplay />
             <HockeyStatusStrip />
           </div>
 

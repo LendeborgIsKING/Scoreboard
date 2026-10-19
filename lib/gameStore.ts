@@ -2301,8 +2301,10 @@ export const useGameStore = create<GameStore>()(
         merged.refereeTimer = null;
         merged.introSequence = null;
         merged.puckDrop = null;
-        if (!merged.hockeyToggles)
-          merged.hockeyToggles = { ...DEFAULT_HOCKEY_TOGGLES };
+        merged.hockeyToggles = {
+          ...DEFAULT_HOCKEY_TOGGLES,
+          ...(merged.hockeyToggles ?? {}),
+        };
         if (typeof merged.puckDropDelaySeconds !== "number")
           merged.puckDropDelaySeconds = 4;
         if (!merged.customTimerFormat) {

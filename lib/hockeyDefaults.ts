@@ -1,9 +1,6 @@
 import type { HockeyFeatureToggles } from "./types";
 
 export const DEFAULT_HOCKEY_TOGGLES: HockeyFeatureToggles = {
-  penaltyBox: false,
-  powerPlayIndicator: false,
-  delayedPenalty: false,
   shotsOnGoal: false,
   emptyNetGoals: false,
   periodBoxScore: false,

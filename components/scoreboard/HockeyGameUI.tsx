@@ -3,22 +3,56 @@
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useGameStore } from "@/lib/gameStore";
-import {
-  activePenaltiesForTeam,
-  formatPenaltyTime,
-  powerPlayLabel,
-} from "@/lib/hockeyUtils";
 
-/** One compact row — only shows chips that matter right now. */
+/** Shots on goal — away # | SOG | home # with + to increment. */
+export function HockeySogDisplay() {
+  const sportId = useGameStore((s) => s.sportId);
+  const toggles = useGameStore((s) => s.hockeyToggles);
+  const shotsA = useGameStore((s) => s.hockeyShotsA);
+  const shotsB = useGameStore((s) => s.hockeyShotsB);
+  const adjustShots = useGameStore((s) => s.adjustHockeyShots);
+
+  if (sportId !== "hockey" || !toggles.shotsOnGoal) return null;
+
+  return (
+    <div className="mx-auto flex w-full max-w-[min(100%,340px)] items-center justify-center gap-6 px-3 py-1 sm:gap-10">
+      <div className="flex min-w-[4.5rem] flex-1 items-center justify-end gap-2">
+        <span className="font-mono text-xl font-black tabular-nums text-white">
+          {shotsB}
+        </span>
+        <button
+          type="button"
+          onClick={() => adjustShots("b", 1)}
+          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-white/40 text-sm font-bold text-white transition hover:border-white hover:bg-white/10"
+          aria-label="Add away shot on goal"
+        >
+          +
+        </button>
+      </div>
+      <span className="shrink-0 px-2 text-xs font-bold uppercase tracking-[0.35em] text-sky-300">
+        SOG
+      </span>
+      <div className="flex min-w-[4.5rem] flex-1 items-center justify-start gap-2">
+        <span className="font-mono text-xl font-black tabular-nums text-white">
+          {shotsA}
+        </span>
+        <button
+          type="button"
+          onClick={() => adjustShots("a", 1)}
+          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-white/40 text-sm font-bold text-white transition hover:border-white hover:bg-white/10"
+          aria-label="Add home shot on goal"
+        >
+          +
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/** Compact chips (puck drop, etc.) under the clock. */
 export function HockeyStatusStrip() {
   const sportId = useGameStore((s) => s.sportId);
   const toggles = useGameStore((s) => s.hockeyToggles);
-  const penalties = useGameStore((s) => s.hockeyPenalties);
-  const delayed = useGameStore((s) => s.hockeyDelayedTeam);
-  const teamA = useGameStore((s) => s.teamA);
-  const teamB = useGameStore((s) => s.teamB);
-  const shotsA = useGameStore((s) => s.hockeyShotsA);
-  const shotsB = useGameStore((s) => s.hockeyShotsB);
   const puckDrop = useGameStore((s) => s.puckDrop);
   const puckSec = useGameStore((s) => s.puckDropDelaySeconds);
   const [, bump] = useState(0);
@@ -36,30 +70,6 @@ export function HockeyStatusStrip() {
   if (puckDrop) {
     const rem = Math.max(0, Math.ceil((puckDrop.startsAt - Date.now()) / 1000));
     chips.push(`DROP ${rem || puckSec}s`);
-  }
-
-  if (toggles.delayedPenalty && delayed) {
-    const name = delayed === "a" ? teamA.name : teamB.name;
-    chips.push(`DEL ${name}`);
-  }
-
-  if (toggles.powerPlayIndicator && penalties.length > 0) {
-    const pp = powerPlayLabel(penalties, teamA.name, teamB.name);
-    if (pp && pp !== "EVEN") chips.push(pp);
-  }
-
-  if (toggles.penaltyBox) {
-    for (const side of ["a", "b"] as const) {
-      const list = activePenaltiesForTeam(penalties, side);
-      if (list.length === 0) continue;
-      const name = side === "a" ? teamA.name : teamB.name;
-      const times = list.map((p) => formatPenaltyTime(p.remainingSeconds)).join(" ");
-      chips.push(`${name} ${times}`);
-    }
-  }
-
-  if (toggles.shotsOnGoal && (shotsA > 0 || shotsB > 0)) {
-    chips.push(`SOG ${shotsA}–${shotsB}`);
   }
 
   if (chips.length === 0) return null;

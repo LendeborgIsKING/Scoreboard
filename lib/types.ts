@@ -208,9 +208,6 @@ export interface HockeyPenalty {
 }
 
 export interface HockeyFeatureToggles {
-  penaltyBox: boolean;
-  powerPlayIndicator: boolean;
-  delayedPenalty: boolean;
   shotsOnGoal: boolean;
   emptyNetGoals: boolean;
   periodBoxScore: boolean;
