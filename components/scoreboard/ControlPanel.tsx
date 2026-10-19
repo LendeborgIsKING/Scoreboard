@@ -28,7 +28,6 @@ export function ControlPanel({ collapsed, onToggleCollapse }: Props) {
   const adjustTimeouts = useGameStore((s) => s.adjustTimeouts);
   const nextPeriod = useGameStore((s) => s.nextPeriod);
   const prevPeriod = useGameStore((s) => s.prevPeriod);
-  const toggleHalfInning = useGameStore((s) => s.toggleHalfInning);
   const adjustBSO = useGameStore((s) => s.adjustBSO);
   const resetCount = useGameStore((s) => s.resetCount);
   const adjustDown = useGameStore((s) => s.adjustDown);
@@ -192,15 +191,6 @@ export function ControlPanel({ collapsed, onToggleCollapse }: Props) {
               + {cfg.periodLabel}
             </button>
           </>
-        )}
-        {hasFeature(cfg, "halfInning") && (
-          <button
-            type="button"
-            onClick={() => toggleHalfInning()}
-            className="rounded-lg bg-emerald-900/40 px-3 py-1.5 text-xs font-semibold text-emerald-200"
-          >
-            Toggle Top/Bot
-          </button>
         )}
         {hasFeature(cfg, "downs") && (
           <div className="flex items-center gap-2 text-xs text-zinc-400">

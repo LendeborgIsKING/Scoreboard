@@ -363,7 +363,6 @@ type GameStore = GameState & {
   setPossession: (team: TeamId | null) => void;
   nextPeriod: () => void;
   prevPeriod: () => void;
-  toggleHalfInning: () => void;
   adjustBSO: (key: "balls" | "strikes" | "outs", delta: number) => void;
   resetCount: () => void;
   adjustDown: (delta: number) => void;
@@ -1092,15 +1091,47 @@ export const useGameStore = create<GameStore>()(
         }));
       },
 
-      toggleHalfInning: () => {
-        get().pushUndo();
-        set((state) => ({
-          halfInning: state.halfInning === "top" ? "bottom" : "top",
-        }));
-      },
-
       adjustBSO: (key, delta) => {
         get().pushUndo();
+        const before = get();
+        const cfg = resolveSportConfig(before.sportId, before.customSport);
+        const curOuts = before.outs;
+
+        if (
+          key === "outs" &&
+          delta > 0 &&
+          curOuts < 3 &&
+          curOuts + delta >= 3 &&
+          hasFeature(cfg, "halfInning")
+        ) {
+          set((state) => {
+            const cleared = { balls: 0, strikes: 0, outs: 0 };
+            if (state.halfInning === "top") {
+              return { ...cleared, halfInning: "bottom" as const };
+            }
+            const max =
+              effectiveMaxPeriods(
+                cfg,
+                state.timerVariantId,
+                state.customTimerFormat,
+              ) ?? cfg.maxPeriods;
+            const nextPeriod = max
+              ? Math.min(state.period + 1, max)
+              : state.period + 1;
+            const a = [...state.periodScores.a];
+            const b = [...state.periodScores.b];
+            while (a.length < nextPeriod) a.push(0);
+            while (b.length < nextPeriod) b.push(0);
+            return {
+              ...cleared,
+              halfInning: "top" as const,
+              period: nextPeriod,
+              periodScores: { a, b },
+            };
+          });
+          return;
+        }
+
         set((state) => {
           const limits = { balls: 4, strikes: 3, outs: 3 };
           const max = limits[key];

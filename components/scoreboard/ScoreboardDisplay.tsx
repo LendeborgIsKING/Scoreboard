@@ -222,7 +222,7 @@ export function ScoreboardDisplay() {
   const startTimer = useGameStore((s) => s.startTimer);
   const pauseTimer = useGameStore((s) => s.pauseTimer);
   const nextPeriod = useGameStore((s) => s.nextPeriod);
-  const toggleHalfInning = useGameStore((s) => s.toggleHalfInning);
+  const halfInning = useGameStore((s) => s.halfInning);
   const setPossession = useGameStore((s) => s.setPossession);
   const setSfxEnabled = useGameStore((s) => s.setSfxEnabled);
   const setMusicEnabled = useGameStore((s) => s.setMusicEnabled);
@@ -340,7 +340,11 @@ export function ScoreboardDisplay() {
   };
 
   const periodLabel = activeVariant?.periodLabel ?? cfg.periodLabel;
-  const periodText = inOvertime ? "Overtime" : `${periodLabel} ${period}`;
+  const periodText = inOvertime
+    ? "Overtime"
+    : hasFeature(cfg, "halfInning")
+      ? `${halfInning === "top" ? "Top" : "Bot"} ${periodLabel} ${period}`
+      : `${periodLabel} ${period}`;
   const lowTime = clockSec <= 60 && clockSec > 0;
   const hasFouls = hasFeature(cfg, "fouls");
   const hasTimeouts = hasFeature(cfg, "timeouts");
@@ -706,11 +710,6 @@ export function ScoreboardDisplay() {
 
             {hasFeature(cfg, "ballsStrikesOuts") && <BaseballCountDisplay />}
 
-            {hasFeature(cfg, "halfInning") && (
-              <button type="button" onClick={() => toggleHalfInning()} className="rounded-full border border-white/50 bg-transparent px-3 py-1 text-xs uppercase text-white transition hover:bg-white/10 hover:border-white">
-                Toggle Top/Bot
-              </button>
-            )}
           </section>
 
           {/* Home (A) on the right */}
