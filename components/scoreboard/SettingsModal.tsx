@@ -15,9 +15,7 @@ import { playSfx, playSfxClip } from "@/lib/audio";
 import { NHL_TEAMS, NHL_HORN_SRC } from "@/lib/nhlTeams";
 import { fileToDownscaledDataUrl } from "@/lib/imageUtils";
 import { shareScoreboardImage } from "@/lib/scoreboardImage";
-import type { ScoreSoundId } from "@/lib/types";
 import {
-  BuzzerIcon,
   CheckIcon,
   CloseIcon,
   MenuIcon,
@@ -38,7 +36,6 @@ type Props = {
 
 type Panel =
   | "menu"
-  | "sound"
   | "music"
   | "theme"
   | "shotclock"
@@ -61,16 +58,6 @@ const THEMES: { id: import("@/lib/types").ThemeId; label: string; chip: string }
   { id: "court",    label: "Orange Court", chip: "bg-[#c97438] ring-1 ring-white/40" },
   { id: "retro",    label: "Retro LED", chip: "bg-[radial-gradient(circle,_#16a34a_0%,_#022c11_80%)]" },
   { id: "blackout", label: "Blackout", chip: "bg-black ring-1 ring-white/30" },
-];
-
-const SCORE_SOUNDS: { id: ScoreSoundId; label: string }[] = [
-  { id: "default", label: "Default" },
-  { id: "swish", label: "Swish" },
-  { id: "chime", label: "Chime" },
-  { id: "ding", label: "Ding" },
-  { id: "horn", label: "Horn" },
-  { id: "tada", label: "Fanfare" },
-  { id: "none", label: "Silent" },
 ];
 
 const TARGET_PRESETS = [11, 15, 21];
@@ -147,7 +134,6 @@ export function SettingsModal({
         {panel === "menu" && (
           <MenuView
             onEdit={onEdit}
-            onSound={() => setPanel("sound")}
             onMusic={() => setPanel("music")}
             onTheme={() => setPanel("theme")}
             onShotClock={() => setPanel("shotclock")}
@@ -161,7 +147,6 @@ export function SettingsModal({
             onHistory={onHistory}
           />
         )}
-        {panel === "sound" && <SoundPanel />}
         {panel === "music" && <MusicPanel />}
         {panel === "theme" && <ThemePanel />}
         {panel === "shotclock" && <ShotClockPanel />}
@@ -180,7 +165,6 @@ export function SettingsModal({
 
 function MenuView({
   onEdit,
-  onSound,
   onMusic,
   onTheme,
   onShotClock,
@@ -194,7 +178,6 @@ function MenuView({
   onHistory,
 }: {
   onEdit: () => void;
-  onSound: () => void;
   onMusic: () => void;
   onTheme: () => void;
   onShotClock: () => void;
@@ -237,7 +220,6 @@ function MenuView({
     <div className="mx-auto mt-16 grid max-w-full grid-cols-3 gap-x-4 gap-y-5 px-5 max-sm:mt-14 max-sm:gap-x-3 max-sm:gap-y-4 max-sm:px-4 sm:mt-20 sm:grid-cols-5 sm:gap-x-6 sm:gap-y-4 sm:px-10">
       <Tile label="Edit" icon={<PencilIcon className="h-7 w-7" />} onClick={onEdit} />
       <Tile label="Game" icon={<SlidersGlyph />} onClick={onGame} />
-      <Tile label="Sound" icon={<BuzzerIcon className="h-7 w-7" />} onClick={onSound} />
       <Tile label="Music" icon={<NoteGlyph />} onClick={onMusic} />
       <Tile label="Theme" icon={<PaletteGlyph />} onClick={onTheme} />
       {showShotClock && (
@@ -289,120 +271,6 @@ function Tile({
         {label}
       </span>
     </motion.button>
-  );
-}
-
-function SoundPanel() {
-  const sfxEnabled = useGameStore((s) => s.sfxEnabled);
-  const sfxVolume = useGameStore((s) => s.sfxVolume);
-  const setSfxEnabled = useGameStore((s) => s.setSfxEnabled);
-  const setVol = useGameStore((s) => s.setSfxVolumePref);
-  const scoreSoundId = useGameStore((s) => s.scoreSoundId);
-  const setScoreSound = useGameStore((s) => s.setScoreSound);
-  const vibrationEnabled = useGameStore((s) => s.vibrationEnabled);
-  const setVibrationEnabled = useGameStore((s) => s.setVibrationEnabled);
-  const pressTickEnabled = useGameStore((s) => s.pressTickEnabled);
-  const setPressTickEnabled = useGameStore((s) => s.setPressTickEnabled);
-  const announcerEnabled = useGameStore((s) => s.announcerEnabled);
-  const setAnnouncerEnabled = useGameStore((s) => s.setAnnouncerEnabled);
-  const crowdIntensity = useGameStore((s) => s.crowdIntensity);
-  const setCrowdIntensity = useGameStore((s) => s.setCrowdIntensity);
-  const teamChantA = useGameStore((s) => s.teamChantA);
-  const teamChantB = useGameStore((s) => s.teamChantB);
-  const setTeamChant = useGameStore((s) => s.setTeamChant);
-  const ledScoreAnimation = useGameStore((s) => s.ledScoreAnimation);
-  const setLedScoreAnimation = useGameStore((s) => s.setLedScoreAnimation);
-  return (
-    <PanelShell title="Sound & feedback">
-      <ToggleRow
-        label="Enable SFX"
-        checked={sfxEnabled}
-        onChange={setSfxEnabled}
-      />
-      <SliderRow
-        label="Volume"
-        value={sfxVolume}
-        onChange={(v) => {
-          setVol(v);
-          if (sfxEnabled) playSfx("ding");
-        }}
-      />
-
-      <div className="mt-1 rounded-xl border border-white/10 bg-white/5 px-3 py-2">
-        <span className="text-sm font-bold">Score sound</span>
-        <div className="mt-2 flex flex-wrap gap-2">
-          {SCORE_SOUNDS.map((s) => (
-            <button
-              key={s.id}
-              type="button"
-              onClick={() => {
-                setScoreSound(s.id);
-                if (sfxEnabled && s.id !== "none" && s.id !== "default") {
-                  if (s.id === "swish") playSfxClip("/sfx/basketball-swish.mp3");
-                  else if (s.id === "horn") playSfxClip("/sfx/nba-horn.mp3");
-                  else playSfx(s.id);
-                }
-              }}
-              className={`rounded-full border-2 px-3 py-1.5 text-sm font-bold transition ${
-                scoreSoundId === s.id
-                  ? "border-white bg-white/20 text-white"
-                  : "border-white/40 bg-transparent text-zinc-300 hover:border-white hover:bg-white/10 hover:text-white"
-              }`}
-            >
-              {s.label}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <ToggleRow
-        label="Auto-Announcer (Voice)"
-        checked={announcerEnabled}
-        onChange={setAnnouncerEnabled}
-      />
-      <SliderRow
-        label="Crowd intensity"
-        value={crowdIntensity}
-        onChange={setCrowdIntensity}
-      />
-      <div className="rounded-xl border border-white/10 bg-white/5 px-3 py-2">
-        <span className="text-sm font-bold">Custom team chants</span>
-        <p className="mt-1 text-xs text-zinc-500">Spoken by announcer when that team scores.</p>
-        <input
-          value={teamChantA}
-          onChange={(e) => setTeamChant("a", e.target.value)}
-          placeholder="Home chant (e.g. Let's go Lakers!)"
-          className="mt-2 w-full rounded-lg border border-white/20 bg-black/40 px-3 py-2 text-sm text-white outline-none"
-        />
-        <input
-          value={teamChantB}
-          onChange={(e) => setTeamChant("b", e.target.value)}
-          placeholder="Away chant"
-          className="mt-2 w-full rounded-lg border border-white/20 bg-black/40 px-3 py-2 text-sm text-white outline-none"
-        />
-      </div>
-      <ToggleRow
-        label="LED score flip animation"
-        checked={ledScoreAnimation}
-        onChange={setLedScoreAnimation}
-      />
-      <ToggleRow
-        label="Vibration (haptics)"
-        checked={vibrationEnabled}
-        onChange={setVibrationEnabled}
-      />
-      <ToggleRow
-        label="Button tick sound"
-        checked={pressTickEnabled}
-        onChange={(v) => {
-          setPressTickEnabled(v);
-          if (v && sfxEnabled) playSfx("tick");
-        }}
-      />
-      <p className="text-xs text-zinc-500">
-        Score chimes, period buzzers, and win fanfare use this volume.
-      </p>
-    </PanelShell>
   );
 }
 
