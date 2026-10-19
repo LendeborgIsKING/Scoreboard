@@ -131,9 +131,6 @@ export function SettingsModal({
           <CircleShell>
             <MenuIcon className="h-7 w-7" />
           </CircleShell>
-          <span className="mt-0.5 text-2xl font-black">
-            {panel === "menu" ? "Exit" : "Back"}
-          </span>
         </button>
 
         <button
@@ -145,7 +142,6 @@ export function SettingsModal({
           <CircleShell>
             <CloseIcon className="h-7 w-7" />
           </CircleShell>
-          <span className="mt-0.5 text-2xl font-black">Cancel</span>
         </button>
 
         {panel === "menu" && (
