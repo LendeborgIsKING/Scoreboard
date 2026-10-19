@@ -58,7 +58,7 @@ import {
   HockeyStatusStrip,
   HockeyLastGoalTicker,
   HockeyGoalCelebration,
-  HockeyRinkOverlay,
+  HockeyEmptyNetBadge,
   HockeyTickBridge,
 } from "./HockeyGameUI";
 import {
@@ -427,7 +427,6 @@ export function ScoreboardDisplay() {
       <ThemeAmbience theme={theme} />
       <div className="relative z-10 flex w-full min-h-full flex-1 flex-col items-center">
       <div className={scoreboardShellClass}>
-        <HockeyRinkOverlay />
         <HockeyTickBridge />
         {theme === "court" && isBasketball && <CourtAmbience />}
         {theme === "fire" && <FireAmbience />}
@@ -633,6 +632,7 @@ export function ScoreboardDisplay() {
               >
                 {teamB.name}
               </button>
+              <HockeyEmptyNetBadge side="b" />
             </div>
             <div className="w-full" {...(presentation ? {} : longPressB)}>
               <LEDScore
@@ -762,6 +762,7 @@ export function ScoreboardDisplay() {
                   dir="left"
                 />
               )}
+              <HockeyEmptyNetBadge side="a" />
             </div>
             <div className="w-full" {...(presentation ? {} : longPressA)}>
               <LEDScore

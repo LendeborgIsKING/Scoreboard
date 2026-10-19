@@ -295,7 +295,8 @@ export interface GameState extends GameStateSlice {
   hockeyShotsB: number;
   hockeyLastGoal: import("./types").HockeyLastGoal | null;
   hockeyGoalCelebrationKey: number;
-  hockeyNextGoalEmptyNet: boolean;
+  /** Team that has pulled the goalie (empty net), when indicator is enabled. */
+  hockeyEmptyNetTeam: import("./types").TeamId | null;
   puckDrop: import("./types").PuckDropState | null;
   puckDropDelaySeconds: number;
   customTimerFormat: import("./types").CustomTimerFormat;
@@ -445,11 +446,9 @@ type GameStore = GameState & {
   clearHockeyPenalties: () => void;
   setHockeyDelayedTeam: (team: TeamId | null) => void;
   adjustHockeyShots: (team: TeamId, delta: number) => void;
-  setHockeyNextGoalEmptyNet: (v: boolean) => void;
+  setHockeyEmptyNetTeam: (team: import("./types").TeamId | null) => void;
   dismissHockeyGoalCelebration: () => void;
   tickHockey: () => void;
-  applyHockeyOvertimeSeconds: (seconds: number) => void;
-  startHockeyIntermission: (minutes: number) => void;
   setCustomTimerFormat: (format: import("./types").CustomTimerFormat) => void;
   beginOvertimePeriod: () => void;
   beginAutomaticShootout: () => void;
@@ -582,7 +581,7 @@ export const useGameStore = create<GameStore>()(
       hockeyShotsB: 0,
       hockeyLastGoal: null,
       hockeyGoalCelebrationKey: 0,
-      hockeyNextGoalEmptyNet: false,
+      hockeyEmptyNetTeam: null,
       puckDrop: null,
       puckDropDelaySeconds: 4,
       customTimerFormat: { periodSeconds: 12 * 60, regulationPeriods: 4 },
@@ -906,7 +905,7 @@ export const useGameStore = create<GameStore>()(
         if (sportId === "hockey" && action.value > 0) {
           const {
             hockeyToggles,
-            hockeyNextGoalEmptyNet,
+            hockeyEmptyNetTeam,
             period,
             timer,
             teamA,
@@ -917,10 +916,11 @@ export const useGameStore = create<GameStore>()(
           );
           const teamName = team === "a" ? teamA.name : teamB.name;
           const emptyNet =
-            hockeyToggles.emptyNetGoals && hockeyNextGoalEmptyNet;
+            hockeyToggles.emptyNetIndicator &&
+            hockeyEmptyNetTeam != null &&
+            hockeyEmptyNetTeam !== team;
           set({
             hockeyDelayedTeam: null,
-            hockeyNextGoalEmptyNet: false,
             ...(hockeyToggles.shotsOnGoal
               ? {
                   hockeyShotsA:
@@ -944,17 +944,6 @@ export const useGameStore = create<GameStore>()(
               ? { hockeyGoalCelebrationKey: get().hockeyGoalCelebrationKey + 1 }
               : {}),
           });
-          if (emptyNet && bannersEnabled) {
-            bannerCounter += 1;
-            set({
-              banner: {
-                id: bannerCounter,
-                text: "GOAL!",
-                subtext: `${teamName} — EMPTY NET`,
-                flavor: "score",
-              },
-            });
-          }
         }
       },
 
@@ -2103,7 +2092,7 @@ export const useGameStore = create<GameStore>()(
               : s.hockeyShotsB,
         })),
 
-      setHockeyNextGoalEmptyNet: (v) => set({ hockeyNextGoalEmptyNet: v }),
+      setHockeyEmptyNetTeam: (team) => set({ hockeyEmptyNetTeam: team }),
 
       dismissHockeyGoalCelebration: () =>
         set({ hockeyGoalCelebrationKey: 0 }),
@@ -2143,22 +2132,6 @@ export const useGameStore = create<GameStore>()(
         }
       },
 
-      applyHockeyOvertimeSeconds: (seconds) => {
-        get().pushUndo();
-        set((state) => ({
-          timer: {
-            ...state.timer,
-            countdownFromSeconds: seconds,
-            accumulatedMs: 0,
-            running: false,
-            runStartedAt: null,
-          },
-        }));
-      },
-
-      startHockeyIntermission: (minutes) => {
-        get().startRefereeTimer(minutes * 60, "Intermission");
-      },
     }),
     {
       name: "scoreboard-game-v1",
@@ -2301,9 +2274,18 @@ export const useGameStore = create<GameStore>()(
         merged.refereeTimer = null;
         merged.introSequence = null;
         merged.puckDrop = null;
+        const legacyHockeyToggles = merged.hockeyToggles as
+          | (import("./types").HockeyFeatureToggles & {
+              emptyNetGoals?: boolean;
+            })
+          | undefined;
         merged.hockeyToggles = {
           ...DEFAULT_HOCKEY_TOGGLES,
-          ...(merged.hockeyToggles ?? {}),
+          ...(legacyHockeyToggles ?? {}),
+          emptyNetIndicator:
+            legacyHockeyToggles?.emptyNetIndicator ??
+            legacyHockeyToggles?.emptyNetGoals ??
+            DEFAULT_HOCKEY_TOGGLES.emptyNetIndicator,
         };
         if (typeof merged.puckDropDelaySeconds !== "number")
           merged.puckDropDelaySeconds = 4;
@@ -2315,6 +2297,7 @@ export const useGameStore = create<GameStore>()(
         }
         merged.hockeyPenalties = merged.hockeyPenalties ?? [];
         merged.hockeyDelayedTeam = null;
+        merged.hockeyEmptyNetTeam = merged.hockeyEmptyNetTeam ?? null;
         merged.hockeyGoalCelebrationKey = 0;
         if (!merged.stoppageTime) merged.stoppageTime = initialStoppageTime;
         merged.buzzerBeaterWindowActive = false;

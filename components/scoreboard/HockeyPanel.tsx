@@ -1,7 +1,7 @@
 "use client";
 
 import { useGameStore } from "@/lib/gameStore";
-import type { HockeyFeatureToggles } from "@/lib/types";
+import type { HockeyFeatureToggles, TeamId } from "@/lib/types";
 import { BoxScoreTable } from "./BasketballScoreboard";
 import { MenuPanelBody } from "./MenuScrollLayout";
 import { resolveSportConfig, effectiveMaxPeriods, resolveActiveVariant } from "@/lib/sportRegistry";
@@ -31,13 +31,10 @@ function Toggle({
 
 const TOGGLE_LABELS: Record<keyof HockeyFeatureToggles, string> = {
   shotsOnGoal: "Shots on goal",
-  emptyNetGoals: "Empty-net goals",
+  emptyNetIndicator: "Empty net indicator",
   periodBoxScore: "Period box score (settings page)",
-  intermissionTimer: "Intermission timer",
-  overtimePresets: "Overtime clock presets",
   puckDropDelay: "Puck-drop delay before clock",
   goalCelebration: "Goal celebration flash",
-  rinkVisual: "Rink lines overlay",
   lastGoalTicker: "Last goal ticker",
 };
 
@@ -52,11 +49,9 @@ export function HockeyPanel({
   const setToggle = useGameStore((s) => s.setHockeyToggle);
   const puckSec = useGameStore((s) => s.puckDropDelaySeconds);
   const setPuckSec = useGameStore((s) => s.setPuckDropDelaySeconds);
-  const nextEn = useGameStore((s) => s.hockeyNextGoalEmptyNet);
-  const setNextEn = useGameStore((s) => s.setHockeyNextGoalEmptyNet);
+  const emptyNetTeam = useGameStore((s) => s.hockeyEmptyNetTeam);
+  const setEmptyNetTeam = useGameStore((s) => s.setHockeyEmptyNetTeam);
   const startShootout = useGameStore((s) => s.startShootout);
-  const applyOt = useGameStore((s) => s.applyHockeyOvertimeSeconds);
-  const startIntermission = useGameStore((s) => s.startHockeyIntermission);
   const teamA = useGameStore((s) => s.teamA);
   const teamB = useGameStore((s) => s.teamB);
   const periodScores = useGameStore((s) => s.periodScores);
@@ -73,6 +68,11 @@ export function HockeyPanel({
     effectiveMaxPeriods(cfg, timerVariantId, customTimerFormat) ??
     cfg.maxPeriods ??
     3;
+
+  const pickEmptyNet = (team: TeamId) => {
+    setEmptyNetTeam(emptyNetTeam === team ? null : team);
+    onReturnToScoreboard?.();
+  };
 
   if (view === "periods") {
     if (!toggles.periodBoxScore) {
@@ -137,53 +137,48 @@ export function HockeyPanel({
         </div>
       )}
 
-      {toggles.emptyNetGoals && (
-        <button
-          type="button"
-          onClick={() => setNextEn(!nextEn)}
-          className={`mt-4 w-full rounded-xl border-2 py-2 text-sm font-bold ${nextEn ? "border-amber-400 text-amber-300" : "border-white/20"}`}
-        >
-          Next goal counts as empty net: {nextEn ? "Yes" : "No"}
-        </button>
-      )}
-
-      {toggles.intermissionTimer && (
-        <div className="mt-4 flex flex-wrap gap-2">
-          {[15, 17, 18].map((m) => (
+      {toggles.emptyNetIndicator && (
+        <div className="mt-4 rounded-xl border border-white/10 bg-white/5 p-3">
+          <p className="text-sm font-bold">Empty net</p>
+          <p className="mt-1 text-xs text-zinc-500">
+            Shows an EN badge on the scoreboard for the team with the empty net. You can also tap EN under a team name during the game.
+          </p>
+          <div className="mt-3 flex flex-wrap gap-2">
             <button
-              key={m}
               type="button"
-              onClick={() => {
-                startIntermission(m);
-                onReturnToScoreboard?.();
-              }}
-              className="rounded-full border border-white/30 px-3 py-1 text-xs font-bold hover:bg-white/10"
+              onClick={() => pickEmptyNet("b")}
+              className={`rounded-full border px-3 py-1.5 text-xs font-bold ${
+                emptyNetTeam === "b"
+                  ? "border-amber-400 bg-amber-400/15 text-amber-300"
+                  : "border-white/30 text-white hover:bg-white/10"
+              }`}
             >
-              {m} min intermission
+              {teamB.name}
             </button>
-          ))}
-        </div>
-      )}
-
-      {toggles.overtimePresets && (
-        <div className="mt-4 flex flex-wrap gap-2">
-          {[
-            { sec: 300, label: "OT 5:00" },
-            { sec: 600, label: "OT 10:00" },
-            { sec: 240, label: "OT 4:00" },
-          ].map((p) => (
             <button
-              key={p.sec}
               type="button"
-              onClick={() => {
-                applyOt(p.sec);
-                onReturnToScoreboard?.();
-              }}
-              className="rounded-full border border-white/30 px-3 py-1 text-xs font-bold hover:bg-white/10"
+              onClick={() => pickEmptyNet("a")}
+              className={`rounded-full border px-3 py-1.5 text-xs font-bold ${
+                emptyNetTeam === "a"
+                  ? "border-amber-400 bg-amber-400/15 text-amber-300"
+                  : "border-white/30 text-white hover:bg-white/10"
+              }`}
             >
-              {p.label}
+              {teamA.name}
             </button>
-          ))}
+            {emptyNetTeam && (
+              <button
+                type="button"
+                onClick={() => {
+                  setEmptyNetTeam(null);
+                  onReturnToScoreboard?.();
+                }}
+                className="rounded-full border border-white/20 px-3 py-1.5 text-xs font-bold text-zinc-400 hover:text-white"
+              >
+                Clear
+              </button>
+            )}
+          </div>
         </div>
       )}
 

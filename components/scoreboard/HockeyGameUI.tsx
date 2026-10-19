@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useGameStore } from "@/lib/gameStore";
+import type { TeamId } from "@/lib/types";
 
 /** Shots on goal — away # | SOG | home # with + to increment. */
 export function HockeySogDisplay() {
@@ -46,6 +47,34 @@ export function HockeySogDisplay() {
         </button>
       </div>
     </div>
+  );
+}
+
+/** Tap to mark which team has pulled the goalie (empty net). */
+export function HockeyEmptyNetBadge({ side }: { side: TeamId }) {
+  const sportId = useGameStore((s) => s.sportId);
+  const toggles = useGameStore((s) => s.hockeyToggles);
+  const emptyNetTeam = useGameStore((s) => s.hockeyEmptyNetTeam);
+  const setEmptyNetTeam = useGameStore((s) => s.setHockeyEmptyNetTeam);
+
+  if (sportId !== "hockey" || !toggles.emptyNetIndicator) return null;
+
+  const active = emptyNetTeam === side;
+
+  return (
+    <button
+      type="button"
+      onClick={() => setEmptyNetTeam(active ? null : side)}
+      className={`shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-black uppercase tracking-wider transition ${
+        active
+          ? "border-amber-400 bg-amber-500/25 text-amber-200 shadow-[0_0_12px_rgba(251,191,36,0.35)]"
+          : "border-white/25 text-zinc-500 hover:border-white/50 hover:text-zinc-300"
+      }`}
+      aria-label={active ? "Clear empty net" : "Mark empty net"}
+      aria-pressed={active}
+    >
+      EN
+    </button>
   );
 }
 
@@ -161,26 +190,6 @@ export function HockeyGoalCelebration() {
         </motion.div>
       </motion.div>
     </AnimatePresence>
-  );
-}
-
-/** Rink lines when enabled (works with any theme). */
-export function HockeyRinkOverlay() {
-  const sportId = useGameStore((s) => s.sportId);
-  const toggles = useGameStore((s) => s.hockeyToggles);
-  if (sportId !== "hockey" || !toggles.rinkVisual) return null;
-
-  return (
-    <div
-      className="pointer-events-none absolute inset-0 z-[1] overflow-hidden opacity-35"
-      aria-hidden
-    >
-      <div className="absolute inset-x-[8%] top-[18%] bottom-[22%] rounded-[3rem] border-2 border-sky-200/50" />
-      <div className="absolute inset-x-[8%] top-1/2 h-0.5 -translate-y-1/2 bg-red-400/60" />
-      <div className="absolute left-1/2 top-[18%] bottom-[22%] w-24 -translate-x-1/2 rounded-full border-2 border-red-400/50" />
-      <div className="absolute left-[8%] top-1/2 h-16 w-16 -translate-y-1/2 rounded-full border-2 border-red-400/40" />
-      <div className="absolute right-[8%] top-1/2 h-16 w-16 -translate-y-1/2 rounded-full border-2 border-red-400/40" />
-    </div>
   );
 }
 

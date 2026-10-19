@@ -209,13 +209,10 @@ export interface HockeyPenalty {
 
 export interface HockeyFeatureToggles {
   shotsOnGoal: boolean;
-  emptyNetGoals: boolean;
+  emptyNetIndicator: boolean;
   periodBoxScore: boolean;
-  intermissionTimer: boolean;
-  overtimePresets: boolean;
   puckDropDelay: boolean;
   goalCelebration: boolean;
-  rinkVisual: boolean;
   lastGoalTicker: boolean;
 }
 
