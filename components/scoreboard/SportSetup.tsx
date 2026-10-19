@@ -50,6 +50,8 @@ export function SportSetup() {
       totalPeriods: active.regulationPeriods,
       shotClockEnabled: sportId === "basketball",
       stoppageTimeEnabled: sportId === "soccer",
+      overtimeMinutes: Math.floor((active.overtimeSeconds ?? 5 * 60) / 60),
+      overtimeSecondsRemainder: (active.overtimeSeconds ?? 5 * 60) % 60,
     }));
   }, [active, sportId, timerVariantId, isCustomFormat]);
 
@@ -196,6 +198,51 @@ export function SportSetup() {
                   </li>
                 ))}
               </ul>
+            )}
+
+            {!cfg.noGameClock && (
+              <div className="mt-3 space-y-3 rounded-xl border border-cyan-400/25 bg-cyan-400/5 p-3">
+                <Toggle
+                  label="If tied: one overtime, then shootout"
+                  checked={prefs.overtimeThenShootoutEnabled}
+                  onChange={(v) => update("overtimeThenShootoutEnabled", v)}
+                />
+                {prefs.overtimeThenShootoutEnabled && (
+                  <div className="grid grid-cols-2 gap-2">
+                    <Field label="OT min">
+                      <input
+                        type="number"
+                        min={0}
+                        max={60}
+                        value={prefs.overtimeMinutes}
+                        onChange={(e) =>
+                          update("overtimeMinutes", Number(e.target.value))
+                        }
+                        className={periodFieldClass}
+                      />
+                    </Field>
+                    <Field label="OT sec">
+                      <input
+                        type="number"
+                        min={0}
+                        max={59}
+                        value={prefs.overtimeSecondsRemainder}
+                        onChange={(e) =>
+                          update(
+                            "overtimeSecondsRemainder",
+                            Number(e.target.value),
+                          )
+                        }
+                        className={periodFieldClass}
+                      />
+                    </Field>
+                  </div>
+                )}
+                <p className="text-xs text-zinc-500">
+                  Overtime runs once if regulation ends tied. Still tied after OT
+                  starts an automatic shootout (hockey & soccer).
+                </p>
+              </div>
             )}
           </div>
         )}

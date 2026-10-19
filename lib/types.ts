@@ -250,6 +250,10 @@ export interface PreGameSetupPrefs {
   introSequenceEnabled: boolean;
   stoppageTimeEnabled: boolean;
   defaultStoppageAdd: number;
+  /** One OT period if regulation ends tied, then shootout if still tied (clocked sports) */
+  overtimeThenShootoutEnabled: boolean;
+  overtimeMinutes: number;
+  overtimeSecondsRemainder: number;
 }
 
 export interface GameHistoryEntry {

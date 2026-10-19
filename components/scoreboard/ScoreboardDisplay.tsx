@@ -199,6 +199,7 @@ export function ScoreboardDisplay() {
   const presentation = useGameStore((s) => s.presentationMode);
   const timer = useGameStore((s) => s.timer);
   const period = useGameStore((s) => s.period);
+  const inOvertime = useGameStore((s) => s.inOvertime);
   const shotClock = useGameStore((s) => s.shotClock);
   const sfxEnabled = useGameStore((s) => s.sfxEnabled);
   const musicEnabled = useGameStore((s) => s.musicEnabled);
@@ -351,7 +352,7 @@ export function ScoreboardDisplay() {
   };
 
   const periodLabel = activeVariant?.periodLabel ?? cfg.periodLabel;
-  const periodText = `${periodLabel} ${period}`;
+  const periodText = inOvertime ? "Overtime" : `${periodLabel} ${period}`;
   const lowTime = clockSec <= 60 && clockSec > 0;
   const hasFouls = hasFeature(cfg, "fouls");
   const hasTimeouts = hasFeature(cfg, "timeouts");

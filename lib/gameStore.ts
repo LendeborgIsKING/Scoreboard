@@ -284,6 +284,10 @@ export interface GameState extends GameStateSlice {
   crowdIntensity: number;
   ledScoreAnimation: boolean;
   preGameSetup: import("./types").PreGameSetupPrefs;
+  /** Regulation period count for this game (from pre-game setup) */
+  regulationPeriodCount: number;
+  /** Single overtime period in progress after a tied regulation */
+  inOvertime: boolean;
   hockeyToggles: import("./types").HockeyFeatureToggles;
   hockeyPenalties: import("./types").HockeyPenalty[];
   hockeyDelayedTeam: TeamId | null;
@@ -447,6 +451,8 @@ type GameStore = GameState & {
   applyHockeyOvertimeSeconds: (seconds: number) => void;
   startHockeyIntermission: (minutes: number) => void;
   setCustomTimerFormat: (format: import("./types").CustomTimerFormat) => void;
+  beginOvertimePeriod: () => void;
+  beginAutomaticShootout: () => void;
 };
 
 const defaultPreGameSetup: import("./types").PreGameSetupPrefs = {
@@ -464,6 +470,9 @@ const defaultPreGameSetup: import("./types").PreGameSetupPrefs = {
   introSequenceEnabled: false,
   stoppageTimeEnabled: false,
   defaultStoppageAdd: 3,
+  overtimeThenShootoutEnabled: true,
+  overtimeMinutes: 5,
+  overtimeSecondsRemainder: 0,
 };
 
 const initialStoppageTime: import("./types").StoppageTimeState = {
@@ -564,6 +573,8 @@ export const useGameStore = create<GameStore>()(
       crowdIntensity: 0.4,
       ledScoreAnimation: true,
       preGameSetup: defaultPreGameSetup,
+      regulationPeriodCount: defaultPreGameSetup.totalPeriods,
+      inOvertime: false,
       hockeyToggles: { ...DEFAULT_HOCKEY_TOGGLES },
       hockeyPenalties: [],
       hockeyDelayedTeam: null,
@@ -620,6 +631,7 @@ export const useGameStore = create<GameStore>()(
           targetScoreEnabled: false,
           shootout: null,
           refereeTimer: null,
+          inOvertime: false,
           // Fresh sport = fresh game session: rearm the Final Countdown prompt
           // and clear any leftover celebration.
           finalCountdownPromptShownThisGame: false,
@@ -863,13 +875,11 @@ export const useGameStore = create<GameStore>()(
           const { teamA, teamB } = get();
           if (teamA.score !== teamB.score) {
             const cfgNow = resolveSportConfig(sportId, customSport);
-            const max =
-              effectiveMaxPeriods(
-                cfgNow,
-                timerVariantId,
-                get().customTimerFormat,
-              ) ?? cfgNow.maxPeriods;
-            const isFinalPeriod = max != null && period >= max;
+            const regulationCap = get().regulationPeriodCount;
+            const inOT = get().inOvertime;
+            const isFinalPeriod =
+              inOT ||
+              (regulationCap != null && period >= regulationCap);
             if (isFinalPeriod) {
               get().triggerGameOver();
               set({
@@ -1183,6 +1193,8 @@ export const useGameStore = create<GameStore>()(
           buzzerBeaterWindowSettling: false,
           gameOverCelebration: null,
           foulsResetPrompt: false,
+          inOvertime: false,
+          regulationPeriodCount: get().preGameSetup.totalPeriods,
         });
       },
 
@@ -1301,6 +1313,9 @@ export const useGameStore = create<GameStore>()(
           buzzerBeaterWindowActive,
           buzzerBeaterWindowEndsAt,
           buzzerBeaterWindowSettling,
+          regulationPeriodCount,
+          inOvertime,
+          preGameSetup,
         } = get();
         if (!timer.running && !buzzerBeaterWindowActive) return;
         const total = timer.countdownFromSeconds * 1000;
@@ -1308,10 +1323,10 @@ export const useGameStore = create<GameStore>()(
         const remainingSec = Math.max(0, (total - elapsed) / 1000);
 
         const cfg = resolveSportConfig(sportId, customSport);
-        const max =
-          effectiveMaxPeriods(cfg, timerVariantId, get().customTimerFormat) ??
-          cfg.maxPeriods;
-        const isFinalPeriod = max != null && period >= max;
+        const regulationCap = regulationPeriodCount;
+        const isFinalPeriod =
+          inOvertime ||
+          (regulationCap != null && period >= regulationCap);
 
         // ---- Last-minute Final Countdown prompt ----
         // Show once per game, only in the final period of a clocked sport,
@@ -1373,7 +1388,12 @@ export const useGameStore = create<GameStore>()(
             buzzerBeaterWindowEndsAt: null,
             buzzerBeaterWindowSettling: false,
           });
-          if (max && period >= max && teamA.score !== teamB.score) {
+          const tied = teamA.score === teamB.score;
+          const atRegEnd =
+            regulationCap != null && period >= regulationCap && !inOvertime;
+          const atOTEnd = inOvertime;
+
+          const declareWinner = () => {
             const winnerSide: "a" | "b" =
               teamA.score > teamB.score ? "a" : "b";
             const winnerName =
@@ -1389,11 +1409,9 @@ export const useGameStore = create<GameStore>()(
                 flavor: "win",
               },
             });
-            // 3-second delay then trigger the full celebration overlay.
             const finalA = teamA.score;
             const finalB = teamB.score;
             setTimeout(() => {
-              // Only show if user hasn't already left the game screen.
               if (get().uiPhase !== "game") return;
               set((state) => ({
                 gameOverCelebration: {
@@ -1406,8 +1424,35 @@ export const useGameStore = create<GameStore>()(
                 confettiKey: state.confettiKey + 1,
               }));
             }, 3000);
-          } else {
-            // Automatically advance period and reset the clock for the next one after a 3 second delay.
+          };
+
+          if (!tied && (atRegEnd || atOTEnd)) {
+            declareWinner();
+            return;
+          }
+
+          if (
+            tied &&
+            atRegEnd &&
+            !cfg.noGameClock &&
+            preGameSetup.overtimeThenShootoutEnabled
+          ) {
+            setTimeout(() => get().beginOvertimePeriod(), 3000);
+            return;
+          }
+
+          if (
+            tied &&
+            (atOTEnd ||
+              (atRegEnd &&
+                (!preGameSetup.overtimeThenShootoutEnabled ||
+                  cfg.noGameClock)))
+          ) {
+            setTimeout(() => get().beginAutomaticShootout(), 3000);
+            return;
+          }
+
+          if (regulationCap != null && period < regulationCap) {
             setTimeout(() => {
               get().nextPeriod();
               get().applyOfficialPeriodTimer();
@@ -1693,10 +1738,72 @@ export const useGameStore = create<GameStore>()(
           period: 1,
           pitchCountA: 0,
           pitchCountB: 0,
+          regulationPeriodCount: gated.totalPeriods,
+          inOvertime: false,
         });
         if (prefs.introSequenceEnabled) {
           get().startIntroSequence();
         }
+      },
+
+      beginOvertimePeriod: () => {
+        const { preGameSetup, period, periodScores, announcerEnabled } = get();
+        const otSec = Math.max(
+          1,
+          preGameSetup.overtimeMinutes * 60 +
+            preGameSetup.overtimeSecondsRemainder,
+        );
+        const nextPeriodNum = period + 1;
+        const a = [...periodScores.a];
+        const b = [...periodScores.b];
+        while (a.length < nextPeriodNum) a.push(0);
+        while (b.length < nextPeriodNum) b.push(0);
+        if (announcerEnabled) speakAnnouncement("Overtime");
+        bannerCounter += 1;
+        set({
+          inOvertime: true,
+          period: nextPeriodNum,
+          periodScores: { a, b },
+          timer: {
+            ...get().timer,
+            countdownFromSeconds: otSec,
+            accumulatedMs: 0,
+            running: false,
+            runStartedAt: null,
+          },
+          buzzerBeaterWindowActive: false,
+          buzzerBeaterWindowEndsAt: null,
+          buzzerBeaterWindowSettling: false,
+          banner: {
+            id: bannerCounter,
+            text: "OVERTIME",
+            subtext: `${Math.floor(otSec / 60)}:${String(otSec % 60).padStart(2, "0")}`,
+            flavor: "info",
+          },
+        });
+      },
+
+      beginAutomaticShootout: () => {
+        const { sportId, teamA, teamB, announcerEnabled } = get();
+        if (sportId === "hockey") {
+          if (announcerEnabled) speakAnnouncement("Shootout");
+          get().startShootout("hockey");
+          return;
+        }
+        if (sportId === "soccer") {
+          if (announcerEnabled) speakAnnouncement("Penalty shootout");
+          get().startShootout("soccer");
+          return;
+        }
+        bannerCounter += 1;
+        set({
+          banner: {
+            id: bannerCounter,
+            text: "Still tied",
+            subtext: `${teamA.name} ${teamA.score} - ${teamB.score} ${teamB.name}`,
+            flavor: "info",
+          },
+        });
       },
 
       startIntroSequence: () =>
@@ -2170,6 +2277,22 @@ export const useGameStore = create<GameStore>()(
           merged.bracket.activeMatchId = null;
         if (!merged.roundRobin) merged.roundRobin = null;
         if (!merged.preGameSetup) merged.preGameSetup = defaultPreGameSetup;
+        else {
+          const pg = merged.preGameSetup;
+          if (pg.overtimeThenShootoutEnabled === undefined) {
+            pg.overtimeThenShootoutEnabled = true;
+          }
+          if (pg.overtimeMinutes === undefined) pg.overtimeMinutes = 5;
+          if (pg.overtimeSecondsRemainder === undefined) {
+            pg.overtimeSecondsRemainder = 0;
+          }
+        }
+        if (merged.inOvertime === undefined) merged.inOvertime = false;
+        if (merged.regulationPeriodCount === undefined) {
+          merged.regulationPeriodCount =
+            merged.preGameSetup?.totalPeriods ??
+            defaultPreGameSetup.totalPeriods;
+        }
         if (typeof merged.crowdIntensity !== "number") merged.crowdIntensity = 0.4;
         if (typeof merged.ledScoreAnimation !== "boolean") merged.ledScoreAnimation = true;
         if (typeof merged.teamChantA !== "string") merged.teamChantA = "";
