@@ -1878,13 +1878,10 @@ export const useGameStore = create<GameStore>()(
 
       startShootout: (sport) => {
         if (get().sportId !== "hockey" || sport !== "hockey") return;
-        const cfg = resolveSportConfig(get().sportId, get().customSport);
-        if (sport === "hockey" && cfg.id !== "hockey") return;
-        if (sport === "soccer" && cfg.id !== "soccer") return;
         set({
           shootout: {
             active: true,
-            sport,
+            sport: "hockey",
             shots: [],
             teamAScore: 0,
             teamBScore: 0,
