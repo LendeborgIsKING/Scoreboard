@@ -258,7 +258,7 @@ export interface GameState extends GameStateSlice {
   targetScore: number;
   /** Show confetti bursts on big plays. */
   confettiEnabled: boolean;
-  /** Show the centered play banners (BUCKET!, 3 POINTS!, etc.). */
+  /** Show the centered play banners (BUCKET!, THREE!, etc.). */
   bannersEnabled: boolean;
   /** Which sound plays when a team scores. */
   scoreSoundId: ScoreSoundId;
@@ -506,7 +506,7 @@ function bigPlayLabel(
 ): string {
   if (milestone) return `${newScore}!`;
   if (sportId === "basketball") {
-    if (delta >= 3) return "3 POINTS!";
+    if (delta >= 3) return "THREE!";
     if (delta === 2) return "BUCKET!";
     return "+1";
   }
