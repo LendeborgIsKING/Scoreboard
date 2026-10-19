@@ -145,7 +145,7 @@ export function HockeyGoalCelebration() {
   useEffect(() => {
     if (key > 0 && key !== visibleKey) {
       setVisibleKey(key);
-      const t = window.setTimeout(() => setVisibleKey(0), 2200);
+      const t = window.setTimeout(() => setVisibleKey(0), 5000);
       return () => window.clearTimeout(t);
     }
   }, [key, visibleKey]);
