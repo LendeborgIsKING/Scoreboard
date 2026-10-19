@@ -2,6 +2,7 @@
 
 import { motion, AnimatePresence } from "framer-motion";
 import { useGameStore } from "@/lib/gameStore";
+import { shootoutStatusLabel } from "@/lib/shootoutUtils";
 
 export function ShootoutOverlay() {
   const sportId = useGameStore((s) => s.sportId);
@@ -28,6 +29,9 @@ export function ShootoutOverlay() {
         <div className="w-[min(92vw,28rem)] rounded-2xl border border-white/20 bg-zinc-900 p-6 text-center text-white shadow-2xl">
           <p className="text-xs font-bold uppercase tracking-[0.25em] text-zinc-400">
             {shootout.sport === "hockey" ? "Shootout" : "Penalty Shootout"}
+          </p>
+          <p className="mt-1 text-sm font-semibold text-amber-400/90">
+            {shootoutStatusLabel(shootout)}
           </p>
           <h2 className="mt-2 text-3xl font-black" style={{ color: currentTeam.color }}>
             {currentTeam.name}

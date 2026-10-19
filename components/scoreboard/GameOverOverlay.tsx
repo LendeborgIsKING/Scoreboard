@@ -190,6 +190,14 @@ export function GameOverOverlay() {
               </span>
             </motion.div>
 
+            {celebration.shootoutScoreA != null &&
+              celebration.shootoutScoreB != null && (
+                <p className="mt-2 text-sm font-bold uppercase tracking-wider text-zinc-400">
+                  Shootout {celebration.shootoutScoreA}–
+                  {celebration.shootoutScoreB}
+                </p>
+              )}
+
             <motion.div
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}

@@ -40,6 +40,7 @@ import {
 import { stopYouTubeVideo } from "./youtubePlayer";
 import { advanceBracketWinner, pairKey } from "./bracketUtils";
 import { DEFAULT_HOCKEY_TOGGLES } from "./hockeyDefaults";
+import { shootoutWinnerAfterShot } from "./shootoutUtils";
 
 function playScoreSound(id: ScoreSoundId) {
   switch (id) {
@@ -209,6 +210,9 @@ export interface GameState extends GameStateSlice {
     loserName: string;
     finalScoreA: number;
     finalScoreB: number;
+    /** Set when the game was decided by a shootout */
+    shootoutScoreA?: number;
+    shootoutScoreB?: number;
   } | null;
   /** Whether the "Play The Final Countdown?" prompt is currently visible. */
   finalCountdownPromptVisible: boolean;
@@ -1729,15 +1733,38 @@ export const useGameStore = create<GameStore>()(
           playShootoutScoredSfx(shootingTeam, so.sport, get(), set);
         }
         const nextTeam: TeamId = shootingTeam === "a" ? "b" : "a";
-        set({
-          shootout: {
-            ...so,
-            shots,
-            teamAScore,
-            teamBScore,
-            nextTeam,
-          },
-        });
+        const updated = {
+          ...so,
+          shots,
+          teamAScore,
+          teamBScore,
+          nextTeam,
+        };
+        const winner = shootoutWinnerAfterShot(updated);
+        if (winner) {
+          const { teamA, teamB, announcerEnabled } = get();
+          const winnerName = winner === "a" ? teamA.name : teamB.name;
+          if (announcerEnabled) {
+            speakAnnouncement(`${winnerName} wins the shootout!`);
+          }
+          get().pauseTimer();
+          set((state) => ({
+            shootout: null,
+            gameOverCelebration: {
+              winnerSide: winner,
+              winnerName,
+              loserName: winner === "a" ? teamB.name : teamA.name,
+              finalScoreA: teamA.score,
+              finalScoreB: teamB.score,
+              shootoutScoreA: teamAScore,
+              shootoutScoreB: teamBScore,
+            },
+            confettiKey: state.confettiKey + 1,
+          }));
+          get().autoAdvanceTournament(winner);
+          return;
+        }
+        set({ shootout: updated });
       },
 
       endShootout: () => set({ shootout: null }),
