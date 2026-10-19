@@ -325,7 +325,9 @@ export function ScoreboardDisplay() {
     void prefetchSfxClip("/sfx/nba-horn.mp3");
     void prefetchSfxClip("/sfx/whistle.mp3");
     void prefetchSfxClip("/music/mike-breen-double-bang.mp3");
-    void prefetchSfxClip("/sfx/basketball-swish.mp3");
+    if (sportId === "basketball") {
+      void prefetchSfxClip("/sfx/basketball-swish.mp3");
+    }
     if (sportId === "hockey") {
       void prefetchSfxClip(NHL_HORN_SRC);
     }
@@ -355,6 +357,7 @@ export function ScoreboardDisplay() {
   const hasTimeouts = hasFeature(cfg, "timeouts");
   const showPossession = hasFeature(cfg, "possession");
   const isBasketball = cfg.id === "basketball";
+  const hasShotClock = hasFeature(cfg, "shotClock");
   const showFoulsReset =
     isBasketball &&
     hasFouls &&
@@ -375,8 +378,8 @@ export function ScoreboardDisplay() {
     adjustFouls,
     adjustTimeouts,
     setPossession,
-    startShotClock,
-    pauseShotClock,
+    startShotClock: hasShotClock ? startShotClock : () => {},
+    pauseShotClock: hasShotClock ? pauseShotClock : () => {},
     nextPeriod,
     prevPeriod,
     resetScoresOnly,
@@ -460,7 +463,7 @@ export function ScoreboardDisplay() {
       <div className={scoreboardShellClass}>
         <HockeyRinkOverlay />
         <HockeyTickBridge />
-        {theme === "court" && <CourtAmbience />}
+        {theme === "court" && isBasketball && <CourtAmbience />}
         {theme === "fire" && <FireAmbience />}
         <div className="relative z-10 grid grid-cols-[1fr_auto_1fr] items-start gap-2 px-4 pt-4 text-white">
           {!presentation && (
@@ -869,32 +872,38 @@ export function ScoreboardDisplay() {
           </div>
         </div>
 
-        <button
-          type="button"
-          onClick={() => {
-            if (!editing) return;
-            const next =
-              possession === "a" ? "b" : possession === "b" ? null : "a";
-            setPossession(next);
-          }}
-          disabled={!editing}
-          className={`absolute bottom-3 left-1/2 -translate-x-1/2 text-[10px] uppercase tracking-[0.2em] text-zinc-500 ${
-            editing
-              ? "cursor-pointer rounded-md border border-dashed border-white/60 px-2 py-[2px] hover:text-white"
-              : "cursor-default"
-          }`}
-          aria-label="Cycle possession"
-        >
-          {cfg.name}
-          {possession && (
-            <span className="ml-2 text-cyan-400">
-              - Poss {possession === "a" ? teamA.name : teamB.name}
-            </span>
-          )}
-          {!possession && editing && (
-            <span className="ml-2 text-white/60">- Poss ?</span>
-          )}
-        </button>
+        {showPossession ? (
+          <button
+            type="button"
+            onClick={() => {
+              if (!editing) return;
+              const next =
+                possession === "a" ? "b" : possession === "b" ? null : "a";
+              setPossession(next);
+            }}
+            disabled={!editing}
+            className={`absolute bottom-3 left-1/2 -translate-x-1/2 text-[10px] uppercase tracking-[0.2em] text-zinc-500 ${
+              editing
+                ? "cursor-pointer rounded-md border border-dashed border-white/60 px-2 py-[2px] hover:text-white"
+                : "cursor-default"
+            }`}
+            aria-label="Cycle possession"
+          >
+            {cfg.name}
+            {possession && (
+              <span className="ml-2 text-cyan-400">
+                - Poss {possession === "a" ? teamA.name : teamB.name}
+              </span>
+            )}
+            {!possession && editing && (
+              <span className="ml-2 text-white/60">- Poss ?</span>
+            )}
+          </button>
+        ) : (
+          <p className="absolute bottom-3 left-1/2 -translate-x-1/2 text-[10px] uppercase tracking-[0.2em] text-zinc-500">
+            {cfg.name}
+          </p>
+        )}
 
         {(presentation || (!settingsOpen && !editing)) && (
           <button

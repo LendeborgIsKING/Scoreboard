@@ -20,6 +20,8 @@ import { NHL_TEAMS, NHL_HORN_SRC } from "./nhlTeams";
 import {
   defaultVariantId,
   effectiveMaxPeriods,
+  gatePreGamePrefs,
+  hasFeature,
   resolveActiveVariant,
   resolveSportConfig,
 } from "./sportRegistry";
@@ -521,11 +523,17 @@ export const useGameStore = create<GameStore>()(
         get().pushUndo();
         const cfg = resolveSportConfig(id, get().customSport);
         const vid = defaultVariantId(cfg);
+        const prev = get();
         set({
           sportId: id,
           timerVariantId: vid,
           period: 1,
           timer: defaultTimerForSport(id, get().customSport, vid),
+          shotClock: { ...prev.shotClock, enabled: false, running: false },
+          stoppageTime: { ...initialStoppageTime, enabled: false },
+          targetScoreEnabled: false,
+          shootout: null,
+          refereeTimer: null,
           // Fresh sport = fresh game session: rearm the Final Countdown prompt
           // and clear any leftover celebration.
           finalCountdownPromptShownThisGame: false,
@@ -954,7 +962,12 @@ export const useGameStore = create<GameStore>()(
       setPressTickEnabled: (v) => set({ pressTickEnabled: v }),
       setAutoStartClockOnScore: (v) => set({ autoStartClockOnScore: v }),
       setKeepAwakeEnabled: (v) => set({ keepAwakeEnabled: v }),
-      setTargetScoreEnabled: (v) => set({ targetScoreEnabled: v }),
+      setTargetScoreEnabled: (v) =>
+        set((s) => {
+          const cfg = resolveSportConfig(s.sportId, s.customSport);
+          if (!hasFeature(cfg, "targetScore")) return s;
+          return { targetScoreEnabled: v };
+        }),
       setTargetScore: (n) =>
         set({ targetScore: Math.max(1, Math.floor(n)) }),
       setConfettiEnabled: (v) => set({ confettiEnabled: v }),
@@ -1342,9 +1355,11 @@ export const useGameStore = create<GameStore>()(
         set((state) => ({ displayFlipped: !state.displayFlipped })),
 
       setShotClockEnabled: (v) =>
-        set((state) => ({
-          shotClock: { ...state.shotClock, enabled: v },
-        })),
+        set((state) => {
+          const cfg = resolveSportConfig(state.sportId, state.customSport);
+          if (!hasFeature(cfg, "shotClock")) return state;
+          return { shotClock: { ...state.shotClock, enabled: v } };
+        }),
 
       setShotClockDuration: (seconds) =>
         set((state) => ({
@@ -1565,36 +1580,38 @@ export const useGameStore = create<GameStore>()(
       setRoundRobin: (rr) => set({ roundRobin: rr }),
 
       applyPreGameSetup: (prefs) => {
+        const cfg = resolveSportConfig(get().sportId, get().customSport);
+        const gated = gatePreGamePrefs(cfg, prefs);
         const periodSec =
-          prefs.periodMinutes * 60 + prefs.periodSecondsRemainder;
+          gated.periodMinutes * 60 + gated.periodSecondsRemainder;
         const customTimerFormat = {
           periodSeconds: periodSec,
-          regulationPeriods: prefs.totalPeriods,
+          regulationPeriods: gated.totalPeriods,
         };
         set({
-          preGameSetup: prefs,
+          preGameSetup: gated,
           customTimerFormat,
           teamA: {
             ...get().teamA,
-            name: prefs.teamAName || "HOME",
-            color: prefs.teamAColor,
+            name: gated.teamAName || "HOME",
+            color: gated.teamAColor,
           },
           teamB: {
             ...get().teamB,
-            name: prefs.teamBName || "AWAY",
-            color: prefs.teamBColor,
+            name: gated.teamBName || "AWAY",
+            color: gated.teamBColor,
           },
-          targetScoreEnabled: prefs.targetScoreEnabled,
-          targetScore: prefs.targetScore,
+          targetScoreEnabled: gated.targetScoreEnabled,
+          targetScore: gated.targetScore,
           shotClock: {
             ...get().shotClock,
-            enabled: prefs.shotClockEnabled,
-            durationSeconds: prefs.shotClockSeconds,
+            enabled: gated.shotClockEnabled,
+            durationSeconds: gated.shotClockSeconds,
           },
           stoppageTime: {
             ...initialStoppageTime,
-            enabled: prefs.stoppageTimeEnabled,
-            addedSeconds: prefs.defaultStoppageAdd * 60,
+            enabled: gated.stoppageTimeEnabled,
+            addedSeconds: gated.defaultStoppageAdd * 60,
           },
           timer: {
             ...get().timer,
@@ -1639,7 +1656,10 @@ export const useGameStore = create<GameStore>()(
 
       dismissIntroSequence: () => set({ introSequence: null }),
 
-      startShootout: (sport) =>
+      startShootout: (sport) => {
+        const cfg = resolveSportConfig(get().sportId, get().customSport);
+        if (sport === "hockey" && cfg.id !== "hockey") return;
+        if (sport === "soccer" && cfg.id !== "soccer") return;
         set({
           shootout: {
             active: true,
@@ -1649,7 +1669,8 @@ export const useGameStore = create<GameStore>()(
             teamBScore: 0,
             nextTeam: "a",
           },
-        }),
+        });
+      },
 
       recordShootoutShot: (scored) => {
         const so = get().shootout;
@@ -1675,7 +1696,9 @@ export const useGameStore = create<GameStore>()(
 
       endShootout: () => set({ shootout: null }),
 
-      startRefereeTimer: (seconds, label) =>
+      startRefereeTimer: (seconds, label) => {
+        const cfg = resolveSportConfig(get().sportId, get().customSport);
+        if (!hasFeature(cfg, "refereeTimers")) return;
         set({
           refereeTimer: {
             active: true,
@@ -1683,14 +1706,17 @@ export const useGameStore = create<GameStore>()(
             durationSeconds: seconds,
             runStartedAt: Date.now(),
           },
-        }),
+        });
+      },
 
       dismissRefereeTimer: () => set({ refereeTimer: null }),
 
       setStoppageEnabled: (v) =>
-        set((s) => ({
-          stoppageTime: { ...s.stoppageTime, enabled: v },
-        })),
+        set((s) => {
+          const cfg = resolveSportConfig(s.sportId, s.customSport);
+          if (!hasFeature(cfg, "stoppageTime")) return s;
+          return { stoppageTime: { ...s.stoppageTime, enabled: v } };
+        }),
 
       addStoppageSeconds: (sec) =>
         set((s) => ({
@@ -2078,6 +2104,22 @@ export const useGameStore = create<GameStore>()(
         merged.gameOverCelebration = null;
         merged.finalCountdownPromptVisible = false;
         merged.finalCountdownPromptShownThisGame = false;
+        const cfg = resolveSportConfig(
+          merged.sportId ?? BASKETBALL.id,
+          merged.customSport ?? null,
+        );
+        if (!hasFeature(cfg, "shotClock") && merged.shotClock) {
+          merged.shotClock = {
+            ...merged.shotClock,
+            enabled: false,
+            running: false,
+            runStartedAt: null,
+          };
+        }
+        if (!hasFeature(cfg, "stoppageTime")) {
+          merged.stoppageTime = { ...initialStoppageTime, enabled: false };
+        }
+        if (!hasFeature(cfg, "targetScore")) merged.targetScoreEnabled = false;
         return merged;
       },
     },

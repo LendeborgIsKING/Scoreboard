@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useGameStore } from "@/lib/gameStore";
 
 export function ShootoutOverlay() {
+  const sportId = useGameStore((s) => s.sportId);
   const shootout = useGameStore((s) => s.shootout);
   const recordShot = useGameStore((s) => s.recordShootoutShot);
   const endShootout = useGameStore((s) => s.endShootout);
@@ -11,6 +12,8 @@ export function ShootoutOverlay() {
   const teamB = useGameStore((s) => s.teamB);
 
   if (!shootout?.active) return null;
+  if (shootout.sport === "hockey" && sportId !== "hockey") return null;
+  if (shootout.sport === "soccer" && sportId !== "soccer") return null;
 
   const currentTeam = shootout.nextTeam === "a" ? teamA : teamB;
 

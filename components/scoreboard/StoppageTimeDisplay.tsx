@@ -1,6 +1,7 @@
 "use client";
 
 import { useGameStore, getElapsedMs } from "@/lib/gameStore";
+import { hasFeature, resolveSportConfig } from "@/lib/sportRegistry";
 
 function formatStoppage(sec: number): string {
   const m = Math.floor(sec / 60);
@@ -9,14 +10,17 @@ function formatStoppage(sec: number): string {
 }
 
 export function StoppageTimeDisplay() {
+  const sportId = useGameStore((s) => s.sportId);
+  const customSport = useGameStore((s) => s.customSport);
   const st = useGameStore((s) => s.stoppageTime);
   const timer = useGameStore((s) => s.timer);
   const addSec = useGameStore((s) => s.addStoppageSeconds);
   const start = useGameStore((s) => s.startStoppageClock);
   const pause = useGameStore((s) => s.pauseStoppageClock);
   const reset = useGameStore((s) => s.resetStoppageClock);
+  const cfg = resolveSportConfig(sportId, customSport);
 
-  if (!st.enabled) return null;
+  if (!hasFeature(cfg, "stoppageTime") || !st.enabled) return null;
 
   const mainRemaining = Math.max(
     0,

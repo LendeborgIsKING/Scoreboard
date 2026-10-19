@@ -17,7 +17,14 @@ export type SportFeature =
   | "downs"
   | "innings"
   | "halfInning"
-  | "ballsStrikesOuts";
+  | "ballsStrikesOuts"
+  /** Basketball */
+  | "shotClock"
+  /** Soccer */
+  | "stoppageTime"
+  | "refereeTimers"
+  /** Volleyball, pickleball, etc. */
+  | "targetScore";
 
 export type ScoringAction = {
   id: string;

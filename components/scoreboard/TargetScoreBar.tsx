@@ -1,14 +1,18 @@
 "use client";
 
 import { useGameStore } from "@/lib/gameStore";
+import { hasFeature, resolveSportConfig } from "@/lib/sportRegistry";
 
 export function TargetScoreBar() {
+  const sportId = useGameStore((s) => s.sportId);
+  const customSport = useGameStore((s) => s.customSport);
   const enabled = useGameStore((s) => s.targetScoreEnabled);
   const target = useGameStore((s) => s.targetScore);
   const teamA = useGameStore((s) => s.teamA);
   const teamB = useGameStore((s) => s.teamB);
+  const cfg = resolveSportConfig(sportId, customSport);
 
-  if (!enabled) return null;
+  if (!hasFeature(cfg, "targetScore") || !enabled) return null;
 
   const pctA = Math.min(100, (teamA.score / target) * 100);
   const pctB = Math.min(100, (teamB.score / target) * 100);

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { useGameStore } from "@/lib/gameStore";
 import {
+  hasFeature,
   resolveActiveVariant,
   resolveSportConfig,
 } from "@/lib/sportRegistry";
@@ -243,61 +244,75 @@ export function SportSetup() {
               </Field>
             </div>
 
-            <Toggle
-              label="Target score win"
-              checked={prefs.targetScoreEnabled}
-              onChange={(v) => update("targetScoreEnabled", v)}
-            />
-            {prefs.targetScoreEnabled && (
-              <Field label="Target score">
-                <input
-                  type="number"
-                  min={1}
-                  value={prefs.targetScore}
-                  onChange={(e) => update("targetScore", Number(e.target.value))}
-                  className={periodFieldClass}
+            {hasFeature(cfg, "targetScore") && (
+              <>
+                <Toggle
+                  label="Target score win"
+                  checked={prefs.targetScoreEnabled}
+                  onChange={(v) => update("targetScoreEnabled", v)}
                 />
-              </Field>
+                {prefs.targetScoreEnabled && (
+                  <Field label="Target score">
+                    <input
+                      type="number"
+                      min={1}
+                      value={prefs.targetScore}
+                      onChange={(e) =>
+                        update("targetScore", Number(e.target.value))
+                      }
+                      className={periodFieldClass}
+                    />
+                  </Field>
+                )}
+              </>
             )}
 
-            <Toggle
-              label="Shot clock"
-              checked={prefs.shotClockEnabled}
-              onChange={(v) => update("shotClockEnabled", v)}
-            />
-            {prefs.shotClockEnabled && (
-              <Field label="Shot clock (sec)">
-                <input
-                  type="number"
-                  min={5}
-                  max={45}
-                  value={prefs.shotClockSeconds}
-                  onChange={(e) =>
-                    update("shotClockSeconds", Number(e.target.value))
-                  }
-                  className={periodFieldClass}
+            {hasFeature(cfg, "shotClock") && (
+              <>
+                <Toggle
+                  label="Shot clock"
+                  checked={prefs.shotClockEnabled}
+                  onChange={(v) => update("shotClockEnabled", v)}
                 />
-              </Field>
+                {prefs.shotClockEnabled && (
+                  <Field label="Shot clock (sec)">
+                    <input
+                      type="number"
+                      min={5}
+                      max={45}
+                      value={prefs.shotClockSeconds}
+                      onChange={(e) =>
+                        update("shotClockSeconds", Number(e.target.value))
+                      }
+                      className={periodFieldClass}
+                    />
+                  </Field>
+                )}
+              </>
             )}
 
-            <Toggle
-              label="Stoppage / injury time"
-              checked={prefs.stoppageTimeEnabled}
-              onChange={(v) => update("stoppageTimeEnabled", v)}
-            />
-            {prefs.stoppageTimeEnabled && (
-              <Field label="Default stoppage (min)">
-                <input
-                  type="number"
-                  min={0}
-                  max={15}
-                  value={prefs.defaultStoppageAdd}
-                  onChange={(e) =>
-                    update("defaultStoppageAdd", Number(e.target.value))
-                  }
-                  className={periodFieldClass}
+            {hasFeature(cfg, "stoppageTime") && (
+              <>
+                <Toggle
+                  label="Stoppage / injury time"
+                  checked={prefs.stoppageTimeEnabled}
+                  onChange={(v) => update("stoppageTimeEnabled", v)}
                 />
-              </Field>
+                {prefs.stoppageTimeEnabled && (
+                  <Field label="Default stoppage (min)">
+                    <input
+                      type="number"
+                      min={0}
+                      max={15}
+                      value={prefs.defaultStoppageAdd}
+                      onChange={(e) =>
+                        update("defaultStoppageAdd", Number(e.target.value))
+                      }
+                      className={periodFieldClass}
+                    />
+                  </Field>
+                )}
+              </>
             )}
 
             <Toggle

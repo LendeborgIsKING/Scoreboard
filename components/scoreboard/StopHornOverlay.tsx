@@ -2,6 +2,7 @@
 
 import { motion, AnimatePresence } from "framer-motion";
 import { useGameStore } from "@/lib/gameStore";
+import { resolveSportConfig } from "@/lib/sportRegistry";
 
 /**
  * Fullscreen blocker that appears the instant a hockey goal horn starts.
@@ -9,8 +10,13 @@ import { useGameStore } from "@/lib/gameStore";
  * the scoreboard. Auto-dismisses when the horn finishes on its own.
  */
 export function StopHornOverlay() {
+  const sportId = useGameStore((s) => s.sportId);
+  const customSport = useGameStore((s) => s.customSport);
   const hornPlaying = useGameStore((s) => s.hornPlaying);
   const stopHorn = useGameStore((s) => s.stopHorn);
+  const cfg = resolveSportConfig(sportId, customSport);
+
+  if (cfg.id !== "hockey") return null;
 
   return (
     <AnimatePresence>

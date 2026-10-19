@@ -8,13 +8,17 @@ import { CourtAmbience } from "./CourtAmbience";
 import { FireAmbience } from "./FireAmbience";
 import { formatClockSmart } from "@/lib/format";
 import { scoreFontClass } from "@/lib/themeDisplayFont";
+import { resolveSportConfig } from "@/lib/sportRegistry";
 
 export function JumbotronOverlay() {
   const jumbo = useGameStore((s) => s.jumbotron);
   const setJumbo = useGameStore((s) => s.setJumbotron);
   const theme = useGameStore((s) => s.theme);
+  const sportId = useGameStore((s) => s.sportId);
+  const customSport = useGameStore((s) => s.customSport);
   const teamA = useGameStore((s) => s.teamA);
   const teamB = useGameStore((s) => s.teamB);
+  const isBasketball = resolveSportConfig(sportId, customSport).id === "basketball";
   
   const [timeLeftMs, setTimeLeftMs] = useState(0);
 
@@ -49,7 +53,7 @@ export function JumbotronOverlay() {
         >
           <div className="absolute inset-0 opacity-40">
             <ThemeAmbience theme={theme} />
-            {theme === "court" && <CourtAmbience />}
+            {theme === "court" && isBasketball && <CourtAmbience />}
             {theme === "fire" && <FireAmbience />}
           </div>
 

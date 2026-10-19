@@ -4,7 +4,12 @@ import { useRef, useState, type ReactNode } from "react";
 import { motion } from "framer-motion";
 import { useGameStore } from "@/lib/gameStore";
 import { useIsMobileDevice } from "@/hooks/useIsMobileDevice";
-import { resolveSportConfig, effectiveMaxPeriods, resolveActiveVariant } from "@/lib/sportRegistry";
+import {
+  hasFeature,
+  resolveSportConfig,
+  effectiveMaxPeriods,
+  resolveActiveVariant,
+} from "@/lib/sportRegistry";
 import { BoxScoreTable } from "./BasketballScoreboard";
 import { playSfx, playSfxClip } from "@/lib/audio";
 import { NHL_TEAMS, NHL_HORN_SRC } from "@/lib/nhlTeams";
@@ -205,8 +210,11 @@ function MenuView({
   onHistory: () => void;
 }) {
   const sportId = useGameStore((s) => s.sportId);
+  const customSport = useGameStore((s) => s.customSport);
+  const cfg = resolveSportConfig(sportId, customSport);
   const isHockey = sportId === "hockey";
   const isBasketball = sportId === "basketball";
+  const showShotClock = hasFeature(cfg, "shotClock");
   const hockeyPeriodBox = useGameStore((s) => s.hockeyToggles.periodBoxScore);
 
   const onShare = () => {
@@ -234,7 +242,9 @@ function MenuView({
       <Tile label="Sound" icon={<BuzzerIcon className="h-7 w-7" />} onClick={onSound} />
       <Tile label="Music" icon={<NoteGlyph />} onClick={onMusic} />
       <Tile label="Theme" icon={<PaletteGlyph />} onClick={onTheme} />
-      <Tile label="Shot clock" icon={<ClockGlyph />} onClick={onShotClock} />
+      {showShotClock && (
+        <Tile label="Shot clock" icon={<ClockGlyph />} onClick={onShotClock} />
+      )}
       {isBasketball && (
         <Tile label="Box score" icon={<BallGlyph />} onClick={onBoxScore} />
       )}
@@ -414,6 +424,10 @@ function GamePanel() {
   const resetScoresOnly = useGameStore((s) => s.resetScoresOnly);
   const startShootout = useGameStore((s) => s.startShootout);
   const sportId = useGameStore((s) => s.sportId);
+  const customSport = useGameStore((s) => s.customSport);
+  const cfg = resolveSportConfig(sportId, customSport);
+  const showTargetScore = hasFeature(cfg, "targetScore");
+  const showRefereeTimers = hasFeature(cfg, "refereeTimers");
 
   return (
     <PanelShell title="Game">
@@ -428,38 +442,42 @@ function GamePanel() {
         onChange={setKeepAwake}
       />
 
-      <ToggleRow
-        label="Win at a target score"
-        checked={targetEnabled}
-        onChange={setTargetEnabled}
-      />
-      {targetEnabled && (
-        <div className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2">
-          <span className="text-sm font-bold">Target</span>
-          <div className="flex flex-wrap gap-2">
-            {TARGET_PRESETS.map((n) => (
-              <button
-                key={n}
-                type="button"
-                onClick={() => setTargetScore(n)}
-                className={`rounded-full border-2 px-3 py-1 text-sm font-bold transition ${
-                  targetScore === n
-                    ? "border-white bg-white/20 text-white"
-                    : "border-white/40 text-zinc-300 hover:border-white hover:bg-white/10 hover:text-white"
-                }`}
-              >
-                {n}
-              </button>
-            ))}
-          </div>
-          <input
-            type="number"
-            min={1}
-            value={targetScore}
-            onChange={(e) => setTargetScore(Number(e.target.value))}
-            className="ml-auto w-16 rounded-lg border border-white/20 bg-black/40 px-2 py-1 text-center text-base font-black text-white outline-none focus:ring-2 focus:ring-white/30"
+      {showTargetScore && (
+        <>
+          <ToggleRow
+            label="Win at a target score"
+            checked={targetEnabled}
+            onChange={setTargetEnabled}
           />
-        </div>
+          {targetEnabled && (
+            <div className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2">
+              <span className="text-sm font-bold">Target</span>
+              <div className="flex flex-wrap gap-2">
+                {TARGET_PRESETS.map((n) => (
+                  <button
+                    key={n}
+                    type="button"
+                    onClick={() => setTargetScore(n)}
+                    className={`rounded-full border-2 px-3 py-1 text-sm font-bold transition ${
+                      targetScore === n
+                        ? "border-white bg-white/20 text-white"
+                        : "border-white/40 text-zinc-300 hover:border-white hover:bg-white/10 hover:text-white"
+                    }`}
+                  >
+                    {n}
+                  </button>
+                ))}
+              </div>
+              <input
+                type="number"
+                min={1}
+                value={targetScore}
+                onChange={(e) => setTargetScore(Number(e.target.value))}
+                className="ml-auto w-16 rounded-lg border border-white/20 bg-black/40 px-2 py-1 text-center text-base font-black text-white outline-none focus:ring-2 focus:ring-white/30"
+              />
+            </div>
+          )}
+        </>
       )}
 
       <ToggleRow
@@ -473,10 +491,12 @@ function GamePanel() {
         onChange={setBannersEnabled}
       />
 
-      <div className="rounded-xl border border-white/10 bg-white/5 px-3 py-2">
-        <span className="text-sm font-bold">Referee quick timers</span>
-        <RefereeQuickTimers />
-      </div>
+      {showRefereeTimers && (
+        <div className="rounded-xl border border-white/10 bg-white/5 px-3 py-2">
+          <span className="text-sm font-bold">Referee quick timers</span>
+          <RefereeQuickTimers />
+        </div>
+      )}
 
       {sportId === "soccer" && (
         <div className="flex flex-wrap gap-2">
@@ -703,12 +723,21 @@ function ShotClockPanel() {
   const sc = useGameStore((s) => s.shotClock);
   const setEnabled = useGameStore((s) => s.setShotClockEnabled);
   const setDuration = useGameStore((s) => s.setShotClockDuration);
-  const supported = ["basketball", "football"].includes(cfg.id);
+  if (!hasFeature(cfg, "shotClock")) {
+    return (
+      <PanelShell title="Shot clock">
+        <p className="text-sm text-zinc-400">
+          Shot clock is available for basketball only. Pick basketball from the
+          sport menu to use it.
+        </p>
+      </PanelShell>
+    );
+  }
 
   return (
     <PanelShell title="Shot clock">
       <ToggleRow
-        label={`Enable shot clock${supported ? "" : " (any sport)"}`}
+        label="Enable shot clock"
         checked={sc.enabled}
         onChange={setEnabled}
       />

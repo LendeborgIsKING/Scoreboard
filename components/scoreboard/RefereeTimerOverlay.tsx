@@ -3,10 +3,14 @@
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useGameStore } from "@/lib/gameStore";
+import { hasFeature, resolveSportConfig } from "@/lib/sportRegistry";
 
 export function RefereeTimerOverlay() {
+  const sportId = useGameStore((s) => s.sportId);
+  const customSport = useGameStore((s) => s.customSport);
   const timer = useGameStore((s) => s.refereeTimer);
   const dismiss = useGameStore((s) => s.dismissRefereeTimer);
+  const cfg = resolveSportConfig(sportId, customSport);
   const [remaining, setRemaining] = useState(0);
 
   useEffect(() => {
@@ -22,7 +26,7 @@ export function RefereeTimerOverlay() {
     return () => window.clearInterval(id);
   }, [timer, dismiss]);
 
-  if (!timer?.active) return null;
+  if (!hasFeature(cfg, "refereeTimers") || !timer?.active) return null;
 
   return (
     <AnimatePresence>

@@ -25,6 +25,22 @@ export function hasFeature(
   return config.features.includes(feature);
 }
 
+/** Pre-game toggles — only apply options the active sport supports */
+export function gatePreGamePrefs(
+  cfg: SportConfig,
+  prefs: import("./types").PreGameSetupPrefs,
+): import("./types").PreGameSetupPrefs {
+  return {
+    ...prefs,
+    shotClockEnabled:
+      hasFeature(cfg, "shotClock") && prefs.shotClockEnabled,
+    stoppageTimeEnabled:
+      hasFeature(cfg, "stoppageTime") && prefs.stoppageTimeEnabled,
+    targetScoreEnabled:
+      hasFeature(cfg, "targetScore") && prefs.targetScoreEnabled,
+  };
+}
+
 export function resolveActiveVariant(
   cfg: SportConfig,
   timerVariantId: string,
