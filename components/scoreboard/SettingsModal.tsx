@@ -26,6 +26,13 @@ import { searchYouTube, type YouTubeSearchResult } from "@/app/actions/youtube";
 import { playYouTubeVideo, stopYouTubeVideo } from "@/lib/youtubePlayer";
 import { RefereeQuickTimers } from "./RefereeTimerOverlay";
 import { HockeyPanel } from "./HockeyPanel";
+import {
+  MENU_SCROLL_PANE,
+  MenuOverlayHeader,
+  MenuPanelBody,
+  MobileMenuPortal,
+  useLockPageScrollWhileOpen,
+} from "./MenuScrollLayout";
 
 type Props = {
   onClose: () => void;
@@ -83,18 +90,22 @@ export function SettingsModal({
   const [panel, setPanel] = useState<Panel>("menu");
   const setUiPhase = useGameStore((s) => s.setUiPhase);
   const { isMobile } = useIsMobileDevice();
+  useLockPageScrollWhileOpen();
 
   const exitToSportMenu = () => {
     onClose();
     setUiPhase("menu");
   };
+  const backdropClass = isMobile
+    ? "fixed inset-0 z-[200] bg-black/75 backdrop-blur-sm"
+    : "absolute inset-0 z-50 bg-black/75 backdrop-blur-sm";
   const shellClass = isMobile
-    ? "absolute inset-0 flex min-h-0 w-full flex-col bg-black text-white"
+    ? "fixed inset-0 z-[201] flex min-h-0 w-full flex-col bg-black text-white"
     : "absolute left-1/2 top-1/2 flex h-[390px] w-[844px] min-h-0 -translate-x-1/2 -translate-y-1/2 rotate-90 flex-col bg-black text-white";
 
-  return (
+  const overlay = (
     <motion.div
-      className="absolute inset-0 z-50 bg-black/75 backdrop-blur-sm"
+      className={backdropClass}
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
@@ -109,58 +120,71 @@ export function SettingsModal({
         onClick={(e) => e.stopPropagation()}
         className={shellClass}
       >
-        <button
-          type="button"
-          onClick={panel === "menu" ? exitToSportMenu : () => setPanel("menu")}
-          className="absolute left-[max(1.5rem,env(safe-area-inset-left))] top-[max(1rem,env(safe-area-inset-top))] flex flex-col items-center text-white"
-          aria-label={panel === "menu" ? "Exit to sport menu" : "Back"}
-        >
-          <CircleShell>
-            <MenuIcon className="h-7 w-7" />
-          </CircleShell>
-        </button>
+        <MenuOverlayHeader
+          left={
+            <button
+              type="button"
+              onClick={
+                panel === "menu" ? exitToSportMenu : () => setPanel("menu")
+              }
+              className="flex flex-col items-center text-white"
+              aria-label={panel === "menu" ? "Exit to sport menu" : "Back"}
+            >
+              <CircleShell>
+                <MenuIcon className="h-7 w-7" />
+              </CircleShell>
+            </button>
+          }
+          right={
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex flex-col items-center text-white"
+              aria-label="Cancel and return to scoreboard"
+            >
+              <CircleShell>
+                <CloseIcon className="h-7 w-7" />
+              </CircleShell>
+            </button>
+          }
+        />
 
-        <button
-          type="button"
-          onClick={onClose}
-          className="absolute right-[max(1.5rem,env(safe-area-inset-right))] top-[max(1rem,env(safe-area-inset-top))] flex flex-col items-center text-white"
-          aria-label="Cancel and return to scoreboard"
+        <div
+          className={`${MENU_SCROLL_PANE} pb-[max(1.25rem,env(safe-area-inset-bottom))]`}
         >
-          <CircleShell>
-            <CloseIcon className="h-7 w-7" />
-          </CircleShell>
-        </button>
-
-        {panel === "menu" && (
-          <MenuView
-            onEdit={onEdit}
-            onMusic={() => setPanel("music")}
-            onTheme={() => setPanel("theme")}
-            onShotClock={() => setPanel("shotclock")}
-            onBoxScore={() => setPanel("boxscore")}
-            onGame={() => setPanel("game")}
-            onTeamColors={() => setPanel("team-colors")}
-            onHockeyHorn={() => setPanel("hockey-horn")}
-            onHockey={() => setPanel("hockey")}
-            onHockeyPeriods={() => setPanel("hockey-periods")}
-            onStats={onStats}
-            onHistory={onHistory}
-          />
-        )}
-        {panel === "music" && <MusicPanel />}
-        {panel === "theme" && <ThemePanel />}
-        {panel === "shotclock" && <ShotClockPanel />}
-        {panel === "boxscore" && <BoxScorePanel />}
-        {panel === "game" && <GamePanel onReturnToScoreboard={onClose} />}
-        {panel === "team-colors" && <TeamColorsPanel />}
-        {panel === "hockey-horn" && <HockeyHornPanel />}
-        {panel === "hockey" && (
-          <HockeyPanel view="main" onReturnToScoreboard={onClose} />
-        )}
-        {panel === "hockey-periods" && <HockeyPanel view="periods" />}
+          {panel === "menu" && (
+            <MenuView
+              onEdit={onEdit}
+              onMusic={() => setPanel("music")}
+              onTheme={() => setPanel("theme")}
+              onShotClock={() => setPanel("shotclock")}
+              onBoxScore={() => setPanel("boxscore")}
+              onGame={() => setPanel("game")}
+              onTeamColors={() => setPanel("team-colors")}
+              onHockeyHorn={() => setPanel("hockey-horn")}
+              onHockey={() => setPanel("hockey")}
+              onHockeyPeriods={() => setPanel("hockey-periods")}
+              onStats={onStats}
+              onHistory={onHistory}
+            />
+          )}
+          {panel === "music" && <MusicPanel />}
+          {panel === "theme" && <ThemePanel />}
+          {panel === "shotclock" && <ShotClockPanel />}
+          {panel === "boxscore" && <BoxScorePanel />}
+          {panel === "game" && <GamePanel onReturnToScoreboard={onClose} />}
+          {panel === "team-colors" && <TeamColorsPanel />}
+          {panel === "hockey-horn" && <HockeyHornPanel />}
+          {panel === "hockey" && (
+            <HockeyPanel view="main" onReturnToScoreboard={onClose} />
+          )}
+          {panel === "hockey-periods" && <HockeyPanel view="periods" />}
+        </div>
       </motion.div>
     </motion.div>
   );
+
+  return <MobileMenuPortal>{overlay}</MobileMenuPortal>;
 }
 
 function MenuView({
@@ -217,7 +241,7 @@ function MenuView({
   };
 
   return (
-    <div className="mx-auto mt-16 grid max-w-full grid-cols-3 gap-x-4 gap-y-5 px-5 max-sm:mt-14 max-sm:gap-x-3 max-sm:gap-y-4 max-sm:px-4 sm:mt-20 sm:grid-cols-5 sm:gap-x-6 sm:gap-y-4 sm:px-10">
+    <div className="mx-auto grid max-w-full grid-cols-3 gap-x-4 gap-y-5 px-5 pb-4 max-sm:gap-x-3 max-sm:gap-y-4 max-sm:px-4 sm:grid-cols-5 sm:gap-x-6 sm:gap-y-4 sm:px-10">
       <Tile label="Edit" icon={<PencilIcon className="h-7 w-7" />} onClick={onEdit} />
       <Tile label="Game" icon={<SlidersGlyph />} onClick={onGame} />
       <Tile label="Music" icon={<NoteGlyph />} onClick={onMusic} />
@@ -856,12 +880,7 @@ function PanelShell({
   title: string;
   children: ReactNode;
 }) {
-  return (
-    <div className="mt-16 flex min-h-0 flex-1 flex-col gap-3 overflow-auto px-5 pb-[max(1rem,env(safe-area-inset-bottom))] max-sm:mt-14 sm:mt-20 sm:px-12">
-      <h3 className="text-center font-stencil text-3xl">{title}</h3>
-      {children}
-    </div>
-  );
+  return <MenuPanelBody title={title}>{children}</MenuPanelBody>;
 }
 
 function CircleShell({ children }: { children: ReactNode }) {
@@ -1008,7 +1027,7 @@ function HockeyHornPanel() {
         >
           Default horn
         </button>
-        <div className="mt-1 flex-1 overflow-y-auto pr-1">
+        <div className="mt-1 flex flex-col gap-1 pr-1">
           {NHL_TEAMS.map((team) => {
             const start = offsets[team.id] ?? team.defaultStart;
             const isSelected = currentId === team.id;

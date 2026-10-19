@@ -5,10 +5,16 @@ import { useGameStore } from "@/lib/gameStore";
 import { useIsMobileDevice } from "@/hooks/useIsMobileDevice";
 import { resolveActiveVariant, resolveSportConfig } from "@/lib/sportRegistry";
 import { CloseIcon } from "./UiIcons";
+import {
+  MENU_SCROLL_PANE,
+  MobileMenuPortal,
+  useLockPageScrollWhileOpen,
+} from "./MenuScrollLayout";
 
 type Props = { onClose: () => void };
 
 export function StatsModal({ onClose }: Props) {
+  useLockPageScrollWhileOpen();
   const teamA = useGameStore((s) => s.teamA);
   const teamB = useGameStore((s) => s.teamB);
   const periodScores = useGameStore((s) => s.periodScores);
@@ -116,13 +122,16 @@ function ModalShell({
   title: string;
 }) {
   const { isMobile } = useIsMobileDevice();
+  const backdropClass = isMobile
+    ? "fixed inset-0 z-[200] bg-black/80 backdrop-blur-sm"
+    : "absolute inset-0 z-50 bg-black/80 backdrop-blur-sm";
   const shellClass = isMobile
-    ? "absolute inset-0 flex min-h-0 w-full flex-col bg-black p-5 text-white"
-    : "absolute left-1/2 top-1/2 flex h-[390px] w-[844px] min-h-0 -translate-x-1/2 -translate-y-1/2 rotate-90 flex-col bg-black p-5 text-white";
+    ? "fixed inset-0 z-[201] flex min-h-0 w-full flex-col bg-black text-white"
+    : "absolute left-1/2 top-1/2 flex h-[390px] w-[844px] min-h-0 -translate-x-1/2 -translate-y-1/2 rotate-90 flex-col bg-black text-white";
 
-  return (
+  const overlay = (
     <motion.div
-      className="absolute inset-0 z-50 bg-black/80 backdrop-blur-sm"
+      className={backdropClass}
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
@@ -135,7 +144,7 @@ function ModalShell({
         onClick={(e) => e.stopPropagation()}
         className={shellClass}
       >
-        <div className="mb-3 flex items-center justify-between">
+        <div className="flex shrink-0 items-center justify-between gap-3 border-b border-white/10 bg-black px-5 pb-3 pt-[max(0.5rem,env(safe-area-inset-top))]">
           <h2 className="font-stencil text-3xl">{title}</h2>
           <button
             type="button"
@@ -146,10 +155,14 @@ function ModalShell({
             <CloseIcon className="h-5 w-5" />
           </button>
         </div>
-        <div className="flex min-h-0 flex-1 flex-col overflow-auto pb-[env(safe-area-inset-bottom)]">
+        <div
+          className={`${MENU_SCROLL_PANE} px-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-4`}
+        >
           {children}
         </div>
       </motion.div>
     </motion.div>
   );
+
+  return <MobileMenuPortal>{overlay}</MobileMenuPortal>;
 }

@@ -3,6 +3,7 @@
 import { useGameStore } from "@/lib/gameStore";
 import type { HockeyFeatureToggles } from "@/lib/types";
 import { BoxScoreTable } from "./BasketballScoreboard";
+import { MenuPanelBody } from "./MenuScrollLayout";
 import { resolveSportConfig, effectiveMaxPeriods, resolveActiveVariant } from "@/lib/sportRegistry";
 
 function Toggle({
@@ -213,10 +214,5 @@ function PanelShell({
   title: string;
   children: React.ReactNode;
 }) {
-  return (
-    <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-[max(1.5rem,env(safe-area-inset-left))] pb-24 pt-[max(5.5rem,env(safe-area-inset-top))]">
-      <h2 className="mb-4 text-2xl font-black">{title}</h2>
-      <div className="flex flex-col gap-3">{children}</div>
-    </div>
-  );
+  return <MenuPanelBody title={title}>{children}</MenuPanelBody>;
 }

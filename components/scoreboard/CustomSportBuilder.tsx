@@ -55,7 +55,7 @@ export function CustomSportBuilder() {
   };
 
   return (
-    <div className="flex min-h-full flex-1 flex-col bg-black px-5 py-6 text-white pb-[env(safe-area-inset-bottom)] overflow-auto">
+    <div className="flex w-full flex-col bg-black px-5 py-6 pb-[env(safe-area-inset-bottom)] text-white">
       <div className="mb-6 flex items-center justify-between shrink-0">
         <h1 className="text-3xl font-black">Custom Sport</h1>
         <button

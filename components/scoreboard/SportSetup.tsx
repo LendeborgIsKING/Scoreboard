@@ -98,7 +98,7 @@ export function SportSetup() {
     "w-full rounded-lg border border-white/20 bg-black/60 px-3 py-2 text-sm text-white outline-none focus:border-white/50";
 
   return (
-    <div className="flex min-h-full flex-1 flex-col overflow-auto bg-black px-5 pb-[max(2.5rem,env(safe-area-inset-bottom))] pt-2 text-white">
+    <div className="flex w-full flex-col bg-black px-5 pb-[max(2.5rem,env(safe-area-inset-bottom))] pt-2 text-white">
       <button
         type="button"
         onClick={() => setUiPhase("menu")}
@@ -115,7 +115,7 @@ export function SportSetup() {
         </p>
       </div>
 
-      <div className="mt-6 flex flex-1 flex-col space-y-4">
+      <div className="mt-6 flex flex-col space-y-4">
         {(variants.length > 0 || !cfg.noGameClock) && (
           <div>
             <label className="text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-500">

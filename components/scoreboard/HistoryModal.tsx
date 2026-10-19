@@ -4,21 +4,30 @@ import { motion } from "framer-motion";
 import { useGameStore } from "@/lib/gameStore";
 import { useIsMobileDevice } from "@/hooks/useIsMobileDevice";
 import { CloseIcon } from "./UiIcons";
+import {
+  MENU_SCROLL_PANE,
+  MobileMenuPortal,
+  useLockPageScrollWhileOpen,
+} from "./MenuScrollLayout";
 
 type Props = { onClose: () => void };
 
 export function HistoryModal({ onClose }: Props) {
+  useLockPageScrollWhileOpen();
   const history = useGameStore((s) => s.history);
   const finalize = useGameStore((s) => s.finalizeGame);
   const clear = useGameStore((s) => s.clearHistory);
   const { isMobile } = useIsMobileDevice();
+  const backdropClass = isMobile
+    ? "fixed inset-0 z-[200] bg-black/80 backdrop-blur-sm"
+    : "absolute inset-0 z-50 bg-black/80 backdrop-blur-sm";
   const shellClass = isMobile
-    ? "absolute inset-0 flex min-h-0 w-full flex-col bg-black p-5 text-white"
-    : "absolute left-1/2 top-1/2 flex h-[390px] w-[844px] min-h-0 -translate-x-1/2 -translate-y-1/2 rotate-90 flex-col bg-black p-5 text-white";
+    ? "fixed inset-0 z-[201] flex min-h-0 w-full flex-col bg-black text-white"
+    : "absolute left-1/2 top-1/2 flex h-[390px] w-[844px] min-h-0 -translate-x-1/2 -translate-y-1/2 rotate-90 flex-col bg-black text-white";
 
-  return (
+  const overlay = (
     <motion.div
-      className="absolute inset-0 z-50 bg-black/80 backdrop-blur-sm"
+      className={backdropClass}
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
@@ -31,9 +40,21 @@ export function HistoryModal({ onClose }: Props) {
         onClick={(e) => e.stopPropagation()}
         className={shellClass}
       >
-        <div className="mb-3 flex shrink-0 items-center justify-between gap-2 max-sm:flex-wrap">
-          <h2 className="font-stencil text-2xl max-sm:text-xl sm:text-3xl">History</h2>
-          <div className="flex items-center gap-2">
+        <div className="flex shrink-0 flex-col gap-3 border-b border-white/10 bg-black px-5 pb-3 pt-[max(0.5rem,env(safe-area-inset-top))]">
+          <div className="flex items-start justify-between gap-2">
+            <h2 className="font-stencil text-2xl max-sm:text-xl sm:text-3xl">
+              History
+            </h2>
+            <button
+              type="button"
+              onClick={onClose}
+              className="shrink-0 rounded-full p-1 text-zinc-300 hover:bg-white/10 hover:text-white"
+              aria-label="Close"
+            >
+              <CloseIcon className="h-5 w-5" />
+            </button>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
             <button
               type="button"
               onClick={() => finalize()}
@@ -48,20 +69,14 @@ export function HistoryModal({ onClose }: Props) {
             >
               Clear
             </button>
-            <button
-              type="button"
-              onClick={onClose}
-              className="rounded-full p-1 text-zinc-300 hover:bg-white/10 hover:text-white"
-              aria-label="Close"
-            >
-              <CloseIcon className="h-5 w-5" />
-            </button>
           </div>
         </div>
 
-        <div className="flex min-h-0 flex-1 flex-col overflow-hidden pb-[env(safe-area-inset-bottom)]">
+        <div
+          className={`${MENU_SCROLL_PANE} px-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-4`}
+        >
           {history.length === 0 ? (
-            <div className="flex flex-1 items-center justify-center text-sm text-zinc-500">
+            <div className="py-12 text-center text-sm text-zinc-500">
               No games saved yet. Tap{" "}
               <span className="mx-1 font-bold text-white">
                 Save current game
@@ -69,7 +84,7 @@ export function HistoryModal({ onClose }: Props) {
               to add one.
             </div>
           ) : (
-            <div className="flex-1 space-y-2 overflow-auto pr-1">
+            <div className="space-y-2 pr-1">
               {history.map((g) => (
                 <div
                   key={g.id}
@@ -117,4 +132,6 @@ export function HistoryModal({ onClose }: Props) {
       </motion.div>
     </motion.div>
   );
+
+  return <MobileMenuPortal>{overlay}</MobileMenuPortal>;
 }

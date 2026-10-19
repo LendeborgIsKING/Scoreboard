@@ -63,7 +63,7 @@ export function MobileAppShell({
 
     return (
       <div
-        className="relative flex min-h-[100dvh] w-full flex-col bg-black overflow-hidden"
+        className="relative flex h-[100dvh] max-h-[100dvh] w-full flex-col overflow-hidden"
         style={{
           paddingTop: "env(safe-area-inset-top)",
           paddingBottom: "env(safe-area-inset-bottom)",

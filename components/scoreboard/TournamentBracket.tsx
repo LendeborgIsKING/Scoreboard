@@ -61,7 +61,7 @@ export function TournamentBracket() {
 
   if (setupMode) {
     return (
-      <div className="flex min-h-full flex-1 flex-col overflow-auto bg-black px-5 py-6 pb-[env(safe-area-inset-bottom)] text-white">
+      <div className="flex w-full flex-col bg-black px-5 py-6 pb-[env(safe-area-inset-bottom)] text-white">
         <div className="mb-6 flex items-center justify-between">
           <h1 className="text-3xl font-black">New Bracket</h1>
           <button type="button" onClick={() => setUiPhase("menu")} className="text-sm font-bold text-zinc-400 hover:text-white">

@@ -16,14 +16,14 @@ export function SportMenu() {
   };
 
   return (
-    <div className="flex min-h-full flex-1 flex-col bg-black pb-[max(2rem,env(safe-area-inset-bottom))] text-white">
+    <div className="flex w-full flex-col bg-black pb-[max(2rem,env(safe-area-inset-bottom))] text-white">
       <div className="px-5 pb-8 pt-2">
         <p className="text-center text-[10px] font-semibold uppercase tracking-[0.35em] text-zinc-500">
           Scoreboard
         </p>
       </div>
 
-      <nav className="flex flex-1 flex-col" aria-label="Sports">
+      <nav className="flex w-full flex-col" aria-label="Sports">
         {ordered.map((p) => (
           <button
             key={p.id}
