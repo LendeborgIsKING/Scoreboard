@@ -3,7 +3,11 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { useGameStore } from "@/lib/gameStore";
 import { useCountdownTick } from "@/hooks/useCountdownTick";
-import { primeAudioOnFirstGesture } from "@/lib/audio";
+import {
+  applyAudioOutputPrefs,
+  primeAudioOnFirstGesture,
+  watchAudioLifecycle,
+} from "@/lib/audio";
 import { ScoreboardDisplay } from "./ScoreboardDisplay";
 import { SportMenu } from "./SportMenu";
 import { SportSetup } from "./SportSetup";
@@ -30,10 +34,21 @@ export function ScoreboardApp() {
     return unsub;
   }, []);
 
-  // Unlock Web Audio on the very first interaction so taps have zero latency.
   useEffect(() => {
     primeAudioOnFirstGesture();
+    return watchAudioLifecycle();
   }, []);
+
+  useEffect(() => {
+    if (!hydrated) return;
+    const s = useGameStore.getState();
+    applyAudioOutputPrefs({
+      sfxEnabled: s.sfxEnabled,
+      sfxVolume: s.sfxVolume,
+      musicEnabled: s.musicEnabled,
+      musicVolume: s.musicVolume,
+    });
+  }, [hydrated]);
 
   let content: ReactNode;
   if (!hydrated) {

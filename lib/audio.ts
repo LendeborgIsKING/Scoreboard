@@ -52,22 +52,82 @@ function ensureCtx(): AudioContext | null {
 }
 
 let audioUnlocked = false;
+let resumeInFlight: Promise<AudioContext | null> | null = null;
+
+/** Await a running AudioContext (required on iOS / after tab backgrounding). */
+export async function ensureAudioRunning(): Promise<AudioContext | null> {
+  const c = ensureCtx();
+  if (!c || !masterSfxGain) return null;
+  if (c.state === "running") return c;
+  if (resumeInFlight) return resumeInFlight;
+
+  resumeInFlight = (async () => {
+    try {
+      if (c.state === "suspended") await c.resume();
+      if (c.state !== "running") {
+        const buf = c.createBuffer(1, 1, c.sampleRate);
+        const src = c.createBufferSource();
+        src.buffer = buf;
+        src.connect(c.destination);
+        src.start(0);
+        if (c.state === "suspended") await c.resume();
+      }
+    } catch {
+      return null;
+    }
+    return c.state === "running" ? c : null;
+  })().finally(() => {
+    resumeInFlight = null;
+  });
+
+  return resumeInFlight;
+}
+
+/** Sync Web Audio master gains from persisted game prefs (after hydration). */
+export function applyAudioOutputPrefs(prefs: {
+  sfxEnabled: boolean;
+  sfxVolume: number;
+  musicEnabled: boolean;
+  musicVolume: number;
+}) {
+  ensureCtx();
+  setSfxVolume(prefs.sfxEnabled ? prefs.sfxVolume : 0);
+  setMusicVolume(prefs.musicEnabled ? prefs.musicVolume : 0);
+}
+
+/** Resume audio when the tab or window becomes active again. */
+export function watchAudioLifecycle(): () => void {
+  if (typeof window === "undefined") return () => {};
+  const resumeIfNeeded = () => {
+    if (document.visibilityState === "visible") void ensureAudioRunning();
+  };
+  document.addEventListener("visibilitychange", resumeIfNeeded);
+  window.addEventListener("pageshow", resumeIfNeeded);
+  window.addEventListener("focus", resumeIfNeeded);
+  return () => {
+    document.removeEventListener("visibilitychange", resumeIfNeeded);
+    window.removeEventListener("pageshow", resumeIfNeeded);
+    window.removeEventListener("focus", resumeIfNeeded);
+  };
+}
+
 /** Resume the audio context on the very first user gesture. iOS/Safari leaves
  *  it suspended until then; doing this proactively means the first real tap
  *  doesn't lose any audio. */
 export function primeAudioOnFirstGesture() {
-  if (typeof window === "undefined" || audioUnlocked) return;
+  if (typeof window === "undefined") return;
   const unlock = () => {
-    audioUnlocked = true;
-    const c = ensureCtx();
-    if (c && c.state === "suspended") c.resume().catch(() => {});
-    window.removeEventListener("pointerdown", unlock);
-    window.removeEventListener("touchstart", unlock);
-    window.removeEventListener("keydown", unlock);
+    void ensureAudioRunning().then((c) => {
+      if (c?.state !== "running") return;
+      audioUnlocked = true;
+      window.removeEventListener("pointerdown", unlock);
+      window.removeEventListener("touchstart", unlock);
+      window.removeEventListener("keydown", unlock);
+    });
   };
-  window.addEventListener("pointerdown", unlock, { once: false, passive: true });
-  window.addEventListener("touchstart", unlock, { once: false, passive: true });
-  window.addEventListener("keydown", unlock, { once: false });
+  window.addEventListener("pointerdown", unlock, { passive: true });
+  window.addEventListener("touchstart", unlock, { passive: true });
+  window.addEventListener("keydown", unlock);
 }
 
 export function setSfxVolume(v: number) {
@@ -249,10 +309,8 @@ export function speakAnnouncement(text: string) {
   }
 }
 
-export function playSfx(name: SfxName) {
-  const c = ensureCtx();
-  if (!c || !masterSfxGain) return;
-  if (c.state === "suspended") c.resume().catch(() => {});
+function dispatchSfx(c: AudioContext, name: SfxName) {
+  if (!masterSfxGain) return;
   switch (name) {
     case "chime":
       chime(c, masterSfxGain);
@@ -288,6 +346,13 @@ export function playSfx(name: SfxName) {
       tickSfx(c, masterSfxGain);
       break;
   }
+}
+
+export function playSfx(name: SfxName) {
+  void ensureAudioRunning().then((c) => {
+    if (!c) return;
+    dispatchSfx(c, name);
+  });
 }
 
 /** Basketball shot sample — routed through master SFX gain with other effects. */
@@ -348,17 +413,14 @@ export function stopActiveSfxClip() {
  *  `AudioBufferSourceNode` for zero-latency playback. Otherwise it falls
  *  back to a streaming `<audio>` element.
  */
-export function playSfxClip(
+function playSfxClipWithContext(
+  c: AudioContext,
   src: string,
   startSec = 0,
   endSec?: number,
   opts: PlayClipOptions = {},
 ) {
-  // Stop any currently playing clip
-  stopActiveSfxClip();
-  const c = ensureCtx();
-  if (!c || !masterSfxGain) return;
-  if (c.state === "suspended") c.resume().catch(() => {});
+  if (!masterSfxGain) return;
 
   // Fast path: decoded buffer cached → instant playback, sample-accurate stop.
   const cached = decodedClipCache.get(src);
@@ -444,6 +506,19 @@ export function playSfxClip(
   } else {
     audio.play().catch(() => cleanup(false));
   }
+}
+
+export function playSfxClip(
+  src: string,
+  startSec = 0,
+  endSec?: number,
+  opts: PlayClipOptions = {},
+) {
+  stopActiveSfxClip();
+  void ensureAudioRunning().then((c) => {
+    if (!c) return;
+    playSfxClipWithContext(c, src, startSec, endSec, opts);
+  });
 }
 
 /** Short haptic vibration on supported devices. Safe no-op elsewhere. */
@@ -662,32 +737,32 @@ function startShufflePlaylist(
 const ANTHEM_MP3 = "/music/star-spangled-banner-anthem.mp3";
 
 export function setMusic(track: MusicTrack) {
-  const c = ensureCtx();
-  if (!c || !masterMusicGain) return;
-  if (c.state === "suspended") c.resume().catch(() => {});
   if (track === currentTrack) return;
-  if (musicNodes) {
-    musicNodes.stop();
-    musicNodes = null;
-  }
-  currentTrack = track;
-  if (track === "none") return;
-  if (track === "hype")
-    musicNodes = startTrackFromFile(
-      c,
-      masterMusicGain,
-      "/music/kernkraft.mp3",
-      45,
-      105,
-    );
-  if (track === "anthem")
-    musicNodes = startTrackFromFile(c, masterMusicGain, ANTHEM_MP3, 0);
-  if (track === "shuffle")
-    musicNodes = startShufflePlaylist(c, masterMusicGain);
-  if (track === "youtube") {
-    // YouTube audio is handled by the IFrame player component.
-    return;
-  }
+  void ensureAudioRunning().then((c) => {
+    if (!c || !masterMusicGain) return;
+    if (musicNodes) {
+      musicNodes.stop();
+      musicNodes = null;
+    }
+    currentTrack = track;
+    if (track === "none") return;
+    if (track === "hype")
+      musicNodes = startTrackFromFile(
+        c,
+        masterMusicGain,
+        "/music/kernkraft.mp3",
+        45,
+        105,
+      );
+    if (track === "anthem")
+      musicNodes = startTrackFromFile(c, masterMusicGain, ANTHEM_MP3, 0);
+    if (track === "shuffle")
+      musicNodes = startShufflePlaylist(c, masterMusicGain);
+    if (track === "youtube") {
+      // YouTube audio is handled by the IFrame player component.
+      return;
+    }
+  });
 }
 
 export function getCurrentTrack(): MusicTrack {
@@ -723,10 +798,16 @@ export function setThemeAmbient(themeId: string) {
   currentThemeAmbient = themeId;
   const cfg = THEME_AMBIENTS[themeId];
   if (!cfg) return;
-  const c = ensureCtx();
-  if (!c || !ambientGain) return;
-  if (c.state === "suspended") c.resume().catch(() => {});
-  themeAmbientNodes = startTrackFromFile(c, ambientGain, cfg.src, cfg.loopStart, cfg.loopEnd);
+  void ensureAudioRunning().then((c) => {
+    if (!c || !ambientGain) return;
+    themeAmbientNodes = startTrackFromFile(
+      c,
+      ambientGain,
+      cfg.src,
+      cfg.loopStart,
+      cfg.loopEnd,
+    );
+  });
 }
 
 export function stopThemeAmbient() {
