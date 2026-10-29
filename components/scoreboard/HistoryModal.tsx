@@ -6,9 +6,12 @@ import { useIsMobileDevice } from "@/hooks/useIsMobileDevice";
 import { CloseIcon } from "./UiIcons";
 import {
   FitScreen,
+  MenuOverlayHeader,
   MobileMenuPortal,
   useLockPageScrollWhileOpen,
 } from "./MenuScrollLayout";
+import { SettingsLayoutProvider, useSettingsLayout } from "./SettingsLayoutContext";
+import { usePhoneLandscape } from "@/hooks/usePhoneLandscape";
 
 type Props = { onClose: () => void };
 
@@ -21,6 +24,7 @@ export function HistoryModal({ onClose }: Props) {
   const finalize = useGameStore((s) => s.finalizeGame);
   const clear = useGameStore((s) => s.clearHistory);
   const { isMobile } = useIsMobileDevice();
+  const { isPhoneLandscape } = usePhoneLandscape();
   const backdropClass = isMobile
     ? "fixed inset-0 z-[200] bg-black/80 backdrop-blur-sm"
     : "absolute inset-0 z-50 bg-black/80 backdrop-blur-sm";
@@ -46,27 +50,89 @@ export function HistoryModal({ onClose }: Props) {
         onClick={(e) => e.stopPropagation()}
         className={shellClass}
       >
-        <div className="grid shrink-0 grid-cols-[2rem_1fr_2rem] items-center gap-3 bg-black px-5 pb-2 pt-[max(0.75rem,env(safe-area-inset-top))]">
-          <span aria-hidden />
-          <h2 className="text-center font-stencil text-3xl">History</h2>
+        <SettingsLayoutProvider>
+          <MenuOverlayHeader
+            title="History"
+            compact={isPhoneLandscape}
+            left={<span aria-hidden />}
+            right={
+              <button
+                type="button"
+                onClick={onClose}
+                className="rounded-full p-1 text-zinc-300 hover:bg-white/10 hover:text-white"
+                aria-label="Close"
+              >
+                <CloseIcon className="h-5 w-5" />
+              </button>
+            }
+          />
+
+        <FitScreen
+          className={
+            isPhoneLandscape
+              ? "px-[max(0.5rem,env(safe-area-inset-left))]"
+              : undefined
+          }
+        >
+          <HistoryList visible={visible} hidden={hidden} historyLength={history.length} />
+        </FitScreen>
+
+        <div
+          className={`flex shrink-0 justify-center gap-3 px-5 pt-2 ${
+            isPhoneLandscape
+              ? "pb-[max(0.35rem,env(safe-area-inset-bottom))]"
+              : "pb-[max(1.25rem,env(safe-area-inset-bottom))]"
+          }`}
+        >
           <button
             type="button"
-            onClick={onClose}
-            className="justify-self-end rounded-full p-1 text-zinc-300 hover:bg-white/10 hover:text-white"
-            aria-label="Close"
+            onClick={() => finalize()}
+            className="rounded-full border border-white/50 px-4 py-2 text-xs font-bold uppercase tracking-widest text-white transition hover:border-white hover:bg-white/10"
           >
-            <CloseIcon className="h-5 w-5" />
+            Save current game
           </button>
+          {history.length > 0 && (
+            <button
+              type="button"
+              onClick={() => clear()}
+              className="rounded-full bg-red-600/20 px-4 py-2 text-xs font-bold uppercase tracking-widest text-red-300 hover:bg-red-600/30"
+            >
+              Clear
+            </button>
+          )}
         </div>
+        </SettingsLayoutProvider>
+      </motion.div>
+    </motion.div>
+  );
 
-        <FitScreen>
-          <div className="mx-auto w-full max-w-md px-5 py-2">
-            {history.length === 0 ? (
+  return <MobileMenuPortal>{overlay}</MobileMenuPortal>;
+}
+
+function HistoryList({
+  visible,
+  hidden,
+  historyLength,
+}: {
+  visible: ReturnType<typeof useGameStore.getState>["history"];
+  hidden: number;
+  historyLength: number;
+}) {
+  const { isPhoneLandscape } = useSettingsLayout();
+  return (
+          <div className={`mx-auto w-full px-5 py-2 ${isPhoneLandscape ? "max-w-5xl" : "max-w-md"}`}>
+            {historyLength === 0 ? (
               <div className="py-12 text-center text-sm text-zinc-500">
                 No games saved yet.
               </div>
             ) : (
-              <div className="flex flex-col gap-2">
+              <div
+                className={
+                  isPhoneLandscape
+                    ? "grid grid-cols-2 gap-2"
+                    : "flex flex-col gap-2"
+                }
+              >
                 {visible.map((g) => (
                   <div
                     key={g.id}
@@ -88,38 +154,18 @@ export function HistoryModal({ onClose }: Props) {
                   </div>
                 ))}
                 {hidden > 0 && (
-                  <p className="text-center text-xs text-zinc-500">
+                  <p
+                    className={`text-center text-xs text-zinc-500 ${
+                      isPhoneLandscape ? "col-span-2" : ""
+                    }`}
+                  >
                     + {hidden} older game{hidden === 1 ? "" : "s"}
                   </p>
                 )}
               </div>
             )}
           </div>
-        </FitScreen>
-
-        <div className="flex shrink-0 justify-center gap-3 px-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-2">
-          <button
-            type="button"
-            onClick={() => finalize()}
-            className="rounded-full border border-white/50 px-4 py-2 text-xs font-bold uppercase tracking-widest text-white transition hover:border-white hover:bg-white/10"
-          >
-            Save current game
-          </button>
-          {history.length > 0 && (
-            <button
-              type="button"
-              onClick={() => clear()}
-              className="rounded-full bg-red-600/20 px-4 py-2 text-xs font-bold uppercase tracking-widest text-red-300 hover:bg-red-600/30"
-            >
-              Clear
-            </button>
-          )}
-        </div>
-      </motion.div>
-    </motion.div>
   );
-
-  return <MobileMenuPortal>{overlay}</MobileMenuPortal>;
 }
 
 function winnerClass(won: boolean, tie: boolean) {

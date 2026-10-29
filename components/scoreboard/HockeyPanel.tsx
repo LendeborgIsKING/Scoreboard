@@ -4,6 +4,7 @@ import { useGameStore } from "@/lib/gameStore";
 import type { HockeyFeatureToggles, TeamId } from "@/lib/types";
 import { BoxScoreTable } from "./BasketballScoreboard";
 import { MenuPanelBody } from "./MenuScrollLayout";
+import { PanelGrid, PanelWide } from "./SettingsLayoutContext";
 import { resolveSportConfig, effectiveMaxPeriods, resolveActiveVariant } from "@/lib/sportRegistry";
 
 function Toggle({
@@ -104,25 +105,27 @@ export function HockeyPanel({
 
   return (
     <PanelShell title="Hockey">
-      <p className="mb-3 text-xs text-zinc-500">
+      <PanelGrid>
+      <PanelWide>
+      <p className="text-xs text-zinc-500">
         Features stay off the scoreboard until you turn them on. Shots on goal appear centered under the clock when enabled.
       </p>
+      </PanelWide>
 
-      <div className="space-y-2">
-        {(Object.keys(TOGGLE_LABELS) as (keyof HockeyFeatureToggles)[]).map(
-          (key) => (
-            <Toggle
-              key={key}
-              label={TOGGLE_LABELS[key]}
-              checked={toggles[key]}
-              onChange={(v) => setToggle(key, v)}
-            />
-          ),
-        )}
-      </div>
+      {(Object.keys(TOGGLE_LABELS) as (keyof HockeyFeatureToggles)[]).map(
+        (key) => (
+          <Toggle
+            key={key}
+            label={TOGGLE_LABELS[key]}
+            checked={toggles[key]}
+            onChange={(v) => setToggle(key, v)}
+          />
+        ),
+      )}
 
       {toggles.puckDropDelay && (
-        <div className="mt-4 rounded-xl border border-white/10 bg-white/5 p-3">
+        <PanelWide>
+        <div className="rounded-xl border border-white/10 bg-white/5 p-3">
           <label className="text-xs font-bold uppercase text-zinc-500">
             Puck-drop delay (seconds)
           </label>
@@ -135,10 +138,12 @@ export function HockeyPanel({
             className="mt-2 w-full rounded-lg border border-white/20 bg-black/40 px-3 py-2 text-white"
           />
         </div>
+        </PanelWide>
       )}
 
       {toggles.emptyNetIndicator && (
-        <div className="mt-4 rounded-xl border border-white/10 bg-white/5 p-3">
+        <PanelWide>
+        <div className="rounded-xl border border-white/10 bg-white/5 p-3">
           <p className="text-sm font-bold">Empty net</p>
           <p className="mt-1 text-xs text-zinc-500">
             Shows an EN badge on the scoreboard for the team with the empty net. You can also tap EN under a team name during the game.
@@ -180,9 +185,11 @@ export function HockeyPanel({
             )}
           </div>
         </div>
+        </PanelWide>
       )}
 
-      <div className="mt-6 rounded-xl border border-sky-500/30 bg-sky-950/40 p-3">
+      <PanelWide>
+      <div className="rounded-xl border border-sky-500/30 bg-sky-950/40 p-3">
         <p className="text-sm font-bold text-sky-200">Shootout</p>
         <p className="mt-1 text-xs text-zinc-500">
           Opens a full-screen shootout tracker on the scoreboard.
@@ -198,6 +205,8 @@ export function HockeyPanel({
           Start shootout
         </button>
       </div>
+      </PanelWide>
+      </PanelGrid>
     </PanelShell>
   );
 }

@@ -9,6 +9,7 @@ import {
   type ReactNode,
 } from "react";
 import { useIsMobileDevice } from "@/hooks/useIsMobileDevice";
+import { useSettingsLayout } from "./SettingsLayoutContext";
 
 /** Below this, text gets too small to read; layouts should be compact enough to stay above it. */
 const MIN_FIT_SCALE = 0.6;
@@ -52,11 +53,14 @@ export function FitScreen({
     if (!outer || !inner) return;
     const compute = () => {
       const availH = outer.clientHeight;
+      const availW = outer.clientWidth;
       const needH = inner.offsetHeight;
+      const needW = inner.offsetWidth;
       if (!availH || !needH) return;
-      setScale(
-        needH > availH ? Math.max(MIN_FIT_SCALE, availH / needH) : 1,
-      );
+      const scaleH = needH > availH ? availH / needH : 1;
+      const scaleW = needW > availW ? availW / needW : 1;
+      const next = Math.min(scaleH, scaleW);
+      setScale(next < 1 ? Math.max(MIN_FIT_SCALE, next) : 1);
     };
     compute();
     const ro = new ResizeObserver(compute);
@@ -101,15 +105,32 @@ export function MenuOverlayHeader({
   left,
   right,
   title,
+  compact,
 }: {
   left: ReactNode;
   right: ReactNode;
   title?: string;
+  /** Tighter bar for phone landscape (scoreboard grip). */
+  compact?: boolean;
 }) {
+  const { isPhoneLandscape } = useSettingsLayout();
+  const tight = compact ?? isPhoneLandscape;
   return (
-    <header className="relative z-10 grid shrink-0 grid-cols-[1fr_auto_1fr] items-center gap-3 bg-black px-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,env(safe-area-inset-right))] pb-2 pt-[max(0.75rem,env(safe-area-inset-top))]">
+    <header
+      className={`relative z-10 grid shrink-0 grid-cols-[1fr_auto_1fr] items-center gap-2 bg-black px-[max(0.75rem,env(safe-area-inset-left))] pr-[max(0.75rem,env(safe-area-inset-right))] ${
+        tight
+          ? "border-b border-white/10 py-1 pt-[max(0.35rem,env(safe-area-inset-top))]"
+          : "pb-2 pt-[max(0.75rem,env(safe-area-inset-top))]"
+      }`}
+    >
       <div className="justify-self-start">{left}</div>
-      <h2 className="truncate text-center text-sm font-bold uppercase tracking-[0.25em] text-zinc-400">
+      <h2
+        className={`truncate text-center font-bold uppercase text-zinc-400 ${
+          tight
+            ? "text-xs tracking-[0.2em]"
+            : "text-sm tracking-[0.25em]"
+        }`}
+      >
         {title}
       </h2>
       <div className="justify-self-end">{right}</div>
@@ -124,6 +145,15 @@ export function MenuPanelBody({
   title: string;
   children: ReactNode;
 }) {
+  const { isPhoneLandscape } = useSettingsLayout();
+  if (isPhoneLandscape) {
+    return (
+      <div className="mx-auto flex w-full max-w-5xl flex-col gap-2 px-[max(1rem,env(safe-area-inset-left))] py-1">
+        <h3 className="sr-only">{title}</h3>
+        {children}
+      </div>
+    );
+  }
   return (
     <div className="mx-auto flex w-full max-w-md flex-col gap-3 px-5 py-4">
       <h3 className="text-center font-stencil text-3xl">{title}</h3>

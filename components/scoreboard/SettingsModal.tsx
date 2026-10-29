@@ -33,6 +33,13 @@ import {
   MobileMenuPortal,
   useLockPageScrollWhileOpen,
 } from "./MenuScrollLayout";
+import {
+  PanelGrid,
+  PanelWide,
+  SettingsLayoutProvider,
+  useSettingsLayout,
+} from "./SettingsLayoutContext";
+import { usePhoneLandscape } from "@/hooks/usePhoneLandscape";
 
 type Props = {
   onClose: () => void;
@@ -81,6 +88,19 @@ const TRACKS: {
 
 const SC_PRESETS = [10, 14, 24, 30, 35, 45];
 
+const PANEL_TITLES: Record<Panel, string> = {
+  menu: "Settings",
+  music: "Music",
+  theme: "Theme",
+  shotclock: "Shot clock",
+  boxscore: "Box score",
+  game: "Game",
+  "team-colors": "Colors",
+  "hockey-horn": "Goal horns",
+  hockey: "Hockey",
+  "hockey-periods": "Period scores",
+};
+
 export function SettingsModal({
   onClose,
   onEdit,
@@ -90,6 +110,7 @@ export function SettingsModal({
   const [panel, setPanel] = useState<Panel>("menu");
   const setUiPhase = useGameStore((s) => s.setUiPhase);
   const { isMobile } = useIsMobileDevice();
+  const { isPhoneLandscape } = usePhoneLandscape();
   useLockPageScrollWhileOpen();
 
   const exitToSportMenu = () => {
@@ -100,7 +121,9 @@ export function SettingsModal({
     ? "fixed inset-0 z-[200] bg-black/75 backdrop-blur-sm"
     : "absolute inset-0 z-50 bg-black/75 backdrop-blur-sm";
   const shellClass = isMobile
-    ? "fixed inset-0 z-[201] flex min-h-0 w-full flex-col bg-black text-white"
+    ? isPhoneLandscape
+      ? "fixed inset-0 z-[201] flex min-h-0 w-full flex-col bg-black text-white pb-[max(0.35rem,env(safe-area-inset-bottom))]"
+      : "fixed inset-0 z-[201] flex min-h-0 w-full flex-col bg-black text-white"
     : "absolute left-1/2 top-1/2 flex h-[390px] w-[844px] min-h-0 -translate-x-1/2 -translate-y-1/2 rotate-90 flex-col bg-black text-white";
 
   const overlay = (
@@ -120,7 +143,10 @@ export function SettingsModal({
         onClick={(e) => e.stopPropagation()}
         className={shellClass}
       >
+        <SettingsLayoutProvider>
         <MenuOverlayHeader
+          title={PANEL_TITLES[panel]}
+          compact={isPhoneLandscape}
           left={
             <button
               type="button"
@@ -128,8 +154,8 @@ export function SettingsModal({
               className="flex flex-col items-center text-white"
               aria-label="Cancel and return to scoreboard"
             >
-              <CircleShell>
-                <CloseIcon className="h-7 w-7" />
+              <CircleShell compact={isPhoneLandscape}>
+                <CloseIcon className={isPhoneLandscape ? "h-5 w-5" : "h-7 w-7"} />
               </CircleShell>
             </button>
           }
@@ -142,8 +168,8 @@ export function SettingsModal({
               className="flex flex-col items-center text-white"
               aria-label={panel === "menu" ? "Exit to sport menu" : "Back"}
             >
-              <CircleShell>
-                <MenuIcon className="h-7 w-7" />
+              <CircleShell compact={isPhoneLandscape}>
+                <MenuIcon className={isPhoneLandscape ? "h-5 w-5" : "h-7 w-7"} />
               </CircleShell>
             </button>
           }
@@ -151,7 +177,11 @@ export function SettingsModal({
 
         <FitScreen
           key={panel}
-          className="pb-[max(1.25rem,env(safe-area-inset-bottom))]"
+          className={
+            isPhoneLandscape
+              ? "px-[max(0.25rem,env(safe-area-inset-left))]"
+              : "pb-[max(1.25rem,env(safe-area-inset-bottom))]"
+          }
         >
           {panel === "menu" && (
             <MenuView
@@ -181,6 +211,7 @@ export function SettingsModal({
           )}
           {panel === "hockey-periods" && <HockeyPanel view="periods" />}
         </FitScreen>
+        </SettingsLayoutProvider>
       </motion.div>
     </motion.div>
   );
@@ -241,29 +272,37 @@ function MenuView({
     });
   };
 
+  const { isPhoneLandscape } = useSettingsLayout();
+
   return (
-    <div className="mx-auto grid max-w-full grid-cols-3 gap-x-4 gap-y-5 px-5 pb-4 max-sm:gap-x-3 max-sm:gap-y-4 max-sm:px-4 sm:grid-cols-5 sm:gap-x-6 sm:gap-y-4 sm:px-10">
-      <Tile label="Edit" icon={<PencilIcon className="h-7 w-7" />} onClick={onEdit} />
-      <Tile label="Game" icon={<SlidersGlyph />} onClick={onGame} />
-      <Tile label="Music" icon={<NoteGlyph />} onClick={onMusic} />
-      <Tile label="Theme" icon={<PaletteGlyph />} onClick={onTheme} />
+    <div
+      className={
+        isPhoneLandscape
+          ? "mx-auto grid max-w-5xl grid-cols-6 gap-x-2 gap-y-2 px-2 pb-1"
+          : "mx-auto grid max-w-full grid-cols-3 gap-x-4 gap-y-5 px-5 pb-4 max-sm:gap-x-3 max-sm:gap-y-4 max-sm:px-4 sm:grid-cols-5 sm:gap-x-6 sm:gap-y-4 sm:px-10"
+      }
+    >
+      <Tile label="Edit" icon={<PencilIcon className="h-7 w-7" />} onClick={onEdit} compact={isPhoneLandscape} />
+      <Tile label="Game" icon={<SlidersGlyph />} onClick={onGame} compact={isPhoneLandscape} />
+      <Tile label="Music" icon={<NoteGlyph />} onClick={onMusic} compact={isPhoneLandscape} />
+      <Tile label="Theme" icon={<PaletteGlyph />} onClick={onTheme} compact={isPhoneLandscape} />
       {showShotClock && (
-        <Tile label="Shot clock" icon={<ClockGlyph />} onClick={onShotClock} />
+        <Tile label="Shot clock" icon={<ClockGlyph />} onClick={onShotClock} compact={isPhoneLandscape} />
       )}
       {isBasketball && (
-        <Tile label="Box score" icon={<BallGlyph />} onClick={onBoxScore} />
+        <Tile label="Box score" icon={<BallGlyph />} onClick={onBoxScore} compact={isPhoneLandscape} />
       )}
 
-      <Tile label="Colors" icon={<DropGlyph />} onClick={onTeamColors} />
-      <Tile label="Stats" icon={<BarGlyph />} onClick={onStats} />
-      <Tile label="History" icon={<ListGlyph />} onClick={onHistory} />
-      <Tile label="Share" icon={<ShareGlyph />} onClick={onShare} />
+      <Tile label="Colors" icon={<DropGlyph />} onClick={onTeamColors} compact={isPhoneLandscape} />
+      <Tile label="Stats" icon={<BarGlyph />} onClick={onStats} compact={isPhoneLandscape} />
+      <Tile label="History" icon={<ListGlyph />} onClick={onHistory} compact={isPhoneLandscape} />
+      <Tile label="Share" icon={<ShareGlyph />} onClick={onShare} compact={isPhoneLandscape} />
       {isHockey && (
         <>
-          <Tile label="Hockey" icon={<HornGlyph />} onClick={onHockey} />
-          <Tile label="Goal Horns" icon={<HornGlyph />} onClick={onHockeyHorn} />
+          <Tile label="Hockey" icon={<HornGlyph />} onClick={onHockey} compact={isPhoneLandscape} />
+          <Tile label="Horns" icon={<HornGlyph />} onClick={onHockeyHorn} compact={isPhoneLandscape} />
           {hockeyPeriodBox && (
-            <Tile label="Period scores" icon={<BallGlyph />} onClick={onHockeyPeriods} />
+            <Tile label="Periods" icon={<BallGlyph />} onClick={onHockeyPeriods} compact={isPhoneLandscape} />
           )}
         </>
       )}
@@ -275,10 +314,12 @@ function Tile({
   label,
   icon,
   onClick,
+  compact,
 }: {
   label: string;
   icon: ReactNode;
   onClick: () => void;
+  compact?: boolean;
 }) {
   return (
     <motion.button
@@ -291,8 +332,12 @@ function Tile({
       whileHover={{ scale: 1.04 }}
       className="flex flex-col items-center text-white touch-manipulation"
     >
-      <CircleShell>{icon}</CircleShell>
-      <span className="mt-1 text-base font-black uppercase tracking-wider">
+      <CircleShell compact={compact}>{icon}</CircleShell>
+      <span
+        className={`mt-0.5 text-center font-black uppercase leading-tight ${
+          compact ? "text-[9px] tracking-wide" : "text-base tracking-wider"
+        }`}
+      >
         {label}
       </span>
     </motion.button>
@@ -327,6 +372,7 @@ function GamePanel({
 
   return (
     <PanelShell title="Game">
+      <PanelGrid>
       <ToggleRow
         label="Auto-start clock on first score"
         checked={autoStart}
@@ -346,6 +392,7 @@ function GamePanel({
             onChange={setTargetEnabled}
           />
           {targetEnabled && (
+            <PanelWide>
             <div className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2">
               <span className="text-sm font-bold">Target</span>
               <div className="flex flex-wrap gap-2">
@@ -372,6 +419,7 @@ function GamePanel({
                 className="ml-auto w-16 rounded-lg border border-white/20 bg-black/40 px-2 py-1 text-center text-base font-black text-white outline-none focus:ring-2 focus:ring-white/30"
               />
             </div>
+            </PanelWide>
           )}
         </>
       )}
@@ -388,13 +436,16 @@ function GamePanel({
       />
 
       {showRefereeTimers && (
+        <PanelWide>
         <div className="rounded-xl border border-white/10 bg-white/5 px-3 py-2">
           <span className="text-sm font-bold">Referee quick timers</span>
           <RefereeQuickTimers onAfterStart={onReturnToScoreboard} />
         </div>
+        </PanelWide>
       )}
 
       {sportId === "soccer" && preGameSetup.penaltyShootoutEnabled && (
+        <PanelWide>
         <div className="rounded-xl border border-white/10 bg-white/5 p-3">
           <p className="text-sm font-bold text-white">Penalty shootout</p>
           <p className="mt-1 text-xs text-zinc-500">
@@ -411,13 +462,17 @@ function GamePanel({
             Start penalties
           </button>
         </div>
+        </PanelWide>
       )}
       {sportId === "hockey" && (
+        <PanelWide>
         <p className="text-xs text-zinc-500">
           Shootout and overtime options are in Settings → Hockey.
         </p>
+        </PanelWide>
       )}
 
+      <PanelWide>
       <button
         type="button"
         onClick={() => resetScoresOnly()}
@@ -429,6 +484,8 @@ function GamePanel({
         Reset scores clears points, fouls, and the period but keeps teams,
         colors, theme, and clock settings.
       </p>
+      </PanelWide>
+      </PanelGrid>
     </PanelShell>
   );
 }
@@ -458,12 +515,14 @@ function MusicPanel() {
 
   return (
     <PanelShell title="Music">
+      <PanelGrid>
       <ToggleRow
         label="Enable music"
         checked={enabled}
         onChange={setEnabled}
       />
       <SliderRow label="Volume" value={volume} onChange={setVol} />
+      <PanelWide>
       <div className="mt-2 flex flex-wrap justify-center gap-2">
         {TRACKS.map((t) => (
           <button
@@ -480,8 +539,10 @@ function MusicPanel() {
           </button>
         ))}
       </div>
+      </PanelWide>
       
       {/* Mini YouTube Screen */}
+      <PanelWide>
       <div className="mt-4 rounded-xl border border-white/10 bg-black/40 p-3">
         <h3 className="mb-2 text-sm font-bold uppercase tracking-wider text-zinc-400">YouTube Player</h3>
         <form onSubmit={handleSearch} className="flex gap-2">
@@ -549,10 +610,14 @@ function MusicPanel() {
           </div>
         )}
       </div>
+      </PanelWide>
 
+      <PanelWide>
       <p className="mt-3 text-xs text-zinc-500">
         Background music plays normally. Final Countdown interrupts and turns other music off.
       </p>
+      </PanelWide>
+      </PanelGrid>
     </PanelShell>
   );
 }
@@ -560,22 +625,33 @@ function MusicPanel() {
 function ThemePanel() {
   const theme = useGameStore((s) => s.theme);
   const setTheme = useGameStore((s) => s.setTheme);
+  const { isPhoneLandscape } = useSettingsLayout();
   return (
     <PanelShell title="Theme">
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-3">
+      <div
+        className={
+          isPhoneLandscape
+            ? "grid grid-cols-4 gap-1.5 sm:grid-cols-6"
+            : "grid grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-3"
+        }
+      >
         {THEMES.map((t) => (
           <button
             key={t.id}
             type="button"
             onClick={() => setTheme(t.id)}
-            className={`flex flex-col items-start gap-2 rounded-xl border-2 p-3 transition max-sm:p-2.5 sm:flex-row sm:items-center sm:gap-3 ${
+            className={`flex flex-col items-center gap-1 rounded-xl border-2 transition ${
+              isPhoneLandscape ? "p-1.5" : "items-start gap-2 p-3 max-sm:p-2.5 sm:flex-row sm:items-center sm:gap-3"
+            } ${
               theme === t.id
                 ? "border-white bg-white/10"
                 : "border-white/10 hover:border-white/30"
             }`}
           >
-            <span className={`h-10 w-10 rounded-lg ${t.chip}`} />
-            <span className="text-base font-bold">{t.label}</span>
+            <span className={`rounded-lg ${t.chip} ${isPhoneLandscape ? "h-7 w-7" : "h-10 w-10"}`} />
+            <span className={`font-bold ${isPhoneLandscape ? "text-[10px] leading-tight" : "text-base"}`}>
+              {t.label}
+            </span>
           </button>
         ))}
       </div>
@@ -683,9 +759,10 @@ function TeamColorsPanel() {
     "#ec4899",
     "#facc15",
   ];
+  const { isPhoneLandscape } = useSettingsLayout();
   return (
     <PanelShell title="Team colors & logos">
-      <div className="grid grid-cols-2 gap-4">
+      <div className={`grid gap-4 ${isPhoneLandscape ? "grid-cols-2 gap-2" : "grid-cols-2"}`}>
         <ColorBlock
           name={teamA.name}
           color={teamA.color}
@@ -829,9 +906,16 @@ function ToggleRow({
   checked: boolean;
   onChange: (v: boolean) => void;
 }) {
+  const { isPhoneLandscape } = useSettingsLayout();
   return (
-    <label className="flex cursor-pointer items-center justify-between rounded-xl border border-white/10 bg-white/5 px-3 py-2">
-      <span className="text-sm font-bold">{label}</span>
+    <label
+      className={`flex cursor-pointer items-center justify-between rounded-xl border border-white/10 bg-white/5 ${
+        isPhoneLandscape ? "px-2 py-1.5" : "px-3 py-2"
+      }`}
+    >
+      <span className={`font-bold ${isPhoneLandscape ? "text-xs leading-tight" : "text-sm"}`}>
+        {label}
+      </span>
       <button
         type="button"
         role="switch"
@@ -889,9 +973,19 @@ function PanelShell({
   return <MenuPanelBody title={title}>{children}</MenuPanelBody>;
 }
 
-function CircleShell({ children }: { children: ReactNode }) {
+function CircleShell({
+  children,
+  compact,
+}: {
+  children: ReactNode;
+  compact?: boolean;
+}) {
   return (
-    <span className="flex h-14 w-14 items-center justify-center rounded-full border-2 border-white/50 bg-transparent text-white shadow transition hover:bg-white/10 hover:border-white">
+    <span
+      className={`flex items-center justify-center rounded-full border-2 border-white/50 bg-transparent text-white shadow transition hover:bg-white/10 hover:border-white [&_svg]:shrink-0 ${
+        compact ? "h-10 w-10 [&_svg]:h-5 [&_svg]:w-5" : "h-14 w-14"
+      }`}
+    >
       {children}
     </span>
   );
@@ -995,8 +1089,10 @@ function HockeyHornPanel() {
     playSfxClip(NHL_HORN_SRC, start, start + team.defaultDuration);
   };
 
+  const { isPhoneLandscape } = useSettingsLayout();
   return (
     <PanelShell title="Goal Horns">
+      <div className={isPhoneLandscape ? "grid grid-cols-2 gap-2" : "flex flex-col gap-3"}>
       <HornPicker
         sideLabel={`${homeTeamName} · Home`}
         hornId={hornHome}
@@ -1013,6 +1109,7 @@ function HockeyHornPanel() {
         onOffset={setOffset}
         onPreview={preview}
       />
+      </div>
       <p className="text-center text-xs text-zinc-500">
         Start time sets where the clip begins in the horn file.
       </p>

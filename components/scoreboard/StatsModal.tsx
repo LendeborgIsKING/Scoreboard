@@ -7,14 +7,25 @@ import { resolveActiveVariant, resolveSportConfig } from "@/lib/sportRegistry";
 import { CloseIcon } from "./UiIcons";
 import {
   FitScreen,
+  MenuOverlayHeader,
   MobileMenuPortal,
   useLockPageScrollWhileOpen,
 } from "./MenuScrollLayout";
+import { SettingsLayoutProvider, useSettingsLayout } from "./SettingsLayoutContext";
+import { usePhoneLandscape } from "@/hooks/usePhoneLandscape";
 
 type Props = { onClose: () => void };
 
 export function StatsModal({ onClose }: Props) {
   useLockPageScrollWhileOpen();
+  return (
+    <ModalShell onClose={onClose} title="Stats">
+      <StatsBody />
+    </ModalShell>
+  );
+}
+
+function StatsBody() {
   const teamA = useGameStore((s) => s.teamA);
   const teamB = useGameStore((s) => s.teamB);
   const periodScores = useGameStore((s) => s.periodScores);
@@ -22,6 +33,7 @@ export function StatsModal({ onClose }: Props) {
   const customSport = useGameStore((s) => s.customSport);
   const timerVariantId = useGameStore((s) => s.timerVariantId);
   const customTimerFormat = useGameStore((s) => s.customTimerFormat);
+  const { isPhoneLandscape } = useSettingsLayout();
 
   const cfg = resolveSportConfig(sportId, customSport);
   const variant = resolveActiveVariant(cfg, timerVariantId, customTimerFormat);
@@ -43,16 +55,16 @@ export function StatsModal({ onClose }: Props) {
   );
 
   return (
-    <ModalShell onClose={onClose} title="Stats">
-      <div className="grid grid-cols-1 gap-3 text-white">
-        <Stat label="Score" value={`${teamA.score} - ${teamB.score}`} />
-        <Stat
-          label="Biggest lead"
-          value={`${teamA.name} +${biggestLeadA} | ${teamB.name} +${biggestLeadB}`}
-        />
-      </div>
+    <div
+      className={`grid text-white ${isPhoneLandscape ? "grid-cols-2 gap-2" : "grid-cols-1 gap-3"}`}
+    >
+      <Stat label="Score" value={`${teamA.score} - ${teamB.score}`} />
+      <Stat
+        label="Biggest lead"
+        value={`${teamA.name} +${biggestLeadA} | ${teamB.name} +${biggestLeadB}`}
+      />
 
-      <div className="mt-4 overflow-hidden rounded-xl border border-white/10">
+      <div className={`overflow-hidden rounded-xl border border-white/10 ${isPhoneLandscape ? "col-span-2" : ""}`}>
         <table className="w-full text-left text-sm text-white">
           <thead className="bg-white/5 text-[10px] uppercase tracking-widest text-zinc-400">
             <tr>
@@ -92,7 +104,7 @@ export function StatsModal({ onClose }: Props) {
           </tbody>
         </table>
       </div>
-    </ModalShell>
+    </div>
   );
 }
 
@@ -123,6 +135,7 @@ function ModalShell({
   title: string;
 }) {
   const { isMobile } = useIsMobileDevice();
+  const { isPhoneLandscape } = usePhoneLandscape();
   const backdropClass = isMobile
     ? "fixed inset-0 z-[200] bg-black/80 backdrop-blur-sm"
     : "absolute inset-0 z-50 bg-black/80 backdrop-blur-sm";
@@ -145,21 +158,36 @@ function ModalShell({
         onClick={(e) => e.stopPropagation()}
         className={shellClass}
       >
-        <div className="grid shrink-0 grid-cols-[2rem_1fr_2rem] items-center gap-3 bg-black px-5 pb-2 pt-[max(0.75rem,env(safe-area-inset-top))]">
-          <span aria-hidden />
-          <h2 className="text-center font-stencil text-3xl">{title}</h2>
-          <button
-            type="button"
-            onClick={onClose}
-            className="justify-self-end rounded-full p-1 text-zinc-300 hover:bg-white/10 hover:text-white"
-            aria-label="Close"
+        <SettingsLayoutProvider>
+          <MenuOverlayHeader
+            title={title}
+            compact={isPhoneLandscape}
+            left={<span aria-hidden />}
+            right={
+              <button
+                type="button"
+                onClick={onClose}
+                className="rounded-full p-1 text-zinc-300 hover:bg-white/10 hover:text-white"
+                aria-label="Close"
+              >
+                <CloseIcon className={isPhoneLandscape ? "h-5 w-5" : "h-5 w-5"} />
+              </button>
+            }
+          />
+          <FitScreen
+            className={
+              isPhoneLandscape
+                ? "px-[max(0.5rem,env(safe-area-inset-left))]"
+                : "pb-[max(1.25rem,env(safe-area-inset-bottom))]"
+            }
           >
-            <CloseIcon className="h-5 w-5" />
-          </button>
-        </div>
-        <FitScreen className="pb-[max(1.25rem,env(safe-area-inset-bottom))]">
-          <div className="mx-auto w-full max-w-md px-5 py-2">{children}</div>
-        </FitScreen>
+            <div
+              className={`mx-auto w-full px-5 py-2 ${isPhoneLandscape ? "max-w-5xl" : "max-w-md"}`}
+            >
+              {children}
+            </div>
+          </FitScreen>
+        </SettingsLayoutProvider>
       </motion.div>
     </motion.div>
   );
