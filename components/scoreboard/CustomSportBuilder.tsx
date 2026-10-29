@@ -1,9 +1,9 @@
-"use client";
+﻿"use client";
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { useGameStore } from "@/lib/gameStore";
-import { motion } from "framer-motion";
 import type { SportConfig } from "@/lib/types";
+import { FitScreen } from "./MenuScrollLayout";
 
 export function CustomSportBuilder() {
   const setUiPhase = useGameStore((s) => s.setUiPhase);
@@ -54,139 +54,174 @@ export function CustomSportBuilder() {
     setUiPhase("setup");
   };
 
-  return (
-    <div className="flex w-full flex-col bg-black px-5 py-6 pb-[env(safe-area-inset-bottom)] text-white">
-      <div className="mb-6 flex items-center justify-between shrink-0">
-        <h1 className="text-3xl font-black">Custom Sport</h1>
-        <button
-          onClick={() => setUiPhase("menu")}
-          className="text-sm font-bold text-zinc-400 hover:text-white"
-        >
-          Cancel
-        </button>
-      </div>
-      
-      <div className="flex flex-col gap-6">
-        <div>
-          <label className="text-xs font-bold uppercase tracking-widest text-zinc-500">Sport Name</label>
-          <input
-            type="text"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            className="mt-1 w-full rounded-xl border border-white/20 bg-white/5 p-3 font-bold text-white outline-none focus:border-amber-400"
-          />
-        </div>
+  const inputClass =
+    "w-full rounded-xl border border-white/15 bg-white/5 px-3 py-2.5 text-center font-semibold text-white outline-none focus:border-amber-400";
 
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className="text-xs font-bold uppercase tracking-widest text-zinc-500">Period Name</label>
+  return (
+    <div className="flex h-full min-h-0 w-full flex-1 flex-col bg-black text-white">
+      <header className="grid shrink-0 grid-cols-[1fr_auto_1fr] items-center px-4 pt-3">
+        <button
+          type="button"
+          onClick={() => setUiPhase("menu")}
+          className="justify-self-start py-2 text-sm font-semibold text-zinc-400 hover:text-white"
+        >
+          ← Back
+        </button>
+        <h1 className="text-lg font-bold tracking-tight">Custom Sport</h1>
+        <span />
+      </header>
+
+      <FitScreen>
+        <div className="mx-auto flex w-full max-w-sm flex-col gap-4 px-5 py-4">
+          <Labeled label="Sport name">
             <input
               type="text"
-              value={periodLabel}
-              onChange={(e) => setPeriodLabel(e.target.value)}
-              placeholder="e.g. Quarter"
-              className="mt-1 w-full rounded-xl border border-white/20 bg-white/5 p-3 text-white outline-none focus:border-amber-400"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              className={inputClass}
             />
-          </div>
-          <div>
-            <label className="text-xs font-bold uppercase tracking-widest text-zinc-500">Max Periods</label>
-            <input
-              type="number"
-              value={maxPeriods}
-              onChange={(e) => setMaxPeriods(e.target.value)}
-              placeholder="e.g. 4"
-              className="mt-1 w-full rounded-xl border border-white/20 bg-white/5 p-3 text-white outline-none focus:border-amber-400"
-            />
-          </div>
-        </div>
+          </Labeled>
 
-        <div>
-          <label className="text-xs font-bold uppercase tracking-widest text-zinc-500">Clock Length (seconds)</label>
-          <input
-            type="number"
-            value={periodSeconds}
-            onChange={(e) => setPeriodSeconds(e.target.value)}
-            placeholder="e.g. 600"
-            className="mt-1 w-full rounded-xl border border-white/20 bg-white/5 p-3 text-white outline-none focus:border-amber-400"
-          />
-        </div>
-
-        <div>
-          <div className="mb-2 flex items-center justify-between">
-            <label className="text-xs font-bold uppercase tracking-widest text-zinc-500">Scoring Buttons</label>
-            {scoring.length < 4 && (
-              <button
-                onClick={() => setScoring([...scoring, { id: `pt${Date.now()}`, label: `+1`, value: 1 }])}
-                className="rounded bg-white/10 px-2 py-1 text-[10px] font-bold uppercase hover:bg-white/20"
-              >
-                Add Button
-              </button>
-            )}
+          <div className="grid grid-cols-3 gap-2">
+            <Labeled label="Period">
+              <input
+                type="text"
+                value={periodLabel}
+                onChange={(e) => setPeriodLabel(e.target.value)}
+                placeholder="Quarter"
+                className={inputClass}
+              />
+            </Labeled>
+            <Labeled label="Count">
+              <input
+                type="number"
+                value={maxPeriods}
+                onChange={(e) => setMaxPeriods(e.target.value)}
+                placeholder="4"
+                className={inputClass}
+              />
+            </Labeled>
+            <Labeled label="Seconds">
+              <input
+                type="number"
+                value={periodSeconds}
+                onChange={(e) => setPeriodSeconds(e.target.value)}
+                placeholder="600"
+                className={inputClass}
+              />
+            </Labeled>
           </div>
-          <div className="flex flex-col gap-2">
-            {scoring.map((sc, i) => (
-              <div key={sc.id} className="flex items-center gap-2">
-                <input
-                  type="text"
-                  value={sc.label}
-                  onChange={(e) => {
-                    const newS = [...scoring];
-                    newS[i].label = e.target.value;
-                    setScoring(newS);
-                  }}
-                  className="w-20 rounded-lg border border-white/20 bg-white/5 p-2 text-center font-bold text-white outline-none focus:border-amber-400"
-                />
-                <span className="text-zinc-500">=</span>
-                <input
-                  type="number"
-                  value={sc.value}
-                  onChange={(e) => {
-                    const newS = [...scoring];
-                    newS[i].value = parseInt(e.target.value) || 0;
-                    setScoring(newS);
-                  }}
-                  className="w-16 rounded-lg border border-white/20 bg-white/5 p-2 text-center text-white outline-none focus:border-amber-400"
-                />
-                <span className="text-sm text-zinc-500">pts</span>
-                {scoring.length > 1 && (
-                  <button
-                    onClick={() => {
+
+          <Labeled label="Scoring buttons">
+            <div className="flex flex-wrap justify-center gap-2">
+              {scoring.map((sc, i) => (
+                <div
+                  key={sc.id}
+                  className="flex items-center gap-1 rounded-xl border border-white/15 bg-white/5 px-2 py-1.5"
+                >
+                  <input
+                    type="text"
+                    value={sc.label}
+                    aria-label="Button label"
+                    onChange={(e) => {
                       const newS = [...scoring];
-                      newS.splice(i, 1);
+                      newS[i] = { ...newS[i], label: e.target.value };
                       setScoring(newS);
                     }}
-                    className="ml-auto text-red-500 hover:text-red-400"
-                  >
-                    ×
-                  </button>
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
+                    className="w-10 bg-transparent text-center font-bold text-white outline-none"
+                  />
+                  <span className="text-xs text-zinc-500">=</span>
+                  <input
+                    type="number"
+                    value={sc.value}
+                    aria-label="Points"
+                    onChange={(e) => {
+                      const newS = [...scoring];
+                      newS[i] = { ...newS[i], value: parseInt(e.target.value) || 0 };
+                      setScoring(newS);
+                    }}
+                    className="w-8 bg-transparent text-center text-white outline-none"
+                  />
+                  {scoring.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={() => setScoring(scoring.filter((_, j) => j !== i))}
+                      className="px-1 text-red-500 hover:text-red-400"
+                      aria-label="Remove button"
+                    >
+                      ×
+                    </button>
+                  )}
+                </div>
+              ))}
+              {scoring.length < 4 && (
+                <button
+                  type="button"
+                  onClick={() =>
+                    setScoring([...scoring, { id: `pt${Date.now()}`, label: "+1", value: 1 }])
+                  }
+                  className="rounded-xl border border-dashed border-white/25 px-3 py-1.5 text-sm font-bold text-zinc-400 hover:text-white"
+                >
+                  + Add
+                </button>
+              )}
+            </div>
+          </Labeled>
 
-        <div className="flex flex-col gap-3 rounded-xl border border-white/10 bg-white/5 p-4">
-          <label className="flex items-center justify-between">
-            <span className="font-bold">Track Fouls</span>
-            <input type="checkbox" checked={hasFouls} onChange={(e) => setHasFouls(e.target.checked)} className="h-5 w-5 accent-amber-400" />
-          </label>
-          <label className="flex items-center justify-between">
-            <span className="font-bold">Track Timeouts</span>
-            <input type="checkbox" checked={hasTimeouts} onChange={(e) => setHasTimeouts(e.target.checked)} className="h-5 w-5 accent-amber-400" />
-          </label>
-          <label className="flex items-center justify-between">
-            <span className="font-bold">Possession Arrow</span>
-            <input type="checkbox" checked={hasPossession} onChange={(e) => setHasPossession(e.target.checked)} className="h-5 w-5 accent-amber-400" />
-          </label>
+          <Labeled label="Track">
+            <div className="grid grid-cols-3 gap-2">
+              <Chip label="Fouls" checked={hasFouls} onChange={setHasFouls} />
+              <Chip label="Timeouts" checked={hasTimeouts} onChange={setHasTimeouts} />
+              <Chip label="Possession" checked={hasPossession} onChange={setHasPossession} />
+            </div>
+          </Labeled>
         </div>
+      </FitScreen>
+
+      <div className="mx-auto w-full max-w-sm shrink-0 px-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-2">
+        <button
+          type="button"
+          onClick={handleSave}
+          className="w-full rounded-2xl bg-amber-400 py-4 text-lg font-black uppercase text-black hover:bg-amber-300"
+        >
+          Save & Start
+        </button>
       </div>
-
-      <button
-        onClick={handleSave}
-        className="mt-8 mb-4 shrink-0 rounded-full bg-amber-400 py-4 font-black uppercase text-black hover:bg-amber-300"
-      >
-        Save & Start
-      </button>
     </div>
   );
 }
+
+function Labeled({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <div className="flex flex-col items-center gap-1.5">
+      <span className="text-[10px] font-bold uppercase tracking-[0.25em] text-zinc-500">
+        {label}
+      </span>
+      <div className="w-full">{children}</div>
+    </div>
+  );
+}
+
+function Chip({
+  label,
+  checked,
+  onChange,
+}: {
+  label: string;
+  checked: boolean;
+  onChange: (v: boolean) => void;
+}) {
+  return (
+    <button
+      type="button"
+      aria-pressed={checked}
+      onClick={() => onChange(!checked)}
+      className={`rounded-xl border px-2 py-2.5 text-sm font-semibold transition ${
+        checked ? "border-amber-400 bg-amber-400 text-black" : "border-white/15 text-zinc-300"
+      }`}
+    >
+      {label}
+    </button>
+  );
+}
+

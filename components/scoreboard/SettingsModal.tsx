@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useRef, useState, type ReactNode } from "react";
 import { motion } from "framer-motion";
@@ -27,7 +27,7 @@ import { playYouTubeVideo, stopYouTubeVideo } from "@/lib/youtubePlayer";
 import { RefereeQuickTimers } from "./RefereeTimerOverlay";
 import { HockeyPanel } from "./HockeyPanel";
 import {
-  MENU_SCROLL_PANE,
+  FitScreen,
   MenuOverlayHeader,
   MenuPanelBody,
   MobileMenuPortal,
@@ -149,8 +149,9 @@ export function SettingsModal({
           }
         />
 
-        <div
-          className={`${MENU_SCROLL_PANE} pb-[max(1.25rem,env(safe-area-inset-bottom))]`}
+        <FitScreen
+          key={panel}
+          className="pb-[max(1.25rem,env(safe-area-inset-bottom))]"
         >
           {panel === "menu" && (
             <MenuView
@@ -179,7 +180,7 @@ export function SettingsModal({
             <HockeyPanel view="main" onReturnToScoreboard={onClose} />
           )}
           {panel === "hockey-periods" && <HockeyPanel view="periods" />}
-        </div>
+        </FitScreen>
       </motion.div>
     </motion.div>
   );
@@ -463,7 +464,7 @@ function MusicPanel() {
         onChange={setEnabled}
       />
       <SliderRow label="Volume" value={volume} onChange={setVol} />
-      <div className="mt-2 flex flex-wrap gap-2">
+      <div className="mt-2 flex flex-wrap justify-center gap-2">
         {TRACKS.map((t) => (
           <button
             key={t.id}
@@ -501,8 +502,8 @@ function MusicPanel() {
         </form>
         
         {results.length > 0 && !youtubeVideoId && (
-          <div className="mt-3 flex flex-col gap-2 max-h-48 overflow-y-auto pr-1">
-            {results.map((vid) => (
+          <div className="mt-3 flex flex-col gap-2">
+            {results.slice(0, 3).map((vid) => (
               <button
                 key={vid.id}
                 type="button"
@@ -977,21 +978,15 @@ function HornGlyph() {
   );
 }
 
-type HornAssignMode = "list" | "assign-home" | "assign-away";
-
 function HockeyHornPanel() {
   const hornHome = useGameStore((s) => s.hockeyGoalHornHome);
   const hornAway = useGameStore((s) => s.hockeyGoalHornAway);
   const offsets = useGameStore((s) => s.nhlHornOffsets);
-  const teamA = useGameStore((s) => s.teamA);
-  const teamB = useGameStore((s) => s.teamB);
   const setHornHome = useGameStore((s) => s.setHockeyGoalHornHome);
   const setHornAway = useGameStore((s) => s.setHockeyGoalHornAway);
   const setOffset = useGameStore((s) => s.setNhlHornOffset);
-
-  const [mode, setMode] = useState<HornAssignMode>("list");
-  const [editing, setEditing] = useState<string | null>(null);
-  const [draftVal, setDraftVal] = useState("");
+  const homeTeamName = useGameStore((s) => s.teamA.name);
+  const awayTeamName = useGameStore((s) => s.teamB.name);
 
   const preview = (id: string) => {
     const team = NHL_TEAMS.find((t) => t.id === id);
@@ -1000,158 +995,95 @@ function HockeyHornPanel() {
     playSfxClip(NHL_HORN_SRC, start, start + team.defaultDuration);
   };
 
-  const commitEdit = (id: string) => {
-    const num = parseFloat(draftVal);
-    if (!isNaN(num) && num >= 0) setOffset(id, num);
-    setEditing(null);
-  };
-
-  const homeTeamName = useGameStore((s) => s.teamA.name);
-  const awayTeamName = useGameStore((s) => s.teamB.name);
-  void teamA; void teamB;
-
-  const homeName = NHL_TEAMS.find((t) => t.id === hornHome)?.name ?? "Default horn";
-  const awayName = NHL_TEAMS.find((t) => t.id === hornAway)?.name ?? "Default horn";
-
-  if (mode === "assign-home" || mode === "assign-away") {
-    const isHome = mode === "assign-home";
-    const currentId = isHome ? hornHome : hornAway;
-    const setId = isHome ? setHornHome : setHornAway;
-    const sideLabel = isHome ? homeTeamName : awayTeamName;
-    return (
-      <PanelShell title={`${sideLabel} Horn`}>
-        <p className="text-xs text-zinc-500">
-          Pick an NHL team horn for <span className="font-bold text-white">{sideLabel}</span>. Tap ▶ to preview.
-        </p>
-        <button
-          type="button"
-          onClick={() => { setId(null); setMode("list"); }}
-          className={`rounded-full border-2 border-white/50 px-3 py-1.5 text-sm font-bold transition ${
-            currentId === null ? "bg-white/20 text-white" : "bg-transparent text-zinc-300 hover:border-white hover:bg-white/10"
-          }`}
-        >
-          Default horn
-        </button>
-        <div className="mt-1 flex flex-col gap-1 pr-1">
-          {NHL_TEAMS.map((team) => {
-            const start = offsets[team.id] ?? team.defaultStart;
-            const isSelected = currentId === team.id;
-            const isEditingThis = editing === team.id;
-            return (
-              <div
-                key={team.id}
-                className={`mb-1 flex items-center gap-2 rounded-xl border px-3 py-1.5 transition ${
-                  isSelected ? "border-white/60 bg-white/10" : "border-white/10 hover:border-white/30"
-                }`}
-              >
-                <button
-                  type="button"
-                  onClick={() => { setId(team.id); setMode("list"); }}
-                  className="flex-1 text-left text-sm font-bold"
-                >
-                  {team.name}
-                </button>
-                {isEditingThis ? (
-                  <div className="flex items-center gap-1">
-                    <input
-                      type="number"
-                      className="w-16 rounded border border-white/30 bg-transparent px-1 py-0.5 text-center text-xs text-white outline-none focus:border-white"
-                      value={draftVal}
-                      autoFocus
-                      onChange={(e) => setDraftVal(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") commitEdit(team.id);
-                        if (e.key === "Escape") setEditing(null);
-                      }}
-                      onBlur={() => commitEdit(team.id)}
-                    />
-                    <span className="text-[10px] text-zinc-400">s</span>
-                  </div>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => { setEditing(team.id); setDraftVal(String(start)); }}
-                    className="w-12 rounded border border-white/20 bg-transparent text-center text-xs text-zinc-400 hover:border-white hover:text-white"
-                    title="Tap to edit start time"
-                  >
-                    {start}s
-                  </button>
-                )}
-                <button
-                  type="button"
-                  onClick={() => preview(team.id)}
-                  className="rounded-full border border-white/50 bg-transparent px-2 py-0.5 text-xs text-white transition hover:border-white hover:bg-white/10"
-                  aria-label={`Preview ${team.name}`}
-                >
-                  ▶
-                </button>
-              </div>
-            );
-          })}
-        </div>
-      </PanelShell>
-    );
-  }
-
-  // Main list view
   return (
     <PanelShell title="Goal Horns">
-      <p className="text-xs text-zinc-500">
-        Assign an NHL goal horn to each team. Tap a row to change.
-      </p>
-
-      {/* Home assignment */}
-      <button
-        type="button"
-        onClick={() => setMode("assign-home")}
-        className="flex w-full items-center justify-between rounded-xl border border-white/20 bg-white/5 px-4 py-3 transition hover:border-white/40 hover:bg-white/10"
-      >
-        <div className="text-left">
-          <div className="text-[10px] uppercase tracking-widest text-zinc-500">{homeTeamName} (Home)</div>
-          <div className="text-sm font-bold text-white">{homeName}</div>
-        </div>
-        <span className="text-zinc-400">›</span>
-      </button>
-
-      {/* Away assignment */}
-      <button
-        type="button"
-        onClick={() => setMode("assign-away")}
-        className="flex w-full items-center justify-between rounded-xl border border-white/20 bg-white/5 px-4 py-3 transition hover:border-white/40 hover:bg-white/10"
-      >
-        <div className="text-left">
-          <div className="text-[10px] uppercase tracking-widest text-zinc-500">{awayTeamName} (Away)</div>
-          <div className="text-sm font-bold text-white">{awayName}</div>
-        </div>
-        <span className="text-zinc-400">›</span>
-      </button>
-
-      {/* Quick preview of current selections */}
-      <div className="mt-1 flex gap-2">
-        {hornHome && (
-          <button
-            type="button"
-            onClick={() => preview(hornHome)}
-            className="rounded-full border border-white/50 bg-transparent px-3 py-1 text-xs text-white transition hover:border-white hover:bg-white/10"
-          >
-            ▶ {homeTeamName}
-          </button>
-        )}
-        {hornAway && (
-          <button
-            type="button"
-            onClick={() => preview(hornAway)}
-            className="rounded-full border border-white/50 bg-transparent px-3 py-1 text-xs text-white transition hover:border-white hover:bg-white/10"
-          >
-            ▶ {awayTeamName}
-          </button>
-        )}
-      </div>
-
-      <p className="text-xs text-zinc-500">
-        Tap a time value in the team picker to calibrate it to the exact second
-        in the combined MP3 file.
+      <HornPicker
+        sideLabel={`${homeTeamName} · Home`}
+        hornId={hornHome}
+        offsets={offsets}
+        onPick={setHornHome}
+        onOffset={setOffset}
+        onPreview={preview}
+      />
+      <HornPicker
+        sideLabel={`${awayTeamName} · Away`}
+        hornId={hornAway}
+        offsets={offsets}
+        onPick={setHornAway}
+        onOffset={setOffset}
+        onPreview={preview}
+      />
+      <p className="text-center text-xs text-zinc-500">
+        Start time sets where the clip begins in the horn file.
       </p>
     </PanelShell>
   );
 }
+
+function HornPicker({
+  sideLabel,
+  hornId,
+  offsets,
+  onPick,
+  onOffset,
+  onPreview,
+}: {
+  sideLabel: string;
+  hornId: string | null;
+  offsets: Record<string, number>;
+  onPick: (id: string | null) => void;
+  onOffset: (id: string, seconds: number) => void;
+  onPreview: (id: string) => void;
+}) {
+  const team = hornId ? NHL_TEAMS.find((t) => t.id === hornId) : undefined;
+  const start = team ? offsets[team.id] ?? team.defaultStart : null;
+
+  return (
+    <div className="flex flex-col gap-2 rounded-2xl border border-white/10 bg-white/[0.03] p-3">
+      <span className="text-center text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-500">
+        {sideLabel}
+      </span>
+      <select
+        value={hornId ?? ""}
+        onChange={(e) => onPick(e.target.value || null)}
+        className="w-full rounded-xl border border-white/15 bg-zinc-950 px-3 py-2.5 text-center text-base font-semibold text-white"
+      >
+        <option value="">Default horn</option>
+        {NHL_TEAMS.map((t) => (
+          <option key={t.id} value={t.id}>
+            {t.name}
+          </option>
+        ))}
+      </select>
+      {team && start !== null && (
+        <div className="flex items-center justify-center gap-3">
+          <label className="flex items-center gap-1.5 text-xs text-zinc-400">
+            Start
+            <input
+              key={team.id}
+              type="number"
+              min={0}
+              step={0.1}
+              defaultValue={start}
+              onBlur={(e) => {
+                const num = parseFloat(e.target.value);
+                if (!isNaN(num) && num >= 0) onOffset(team.id, num);
+              }}
+              className="w-16 rounded-lg border border-white/20 bg-transparent px-2 py-1 text-center text-sm text-white outline-none focus:border-white"
+            />
+            s
+          </label>
+          <button
+            type="button"
+            onClick={() => onPreview(team.id)}
+            className="rounded-full border border-white/50 px-4 py-1 text-sm text-white transition hover:border-white hover:bg-white/10"
+            aria-label={`Preview ${team.name}`}
+          >
+            ▶ Preview
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+

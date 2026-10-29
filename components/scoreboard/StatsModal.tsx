@@ -6,7 +6,7 @@ import { useIsMobileDevice } from "@/hooks/useIsMobileDevice";
 import { resolveActiveVariant, resolveSportConfig } from "@/lib/sportRegistry";
 import { CloseIcon } from "./UiIcons";
 import {
-  MENU_SCROLL_PANE,
+  FitScreen,
   MobileMenuPortal,
   useLockPageScrollWhileOpen,
 } from "./MenuScrollLayout";
@@ -44,7 +44,7 @@ export function StatsModal({ onClose }: Props) {
 
   return (
     <ModalShell onClose={onClose} title="Stats">
-      <div className="grid grid-cols-1 gap-4 text-white max-sm:gap-3 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-3 text-white">
         <Stat label="Score" value={`${teamA.score} - ${teamB.score}`} />
         <Stat
           label="Biggest lead"
@@ -58,8 +58,9 @@ export function StatsModal({ onClose }: Props) {
             <tr>
               <th className="px-3 py-2">Team</th>
               {Array.from({ length }).map((_, i) => (
-                <th key={i} className="px-3 py-2 text-center">
-                  {periodLabel} {i + 1}
+                <th key={i} className="px-2 py-2 text-center">
+                  {periodLabel.charAt(0)}
+                  {i + 1}
                 </th>
               ))}
               <th className="px-3 py-2 text-right">Total</th>
@@ -103,7 +104,7 @@ function sumThrough(arr: number[], idx: number): number {
 
 function Stat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-xl border border-white/10 bg-white/5 p-3">
+    <div className="rounded-xl border border-white/10 bg-white/5 p-3 text-center">
       <div className="text-[10px] uppercase tracking-widest text-zinc-400">
         {label}
       </div>
@@ -144,22 +145,21 @@ function ModalShell({
         onClick={(e) => e.stopPropagation()}
         className={shellClass}
       >
-        <div className="flex shrink-0 items-center justify-between gap-3 border-b border-white/10 bg-black px-5 pb-3 pt-[max(0.5rem,env(safe-area-inset-top))]">
-          <h2 className="font-stencil text-3xl">{title}</h2>
+        <div className="grid shrink-0 grid-cols-[2rem_1fr_2rem] items-center gap-3 bg-black px-5 pb-2 pt-[max(0.75rem,env(safe-area-inset-top))]">
+          <span aria-hidden />
+          <h2 className="text-center font-stencil text-3xl">{title}</h2>
           <button
             type="button"
             onClick={onClose}
-            className="rounded-full p-1 text-zinc-300 hover:bg-white/10 hover:text-white"
+            className="justify-self-end rounded-full p-1 text-zinc-300 hover:bg-white/10 hover:text-white"
             aria-label="Close"
           >
             <CloseIcon className="h-5 w-5" />
           </button>
         </div>
-        <div
-          className={`${MENU_SCROLL_PANE} px-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-4`}
-        >
-          {children}
-        </div>
+        <FitScreen className="pb-[max(1.25rem,env(safe-area-inset-bottom))]">
+          <div className="mx-auto w-full max-w-md px-5 py-2">{children}</div>
+        </FitScreen>
       </motion.div>
     </motion.div>
   );

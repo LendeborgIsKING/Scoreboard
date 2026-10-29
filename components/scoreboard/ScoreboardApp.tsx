@@ -72,6 +72,11 @@ export function ScoreboardApp() {
   }
 
   return (
-    <MobileAppShell isGame={uiPhase === "game"}>{content}</MobileAppShell>
+    <MobileAppShell
+      isGame={uiPhase === "game"}
+      scrollable={uiPhase === "menu"}
+    >
+      {content}
+    </MobileAppShell>
   );
 }

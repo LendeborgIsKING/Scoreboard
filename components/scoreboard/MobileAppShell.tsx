@@ -28,11 +28,17 @@ const DESIGN_HEIGHT = 390;
 export function MobileAppShell({
   children,
   isGame,
+  scrollable,
 }: {
   children: ReactNode;
   isGame?: boolean;
+  /** Only the opening sport menu scrolls; every other screen must fit the viewport. */
+  scrollable?: boolean;
 }) {
   const { isMobile, mounted } = useIsMobileDevice();
+  const paneClass = scrollable
+    ? "flex min-h-0 flex-1 flex-col overflow-y-auto overflow-x-hidden overscroll-y-contain touch-pan-y"
+    : "flex min-h-0 flex-1 flex-col overflow-hidden";
 
   useEffect(() => {
     if (!mounted) return;
@@ -71,9 +77,7 @@ export function MobileAppShell({
           paddingRight: "env(safe-area-inset-right)",
         }}
       >
-        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto overflow-x-hidden overscroll-y-contain touch-pan-y">
-          {children}
-        </div>
+        <div className={paneClass}>{children}</div>
       </div>
     );
   }
@@ -96,9 +100,7 @@ export function MobileAppShell({
             />
           </div>
         )}
-        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto overflow-x-hidden overscroll-y-contain touch-pan-y">
-          {children}
-        </div>
+        <div className={paneClass}>{children}</div>
       </div>
     </div>
   );

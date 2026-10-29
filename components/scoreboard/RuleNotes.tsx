@@ -19,7 +19,7 @@ export function RuleNotes({ cfg, timerVariantId, open, onClose }: Props) {
 
   return (
     <motion.div
-      className="fixed inset-0 z-[60] flex items-end justify-center sm:items-center"
+      className="fixed inset-0 z-[60] flex items-center justify-center p-5"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
     >
@@ -32,7 +32,7 @@ export function RuleNotes({ cfg, timerVariantId, open, onClose }: Props) {
       <motion.div
         initial={{ y: 24, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
-        className="relative z-10 max-h-[85vh] w-full max-w-lg overflow-y-auto rounded-t-2xl border border-white/10 bg-zinc-950 p-5 shadow-2xl sm:rounded-2xl"
+        className="relative z-10 w-full max-w-md overflow-hidden rounded-2xl border border-white/10 bg-zinc-950 p-5 text-center shadow-2xl"
       >
         <h3 className="text-base font-bold text-white">Official times & notes</h3>
         {v && (
@@ -44,7 +44,7 @@ export function RuleNotes({ cfg, timerVariantId, open, onClose }: Props) {
           </p>
         )}
         {v?.hints && v.hints.length > 0 && (
-          <ul className="mt-4 list-inside list-disc space-y-1.5 text-sm text-zinc-500">
+          <ul className="mt-4 space-y-1.5 text-sm text-zinc-500">
             {v.hints.map((h, i) => (
               <li key={i}>{h}</li>
             ))}
