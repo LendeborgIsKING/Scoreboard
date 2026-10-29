@@ -9,8 +9,6 @@ export type SfxName =
   | "chime"
   | "buzzer"
   | "horn"
-  | "cheer"
-  | "boo"
   | "whistle"
   | "swoosh"
   | "ding"
@@ -196,33 +194,6 @@ function horn(c: AudioContext, dest: AudioNode) {
   o2.stop(c.currentTime + 1.1);
 }
 
-function cheer(c: AudioContext, dest: AudioNode) {
-  const src = c.createBufferSource();
-  src.buffer = noiseBuffer(c, 1.6);
-  const filter = c.createBiquadFilter();
-  filter.type = "bandpass";
-  filter.frequency.setValueAtTime(800, c.currentTime);
-  filter.frequency.linearRampToValueAtTime(1600, c.currentTime + 0.4);
-  filter.Q.value = 1.4;
-  const g = envGain(c, 0.55, 0.05, 1.5);
-  src.connect(filter).connect(g).connect(dest);
-  src.start();
-  src.stop(c.currentTime + 1.6);
-}
-
-function boo(c: AudioContext, dest: AudioNode) {
-  const src = c.createBufferSource();
-  src.buffer = noiseBuffer(c, 1.4);
-  const filter = c.createBiquadFilter();
-  filter.type = "lowpass";
-  filter.frequency.setValueAtTime(700, c.currentTime);
-  filter.frequency.linearRampToValueAtTime(180, c.currentTime + 0.6);
-  const g = envGain(c, 0.5, 0.04, 1.3);
-  src.connect(filter).connect(g).connect(dest);
-  src.start();
-  src.stop(c.currentTime + 1.4);
-}
-
 function whistle(c: AudioContext, dest: AudioNode) {
   const o = c.createOscillator();
   o.type = "sine";
@@ -320,12 +291,6 @@ function dispatchSfx(c: AudioContext, name: SfxName) {
       break;
     case "horn":
       horn(c, masterSfxGain);
-      break;
-    case "cheer":
-      cheer(c, masterSfxGain);
-      break;
-    case "boo":
-      boo(c, masterSfxGain);
       break;
     case "whistle":
       whistle(c, masterSfxGain);
@@ -774,46 +739,110 @@ export function getCurrentTrack(): MusicTrack {
 // background audio tied to the selected visual theme.
 // ---------------------------------------------------------------------------
 
-let themeAmbientNodes: { stop: () => void } | null = null;
-let currentThemeAmbient: string = "none";
 let ambientGain: GainNode | null = null;
 let crowdIntensityMultiplier = 0.4;
 
-/** Theme → ambient config. `loopEnd` = 0 means full file. */
-const THEME_AMBIENTS: Record<string, { src: string; loopStart: number; loopEnd: number }> = {
-  stadium: { src: "/sfx/stadium-roar.mp3", loopStart: 0, loopEnd: 22 },
-};
+const CROWD_STADIUM_HOUR = "/sfx/crowd-stadium-hour.mp3";
+const CROWD_HEY_CHANT = "/sfx/crowd-hey-hey-hey.mp3";
+/** Never sample the first five minutes of the hour-long stadium bed. */
+const CROWD_MIN_START_SEC = 5 * 60;
+/** Loop a random ten-minute window from the stadium file. */
+const CROWD_SEGMENT_SEC = 10 * 60;
+
+let gameCrowdNodes: { stop: () => void } | null = null;
 
 export function setCrowdIntensity(v: number) {
   crowdIntensityMultiplier = Math.max(0, Math.min(1, v));
   if (ambientGain) ambientGain.gain.value = crowdIntensityMultiplier;
 }
 
-export function setThemeAmbient(themeId: string) {
-  if (themeId === currentThemeAmbient) return;
-  if (themeAmbientNodes) {
-    themeAmbientNodes.stop();
-    themeAmbientNodes = null;
-  }
-  currentThemeAmbient = themeId;
-  const cfg = THEME_AMBIENTS[themeId];
-  if (!cfg) return;
-  void ensureAudioRunning().then((c) => {
-    if (!c || !ambientGain) return;
-    themeAmbientNodes = startTrackFromFile(
-      c,
-      ambientGain,
-      cfg.src,
-      cfg.loopStart,
-      cfg.loopEnd,
-    );
+function pickRandomStadiumSegment(): Promise<{
+  loopStart: number;
+  loopEnd: number;
+}> {
+  return new Promise((resolve) => {
+    const probe = new Audio(CROWD_STADIUM_HOUR);
+    probe.preload = "metadata";
+    const done = () => {
+      const dur =
+        Number.isFinite(probe.duration) && probe.duration > 0
+          ? probe.duration
+          : 3600;
+      const maxStart = Math.max(CROWD_MIN_START_SEC, dur - CROWD_SEGMENT_SEC);
+      const span = Math.max(0, maxStart - CROWD_MIN_START_SEC);
+      const loopStart = CROWD_MIN_START_SEC + Math.random() * span;
+      const loopEnd = Math.min(loopStart + CROWD_SEGMENT_SEC, dur);
+      resolve({ loopStart, loopEnd });
+      probe.src = "";
+      try {
+        probe.load();
+      } catch {
+        /* ignore */
+      }
+    };
+    probe.addEventListener("loadedmetadata", done, { once: true });
+    probe.addEventListener("error", () => {
+      resolve({
+        loopStart: CROWD_MIN_START_SEC,
+        loopEnd: CROWD_MIN_START_SEC + CROWD_SEGMENT_SEC,
+      });
+    }, { once: true });
+    probe.load();
   });
 }
 
-export function stopThemeAmbient() {
-  if (themeAmbientNodes) {
-    themeAmbientNodes.stop();
-    themeAmbientNodes = null;
+/**
+ * Stadium bed: random 10-minute slice starting after 5:00 in the hour file.
+ * Chant: loops the “hey hey hey” crowd clip on top.
+ */
+export function startGameCrowdAmbient() {
+  stopGameCrowdAmbient();
+  void ensureAudioRunning().then(async (c) => {
+    if (!c || !ambientGain) return;
+    const { loopStart, loopEnd } = await pickRandomStadiumSegment();
+    const chantGain = c.createGain();
+    chantGain.gain.value = 0.72;
+    chantGain.connect(ambientGain);
+
+    const bed = startTrackFromFile(
+      c,
+      ambientGain,
+      CROWD_STADIUM_HOUR,
+      loopStart,
+      loopEnd,
+    );
+
+    let chant: { stop: () => void } | null = null;
+    const chantTimer = window.setTimeout(() => {
+      chant = startTrackFromFile(c, chantGain, CROWD_HEY_CHANT, 0);
+    }, 1500);
+
+    gameCrowdNodes = {
+      stop: () => {
+        window.clearTimeout(chantTimer);
+        bed.stop();
+        chant?.stop();
+        try {
+          chantGain.disconnect();
+        } catch {
+          /* ignore */
+        }
+      },
+    };
+  });
+}
+
+export function stopGameCrowdAmbient() {
+  if (gameCrowdNodes) {
+    gameCrowdNodes.stop();
+    gameCrowdNodes = null;
   }
-  currentThemeAmbient = "none";
+}
+
+/** @deprecated Theme-specific ambient removed; use startGameCrowdAmbient. */
+export function setThemeAmbient(_themeId: string) {}
+
+/** @deprecated Use stopGameCrowdAmbient. */
+export function stopThemeAmbient() {
+  stopGameCrowdAmbient();
 }

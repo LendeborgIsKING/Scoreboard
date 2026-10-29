@@ -8,8 +8,9 @@ import {
   playSfx,
   playSfxClip,
   prefetchSfxClip,
-  setThemeAmbient,
-  stopThemeAmbient,
+  startGameCrowdAmbient,
+  stopGameCrowdAmbient,
+  setCrowdIntensity as setAudioCrowdIntensity,
 } from "@/lib/audio";
 import { NHL_HORN_SRC } from "@/lib/nhlTeams";
 import {
@@ -209,7 +210,6 @@ export function ScoreboardDisplay() {
   const youtubeVideoId = useGameStore((s) => s.youtubeVideoId);
   const ledScoreAnimation = useGameStore((s) => s.ledScoreAnimation);
   const crowdIntensity = useGameStore((s) => s.crowdIntensity);
-  const setCrowdIntensity = useGameStore((s) => s.setCrowdIntensity);
 
   const possession = useGameStore((s) => s.possession);
   const down = useGameStore((s) => s.down);
@@ -303,12 +303,12 @@ export function ScoreboardDisplay() {
     return () => setAudioMusic("none");
   }, [musicEnabled, musicTrack]);
 
-  // Theme ambient audio (e.g. stadium roar)
+  // Stadium crowd bed + “hey hey hey” chant (volume from crowdIntensity pref)
   useEffect(() => {
-    setThemeAmbient(theme);
-    setCrowdIntensity(crowdIntensity);
-    return () => stopThemeAmbient();
-  }, [theme, crowdIntensity, setCrowdIntensity]);
+    startGameCrowdAmbient();
+    setAudioCrowdIntensity(crowdIntensity);
+    return () => stopGameCrowdAmbient();
+  }, [crowdIntensity]);
 
   // Pre-decode frequently used audio clips so taps fire instantly with zero lag.
   useEffect(() => {
@@ -778,16 +778,6 @@ export function ScoreboardDisplay() {
                 onClick={() => playSfxClip("/sfx/whistle.mp3")}
                 ariaLabel="Whistle"
               />
-              <CircleBtn
-                icon={<CheerIcon className="h-5 w-5" />}
-                onClick={() => playSfx("cheer")}
-                ariaLabel="Crowd cheer"
-              />
-              <CircleBtn
-                icon={<BooIcon className="h-5 w-5" />}
-                onClick={() => playSfx("boo")}
-                ariaLabel="Crowd boo"
-              />
             </div>
             )}
           </section>
@@ -1152,22 +1142,6 @@ function ScoreAdjust({
         +
       </button>
     </div>
-  );
-}
-
-function CheerIcon({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" className={className} fill="currentColor" aria-hidden>
-      <path d="M2 13.5 13 9l7 2.5v3L13 17 2 13.5Zm12 4.9 6-2.1v3.2a1 1 0 0 1-1.3.95L14 19v-.6ZM13 3l1.2 2.5L17 6.7l-2.5 1.2L13 10.4l-1.2-2.5L9.3 6.7l2.5-1.2L13 3Z" />
-    </svg>
-  );
-}
-
-function BooIcon({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" className={className} fill="currentColor" aria-hidden>
-      <path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Zm-3.5 7a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3Zm7 0a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3ZM8 17c.8-1.8 2.3-3 4-3s3.2 1.2 4 3c-1.2-.7-2.6-1-4-1s-2.8.3-4 1Z" />
-    </svg>
   );
 }
 
