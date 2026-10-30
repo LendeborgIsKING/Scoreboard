@@ -626,35 +626,56 @@ function ThemePanel() {
   const theme = useGameStore((s) => s.theme);
   const setTheme = useGameStore((s) => s.setTheme);
   const { isPhoneLandscape } = useSettingsLayout();
+
   return (
     <PanelShell title="Theme">
-      <div
-        className={
+      <p className="text-center text-xs text-zinc-500">
+        Pick a scoreboard look. The active theme is highlighted.
+      </p>
+      <ul
+        className={`mx-auto grid w-full list-none gap-2 p-0 ${
           isPhoneLandscape
-            ? "grid grid-cols-4 gap-1.5 sm:grid-cols-6"
-            : "grid grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-3"
-        }
+            ? "max-w-4xl grid-cols-4"
+            : "max-w-xs grid-cols-3"
+        }`}
       >
-        {THEMES.map((t) => (
-          <button
-            key={t.id}
-            type="button"
-            onClick={() => setTheme(t.id)}
-            className={`flex flex-col items-center gap-1 rounded-xl border-2 transition ${
-              isPhoneLandscape ? "p-1.5" : "items-start gap-2 p-3 max-sm:p-2.5 sm:flex-row sm:items-center sm:gap-3"
-            } ${
-              theme === t.id
-                ? "border-white bg-white/10"
-                : "border-white/10 hover:border-white/30"
-            }`}
-          >
-            <span className={`rounded-lg ${t.chip} ${isPhoneLandscape ? "h-7 w-7" : "h-10 w-10"}`} />
-            <span className={`font-bold ${isPhoneLandscape ? "text-[10px] leading-tight" : "text-base"}`}>
-              {t.label}
-            </span>
-          </button>
-        ))}
-      </div>
+        {THEMES.map((t) => {
+          const selected = theme === t.id;
+          return (
+            <li key={t.id} className="min-w-0">
+              <button
+                type="button"
+                aria-pressed={selected}
+                aria-label={`Theme: ${t.label}`}
+                onClick={() => {
+                  playSfx("click");
+                  setTheme(t.id);
+                }}
+                className={`flex w-full flex-col items-center gap-2 rounded-2xl border px-1.5 py-2.5 transition touch-manipulation ${
+                  selected
+                    ? "border-white bg-white/12"
+                    : "border-white/10 bg-white/[0.03] hover:border-white/30 hover:bg-white/[0.06]"
+                }`}
+              >
+                <span
+                  className={`relative block h-10 w-10 shrink-0 rounded-full shadow-inner ring-2 ${t.chip} ${
+                    selected ? "ring-white" : "ring-white/25"
+                  }`}
+                >
+                  {selected && (
+                    <span className="absolute inset-0 flex items-center justify-center rounded-full bg-black/25">
+                      <CheckIcon className="h-5 w-5 text-white drop-shadow" />
+                    </span>
+                  )}
+                </span>
+                <span className="w-full truncate text-center text-[11px] font-semibold leading-tight text-zinc-200">
+                  {t.label}
+                </span>
+              </button>
+            </li>
+          );
+        })}
+      </ul>
     </PanelShell>
   );
 }
