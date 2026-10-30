@@ -65,6 +65,7 @@ import {
   HockeyTickBridge,
 } from "./HockeyGameUI";
 import {
+  BuzzerIcon,
   CheckIcon,
   CloseIcon,
   GearIcon,
@@ -74,6 +75,7 @@ import {
   PauseIcon,
   PencilIcon,
   PlayIcon,
+  WhistleIcon,
 } from "./UiIcons";
 
 
@@ -311,6 +313,8 @@ export function ScoreboardDisplay() {
   // Pre-decode frequently used audio clips so taps fire instantly with zero lag.
   useEffect(() => {
     void prefetchSfxClip("/music/mike-breen-double-bang.mp3");
+    void prefetchSfxClip("/sfx/nba-horn.mp3");
+    void prefetchSfxClip("/sfx/whistle.mp3");
     if (sportId === "basketball") {
       void prefetchSfxClip("/sfx/basketball-swish.mp3");
     }
@@ -759,6 +763,20 @@ export function ScoreboardDisplay() {
                 editing={editing}
                 onAdjust={(d) => editing ? adjustTimeouts("a", d) : setPopover("timeoutA")}
               />
+            )}
+            {!presentation && (
+            <div className="mt-1 flex max-w-[120px] flex-wrap justify-end gap-2 self-end">
+              <CircleBtn
+                icon={<BuzzerIcon className="h-5 w-5" />}
+                onClick={() => playSfxClip("/sfx/nba-horn.mp3")}
+                ariaLabel="Horn"
+              />
+              <CircleBtn
+                icon={<WhistleIcon className="h-5 w-5" />}
+                onClick={() => playSfxClip("/sfx/whistle.mp3")}
+                ariaLabel="Whistle"
+              />
+            </div>
             )}
           </section>
 
