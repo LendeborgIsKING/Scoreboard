@@ -750,6 +750,7 @@ const CROWD_MIN_START_SEC = 5 * 60;
 const CROWD_SEGMENT_SEC = 10 * 60;
 
 let gameCrowdNodes: { stop: () => void } | null = null;
+let hockeyCrowdSession = 0;
 
 export function setCrowdIntensity(v: number) {
   crowdIntensityMultiplier = Math.max(0, Math.min(1, v));
@@ -791,39 +792,132 @@ function pickRandomStadiumSegment(): Promise<{
   });
 }
 
+/** Start “hey hey hey” this many seconds before the 10-minute stadium slice ends. */
+const CROWD_HEY_LEAD_SEC = 1;
+/** Restart the stadium bed this many seconds before the hey clip ends. */
+const CROWD_BED_RESTART_BEFORE_HEY_END_SEC = 0.5;
+
+let hockeyCrowdPlaying = false;
+
+export function isHockeyCrowdPlaying() {
+  return hockeyCrowdPlaying;
+}
+
 /**
- * Stadium bed: random 10-minute slice starting after 5:00 in the hour file.
- * Chant: loops the “hey hey hey” crowd clip on top.
+ * Hockey menu crowd: random 10-minute stadium slice (after 5:00 in the hour file).
+ * Hey-hey-hey plays only in the last second of each slice; the bed restarts 0.5s
+ * before the hey clip ends, then repeats.
  */
-export function startGameCrowdAmbient() {
-  stopGameCrowdAmbient();
+export function startHockeyCrowd() {
+  if (hockeyCrowdPlaying) return;
+  stopHockeyCrowd();
+  hockeyCrowdPlaying = true;
+  const session = ++hockeyCrowdSession;
+
   void ensureAudioRunning().then(async (c) => {
-    if (!c || !ambientGain) return;
+    if (session !== hockeyCrowdSession) return;
+    if (!c || !ambientGain) {
+      hockeyCrowdPlaying = false;
+      return;
+    }
     const { loopStart, loopEnd } = await pickRandomStadiumSegment();
-    const chantGain = c.createGain();
-    chantGain.gain.value = 0.72;
-    chantGain.connect(ambientGain);
 
-    const bed = startTrackFromFile(
-      c,
-      ambientGain,
-      CROWD_STADIUM_HOUR,
-      loopStart,
-      loopEnd,
-    );
+    const bed = new Audio(CROWD_STADIUM_HOUR);
+    bed.crossOrigin = "anonymous";
+    bed.preload = "auto";
 
-    let chant: { stop: () => void } | null = null;
-    const chantTimer = window.setTimeout(() => {
-      chant = startTrackFromFile(c, chantGain, CROWD_HEY_CHANT, 0);
-    }, 1500);
+    const chant = new Audio(CROWD_HEY_CHANT);
+    chant.crossOrigin = "anonymous";
+    chant.preload = "auto";
+
+    let bedSource: MediaElementAudioSourceNode | null = null;
+    let chantSource: MediaElementAudioSourceNode | null = null;
+    try {
+      bedSource = c.createMediaElementSource(bed);
+      bedSource.connect(ambientGain);
+      chantSource = c.createMediaElementSource(chant);
+      chantSource.connect(ambientGain);
+    } catch {
+      /* fallback: element audio only */
+    }
+
+    let stopped = false;
+    let chantTriggered = false;
+    let handoffPending = false;
+
+    const beginBedCycle = () => {
+      chantTriggered = false;
+      handoffPending = false;
+      try {
+        chant.pause();
+      } catch {
+        /* ignore */
+      }
+      chant.currentTime = 0;
+      bed.currentTime = loopStart;
+      bed.play().catch(() => {});
+    };
+
+    const onBedTimeUpdate = () => {
+      if (stopped || chantTriggered) return;
+      if (bed.currentTime >= loopEnd - CROWD_HEY_LEAD_SEC) {
+        chantTriggered = true;
+        chant.currentTime = 0;
+        chant.play().catch(() => {});
+      }
+      if (bed.currentTime >= loopEnd - 0.05) {
+        try {
+          bed.pause();
+        } catch {
+          /* ignore */
+        }
+      }
+    };
+
+    const onChantTimeUpdate = () => {
+      if (stopped || handoffPending) return;
+      const d =
+        Number.isFinite(chant.duration) && chant.duration > 0
+          ? chant.duration
+          : 3;
+      if (chant.currentTime >= d - CROWD_BED_RESTART_BEFORE_HEY_END_SEC) {
+        handoffPending = true;
+        beginBedCycle();
+      }
+    };
+
+    bed.addEventListener("timeupdate", onBedTimeUpdate);
+    chant.addEventListener("timeupdate", onChantTimeUpdate);
+
+    const onBedReady = () => {
+      beginBedCycle();
+    };
+    if (bed.readyState >= 2) onBedReady();
+    else bed.addEventListener("canplay", onBedReady, { once: true });
 
     gameCrowdNodes = {
       stop: () => {
-        window.clearTimeout(chantTimer);
-        bed.stop();
-        chant?.stop();
+        stopped = true;
+        hockeyCrowdPlaying = false;
+        bed.removeEventListener("timeupdate", onBedTimeUpdate);
+        chant.removeEventListener("timeupdate", onChantTimeUpdate);
         try {
-          chantGain.disconnect();
+          bed.pause();
+          chant.pause();
+        } catch {
+          /* ignore */
+        }
+        try {
+          bedSource?.disconnect();
+          chantSource?.disconnect();
+        } catch {
+          /* ignore */
+        }
+        bed.src = "";
+        chant.src = "";
+        try {
+          bed.load();
+          chant.load();
         } catch {
           /* ignore */
         }
@@ -832,17 +926,35 @@ export function startGameCrowdAmbient() {
   });
 }
 
-export function stopGameCrowdAmbient() {
+export function stopHockeyCrowd() {
+  hockeyCrowdSession += 1;
   if (gameCrowdNodes) {
     gameCrowdNodes.stop();
     gameCrowdNodes = null;
   }
+  hockeyCrowdPlaying = false;
 }
 
-/** @deprecated Theme-specific ambient removed; use startGameCrowdAmbient. */
+/** Toggle from Hockey → Crowd; returns whether crowd is now playing. */
+export function toggleHockeyCrowd(): boolean {
+  if (hockeyCrowdPlaying) {
+    stopHockeyCrowd();
+    return false;
+  }
+  startHockeyCrowd();
+  return true;
+}
+
+/** @deprecated Crowd is manual from Hockey settings. */
+export function startGameCrowdAmbient() {}
+
+/** @deprecated Use stopHockeyCrowd. */
+export function stopGameCrowdAmbient() {
+  stopHockeyCrowd();
+}
+
 export function setThemeAmbient(_themeId: string) {}
 
-/** @deprecated Use stopGameCrowdAmbient. */
 export function stopThemeAmbient() {
-  stopGameCrowdAmbient();
+  stopHockeyCrowd();
 }

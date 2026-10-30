@@ -8,8 +8,7 @@ import {
   playSfx,
   playSfxClip,
   prefetchSfxClip,
-  startGameCrowdAmbient,
-  stopGameCrowdAmbient,
+  stopHockeyCrowd,
   setCrowdIntensity as setAudioCrowdIntensity,
 } from "@/lib/audio";
 import { NHL_HORN_SRC } from "@/lib/nhlTeams";
@@ -303,12 +302,11 @@ export function ScoreboardDisplay() {
     return () => setAudioMusic("none");
   }, [musicEnabled, musicTrack]);
 
-  // Stadium crowd bed + “hey hey hey” chant (volume from crowdIntensity pref)
   useEffect(() => {
-    startGameCrowdAmbient();
     setAudioCrowdIntensity(crowdIntensity);
-    return () => stopGameCrowdAmbient();
   }, [crowdIntensity]);
+
+  useEffect(() => () => stopHockeyCrowd(), []);
 
   // Pre-decode frequently used audio clips so taps fire instantly with zero lag.
   useEffect(() => {

@@ -1,6 +1,12 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { useGameStore } from "@/lib/gameStore";
+import {
+  isHockeyCrowdPlaying,
+  setCrowdIntensity as setAudioCrowdIntensity,
+  toggleHockeyCrowd,
+} from "@/lib/audio";
 import type { HockeyFeatureToggles, TeamId } from "@/lib/types";
 import { BoxScoreTable } from "./BasketballScoreboard";
 import { MenuPanelBody } from "./MenuScrollLayout";
@@ -74,6 +80,12 @@ export function HockeyPanel({
     setEmptyNetTeam(emptyNetTeam === team ? null : team);
     onReturnToScoreboard?.();
   };
+
+  const crowdIntensity = useGameStore((s) => s.crowdIntensity);
+  const [crowdPlaying, setCrowdPlaying] = useState(isHockeyCrowdPlaying);
+  useEffect(() => {
+    setCrowdPlaying(isHockeyCrowdPlaying());
+  }, []);
 
   if (view === "periods") {
     if (!toggles.periodBoxScore) {
@@ -187,6 +199,32 @@ export function HockeyPanel({
         </div>
         </PanelWide>
       )}
+
+      <PanelWide>
+      <div className="rounded-xl border border-emerald-500/30 bg-emerald-950/40 p-3">
+        <p className="text-sm font-bold text-emerald-200">Crowd</p>
+        <p className="mt-1 text-xs text-zinc-500">
+          Ten minutes of stadium noise from a random spot after 5:00 in the hour
+          track, then “hey hey hey” in the last second—bed picks back up 0.5s
+          before the chant ends.
+        </p>
+        <button
+          type="button"
+          onClick={() => {
+            if (!crowdPlaying) setAudioCrowdIntensity(crowdIntensity);
+            setCrowdPlaying(toggleHockeyCrowd());
+            onReturnToScoreboard?.();
+          }}
+          className={`mt-3 w-full rounded-xl py-2.5 text-sm font-bold text-white ${
+            crowdPlaying
+              ? "bg-emerald-700 hover:bg-emerald-600"
+              : "bg-emerald-800 hover:bg-emerald-700"
+          }`}
+        >
+          {crowdPlaying ? "Stop crowd" : "Crowd"}
+        </button>
+      </div>
+      </PanelWide>
 
       <PanelWide>
       <div className="rounded-xl border border-sky-500/30 bg-sky-950/40 p-3">
