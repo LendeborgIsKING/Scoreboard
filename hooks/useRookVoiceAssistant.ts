@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 
 type TeamSide = "a" | "b";
-type MusicTrackId = "none" | "hype" | "anthem";
+type MusicTrackId = "none" | "anthem" | "shuffle";
 
 type VoiceOptions = {
   teamAName: string;
@@ -256,11 +256,11 @@ export function useRookVoiceAssistant(options: VoiceOptions) {
         speak("Anthem selected.");
         return;
       }
-      if (includesAny(commandText, [" hype", " hype track", " music on", " play music"])) {
-        opts.setMusicTrack("hype");
+      if (includesAny(commandText, [" hype", " shuffle", " music on", " play music"])) {
+        opts.setMusicTrack("shuffle");
         opts.setMusicEnabled(true);
-        opts.showBanner("Rook", "Music: hype.", "info");
-        speak("Hype music selected.");
+        opts.showBanner("Rook", "Music: song shuffle.", "info");
+        speak("Song shuffle selected.");
         return;
       }
       if (commandText.includes("possession")) {

@@ -2274,7 +2274,7 @@ export const useGameStore = create<GameStore>()(
         if (!merged.musicTrack) merged.musicTrack = "none";
         const rawTrack = (persisted as { musicTrack?: unknown } | undefined)
           ?.musicTrack;
-        if (rawTrack === "hype2") merged.musicTrack = "hype";
+        if (rawTrack === "hype" || rawTrack === "hype2") merged.musicTrack = "shuffle";
         if (rawTrack === "ambient") merged.musicTrack = "none";
         if (typeof merged.musicVolume !== "number") merged.musicVolume = 0.3;
         if (!merged.periodScores) merged.periodScores = { a: [0], b: [0] };

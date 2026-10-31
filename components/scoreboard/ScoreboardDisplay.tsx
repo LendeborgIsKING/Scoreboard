@@ -440,7 +440,7 @@ export function ScoreboardDisplay() {
                 if (playing) {
                   setMusicEnabled(false);
                 } else {
-                  if (musicTrack === "none") setMusicTrack("hype");
+                  if (musicTrack === "none") setMusicTrack("shuffle");
                   setMusicEnabled(true);
                 }
               }}

@@ -628,6 +628,7 @@ const SHUFFLE_PLAYLIST: ShuffleSong[] = [
   { src: "/music/lose-yourself.mp3", start: 0 },
   { src: "/music/thunderstruck.mp3", start: 0 },
   { src: "/music/cult-of-personality.mp3", start: 0 },
+  { src: "/music/kernkraft.mp3", start: 45, end: 105, fade: 4 },
 ];
 
 function startShufflePlaylist(
@@ -780,8 +781,6 @@ export function setMusic(track: MusicTrack) {
   if (!c || !masterMusicGain) return;
   if (c.state !== "running") void ensureAudioRunning();
 
-  if (track === "hype")
-    musicNodes = startTrackFromFile(c, masterMusicGain, "/music/kernkraft.mp3", 45, 105);
   if (track === "anthem")
     musicNodes = startTrackFromFile(c, masterMusicGain, ANTHEM_MP3, 0);
   if (track === "shuffle")

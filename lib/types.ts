@@ -93,7 +93,7 @@ export type ScoreSoundId =
   | "tada"
   | "none";
 
-export type MusicTrackId = "none" | "hype" | "anthem" | "shuffle" | "youtube";
+export type MusicTrackId = "none" | "anthem" | "shuffle" | "youtube";
 
 export interface ShotClockState {
   enabled: boolean;

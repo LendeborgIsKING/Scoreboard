@@ -77,11 +77,10 @@ const THEMES: { id: import("@/lib/types").ThemeId; label: string; chip: string }
 const TARGET_PRESETS = [11, 15, 21];
 
 const TRACKS: {
-  id: "none" | "hype" | "anthem" | "shuffle";
+  id: "none" | "anthem" | "shuffle";
   label: string;
 }[] = [
   { id: "none", label: "Off" },
-  { id: "hype", label: "Hype (Kernkraft)" },
   { id: "anthem", label: "Anthem (Star-Spangled Banner)" },
   { id: "shuffle", label: "Song Shuffle" },
 ];
