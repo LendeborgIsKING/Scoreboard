@@ -627,6 +627,7 @@ const SHUFFLE_PLAYLIST: ShuffleSong[] = [
   { src: "/music/seven-nation-army.mp3", start: 0, end: 157, fade: 4 },
   { src: "/music/lose-yourself.mp3", start: 0 },
   { src: "/music/thunderstruck.mp3", start: 0 },
+  { src: "/music/cult-of-personality.mp3", start: 0 },
 ];
 
 function startShufflePlaylist(
