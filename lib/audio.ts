@@ -22,7 +22,7 @@ let ctx: AudioContext | null = null;
 let masterSfxGain: GainNode | null = null;
 let masterMusicGain: GainNode | null = null;
 
-let musicNodes: { stop: () => void } | null = null;
+let musicNodes: MusicHandle | null = null;
 let currentTrack: MusicTrack = "none";
 
 function ensureCtx(): AudioContext | null {
@@ -34,6 +34,15 @@ function ensureCtx(): AudioContext | null {
       (window as unknown as { webkitAudioContext: typeof AudioContext })
         .webkitAudioContext;
     ctx = new Ctor();
+    // iOS: play through the silent/ringer switch like a media app.
+    const nav = navigator as Navigator & { audioSession?: { type: string } };
+    if (nav.audioSession) {
+      try {
+        nav.audioSession.type = "playback";
+      } catch {
+        /* ignore */
+      }
+    }
     masterSfxGain = ctx.createGain();
     masterSfxGain.gain.value = 0.6;
     masterSfxGain.connect(ctx.destination);
@@ -49,8 +58,17 @@ function ensureCtx(): AudioContext | null {
   return ctx;
 }
 
-let audioUnlocked = false;
 let resumeInFlight: Promise<AudioContext | null> | null = null;
+
+/** Safari can leave `resume()` pending forever when called outside a gesture. */
+const RESUME_TIMEOUT_MS = 1200;
+
+function resumeWithTimeout(c: AudioContext): Promise<void> {
+  return Promise.race([
+    c.resume().catch(() => {}),
+    new Promise<void>((r) => window.setTimeout(r, RESUME_TIMEOUT_MS)),
+  ]);
+}
 
 /** Await a running AudioContext (required on iOS / after tab backgrounding). */
 export async function ensureAudioRunning(): Promise<AudioContext | null> {
@@ -61,24 +79,28 @@ export async function ensureAudioRunning(): Promise<AudioContext | null> {
 
   resumeInFlight = (async () => {
     try {
-      if (c.state === "suspended") await c.resume();
-      if (c.state !== "running") {
-        const buf = c.createBuffer(1, 1, c.sampleRate);
-        const src = c.createBufferSource();
-        src.buffer = buf;
-        src.connect(c.destination);
-        src.start(0);
-        if (c.state === "suspended") await c.resume();
-      }
+      // Silent one-sample buffer helps iOS unlock output inside the gesture.
+      const buf = c.createBuffer(1, 1, c.sampleRate);
+      const src = c.createBufferSource();
+      src.buffer = buf;
+      src.connect(c.destination);
+      src.start(0);
+      await resumeWithTimeout(c);
     } catch {
       return null;
     }
-    return c.state === "running" ? c : null;
+    return (c.state as string) === "running" ? c : null;
   })().finally(() => {
     resumeInFlight = null;
   });
 
   return resumeInFlight;
+}
+
+/** Resume the context and restart any music element the browser paused. */
+function resumeActiveAudio() {
+  void ensureAudioRunning();
+  musicNodes?.resume();
 }
 
 /** Sync Web Audio master gains from persisted game prefs (after hydration). */
@@ -97,7 +119,7 @@ export function applyAudioOutputPrefs(prefs: {
 export function watchAudioLifecycle(): () => void {
   if (typeof window === "undefined") return () => {};
   const resumeIfNeeded = () => {
-    if (document.visibilityState === "visible") void ensureAudioRunning();
+    if (document.visibilityState === "visible") resumeActiveAudio();
   };
   document.addEventListener("visibilitychange", resumeIfNeeded);
   window.addEventListener("pageshow", resumeIfNeeded);
@@ -109,23 +131,21 @@ export function watchAudioLifecycle(): () => void {
   };
 }
 
-/** Resume the audio context on the very first user gesture. iOS/Safari leaves
- *  it suspended until then; doing this proactively means the first real tap
- *  doesn't lose any audio. */
+let gestureListenersAttached = false;
+
+/** Resume the audio context on every user gesture where it isn't running.
+ *  iOS/Safari starts it suspended and re-suspends it after interruptions
+ *  (calls, Siri, backgrounding), and only a gesture can wake it again. */
 export function primeAudioOnFirstGesture() {
-  if (typeof window === "undefined") return;
+  if (typeof window === "undefined" || gestureListenersAttached) return;
+  gestureListenersAttached = true;
   const unlock = () => {
-    void ensureAudioRunning().then((c) => {
-      if (c?.state !== "running") return;
-      audioUnlocked = true;
-      window.removeEventListener("pointerdown", unlock);
-      window.removeEventListener("touchstart", unlock);
-      window.removeEventListener("keydown", unlock);
-    });
+    if (ctx?.state === "running" && !musicNodes?.needsResume()) return;
+    resumeActiveAudio();
   };
-  window.addEventListener("pointerdown", unlock, { passive: true });
-  window.addEventListener("touchstart", unlock, { passive: true });
-  window.addEventListener("keydown", unlock);
+  window.addEventListener("pointerdown", unlock, { passive: true, capture: true });
+  window.addEventListener("touchend", unlock, { passive: true, capture: true });
+  window.addEventListener("keydown", unlock, { capture: true });
 }
 
 export function setSfxVolume(v: number) {
@@ -456,21 +476,24 @@ function playSfxClipWithContext(
   audio.addEventListener("ended", onEnded);
   audio.addEventListener("error", onErr, { once: true });
 
-  const startPlayback = () => {
-    audio.currentTime = startSec;
-    audio.play().catch(() => cleanup(false));
-  };
+  playElementFrom(audio, startSec).catch(() => cleanup(false));
+}
 
+/** Start an element at `startSec` with `play()` called synchronously, so it
+ *  still counts as part of the user gesture (Safari rejects deferred plays). */
+function playElementFrom(audio: HTMLAudioElement, startSec: number): Promise<void> {
   if (startSec > 0) {
-    if (audio.readyState >= 2) {
-      startPlayback();
-    } else {
-      audio.addEventListener("canplay", startPlayback, { once: true });
-      audio.load();
+    const seek = () => {
+      if (Math.abs(audio.currentTime - startSec) > 0.25) audio.currentTime = startSec;
+    };
+    try {
+      audio.currentTime = startSec;
+    } catch {
+      /* not seekable yet */
     }
-  } else {
-    audio.play().catch(() => cleanup(false));
+    if (audio.readyState < 1) audio.addEventListener("loadedmetadata", seek, { once: true });
   }
+  return audio.play();
 }
 
 export function playSfxClip(
@@ -480,9 +503,16 @@ export function playSfxClip(
   opts: PlayClipOptions = {},
 ) {
   stopActiveSfxClip();
-  void ensureAudioRunning().then((c) => {
-    if (!c) return;
+  const c = ensureCtx();
+  if (!c) return;
+  if (c.state === "running" || !decodedClipCache.has(src)) {
+    if (c.state !== "running") void ensureAudioRunning();
     playSfxClipWithContext(c, src, startSec, endSec, opts);
+    return;
+  }
+  void ensureAudioRunning().then((running) => {
+    if (!running) return;
+    playSfxClipWithContext(running, src, startSec, endSec, opts);
   });
 }
 
@@ -502,26 +532,42 @@ export function vibrate(pattern: number | number[]) {
  * from `loopStart` once it ends. Routed through the master music gain via a
  * MediaElementAudioSourceNode so the music volume slider applies.
  */
+type MusicHandle = {
+  stop: () => void;
+  /** Re-issue `play()` if the browser paused or blocked the element. */
+  resume: () => void;
+  needsResume: () => boolean;
+};
+
+function routeElement(
+  c: AudioContext,
+  audio: HTMLAudioElement,
+  dest: AudioNode,
+): MediaElementAudioSourceNode | null {
+  try {
+    const source = c.createMediaElementSource(audio);
+    source.connect(dest);
+    return source;
+  } catch {
+    // Element plays to the default output; approximate the music volume.
+    audio.volume = Math.min(1, Math.max(0, masterMusicGain?.gain.value ?? 1));
+    return null;
+  }
+}
+
 function startTrackFromFile(
   c: AudioContext,
   dest: AudioNode,
   src: string,
   loopStart: number,
   loopEnd?: number,
-): { stop: () => void } {
+): MusicHandle {
   const audio = new Audio(src);
   audio.crossOrigin = "anonymous";
   audio.preload = "auto";
   audio.loop = false;
-  audio.currentTime = loopStart;
-
-  let source: MediaElementAudioSourceNode | null = null;
-  try {
-    source = c.createMediaElementSource(audio);
-    source.connect(dest);
-  } catch {
-    // Fallback: route through default destination if Web Audio routing fails.
-  }
+  const source = routeElement(c, audio, dest);
+  let stopped = false;
 
   const onTimeUpdate = () => {
     if (loopEnd != null && audio.currentTime >= loopEnd) {
@@ -529,21 +575,17 @@ function startTrackFromFile(
     }
   };
   const onEnded = () => {
-    audio.currentTime = loopStart;
-    audio.play().catch(() => {});
+    if (stopped) return;
+    playElementFrom(audio, loopStart).catch(() => {});
   };
   audio.addEventListener("timeupdate", onTimeUpdate);
   audio.addEventListener("ended", onEnded);
 
-  const onCanPlay = () => {
-    audio.currentTime = loopStart;
-    audio.play().catch(() => {});
-  };
-  if (audio.readyState >= 2) onCanPlay();
-  else audio.addEventListener("canplay", onCanPlay, { once: true });
+  playElementFrom(audio, loopStart).catch(() => {});
 
   return {
     stop: () => {
+      stopped = true;
       audio.removeEventListener("timeupdate", onTimeUpdate);
       audio.removeEventListener("ended", onEnded);
       try {
@@ -556,12 +598,16 @@ function startTrackFromFile(
       } catch {
         /* ignore */
       }
-      audio.src = "";
+      audio.removeAttribute("src");
       try {
         audio.load();
       } catch {
         /* ignore */
       }
+    },
+    needsResume: () => !stopped && audio.paused,
+    resume: () => {
+      if (!stopped && audio.paused) audio.play().catch(() => {});
     },
   };
 }
@@ -578,12 +624,15 @@ const SHUFFLE_PLAYLIST: ShuffleSong[] = [
   { src: "/music/enter-sandman.mp3", start: 0, end: 120, fade: 4 },
   { src: "/music/we-will-rock-you.mp3", start: 0 },
   { src: "/music/mr-brightside.mp3", start: 0, end: 97, fade: 4 },
+  { src: "/music/seven-nation-army.mp3", start: 0, end: 157, fade: 4 },
+  { src: "/music/lose-yourself.mp3", start: 0 },
+  { src: "/music/thunderstruck.mp3", start: 0 },
 ];
 
 function startShufflePlaylist(
   c: AudioContext,
   dest: AudioNode
-): { stop: () => void } {
+): MusicHandle {
   let stopped = false;
   
   const activeAudio = new Audio();
@@ -595,19 +644,28 @@ function startShufflePlaylist(
   activeGain.gain.value = 1;
   activeGain.connect(dest);
 
-  let activeSource: MediaElementAudioSourceNode | null = null;
-  try {
-    activeSource = c.createMediaElementSource(activeAudio);
-    activeSource.connect(activeGain);
-  } catch {
-    // Fallback
-  }
+  const activeSource = routeElement(c, activeAudio, activeGain);
 
   let timeoutId: number | null = null;
   let fadeTimeoutId: number | null = null;
+  let queue: number[] = [];
   let lastIndex = -1;
   let currentSong: ShuffleSong | null = null;
   let fadeTriggered = false;
+  let consecutiveErrors = 0;
+
+  /** Every song plays once before any repeats; no back-to-back repeat across rounds. */
+  const nextIndex = () => {
+    if (queue.length === 0) {
+      queue = SHUFFLE_PLAYLIST.map((_, i) => i);
+      for (let i = queue.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [queue[i], queue[j]] = [queue[j], queue[i]];
+      }
+      if (queue.length > 1 && queue[0] === lastIndex) queue.push(queue.shift()!);
+    }
+    return queue.shift()!;
+  };
 
   const cleanupTimers = () => {
     if (timeoutId !== null) {
@@ -624,10 +682,7 @@ function startShufflePlaylist(
     if (stopped) return;
     cleanupTimers();
     
-    let index = Math.floor(Math.random() * SHUFFLE_PLAYLIST.length);
-    if (SHUFFLE_PLAYLIST.length > 1 && index === lastIndex) {
-      index = (index + 1) % SHUFFLE_PLAYLIST.length;
-    }
+    const index = nextIndex();
     lastIndex = index;
     currentSong = SHUFFLE_PLAYLIST[index];
     fadeTriggered = false;
@@ -637,25 +692,18 @@ function startShufflePlaylist(
     activeGain.gain.setValueAtTime(1, c.currentTime);
 
     activeAudio.src = currentSong.src;
-    activeAudio.currentTime = currentSong.start;
+    // A blocked play() (no gesture yet) stays paused; the next tap resumes it.
+    playElementFrom(activeAudio, currentSong.start).catch(() => {});
+  };
 
-    // We must wait for 'canplay' before setting currentTime sometimes, but usually 
-    // setting it immediately is fine. Play returns a promise.
-    const attemptPlay = () => {
-      if (stopped) return;
-      activeAudio.play().catch(() => {
-        // If play fails (e.g. lack of user gesture on some strict browsers despite reuse),
-        // wait and try next song.
-        if (!stopped) timeoutId = window.setTimeout(playNext, 2000);
-      });
-    };
-
-    if (activeAudio.readyState >= 2) {
-      attemptPlay();
-    } else {
-      activeAudio.addEventListener("canplay", attemptPlay, { once: true });
-      activeAudio.load();
-    }
+  const onError = () => {
+    if (stopped) return;
+    consecutiveErrors += 1;
+    if (consecutiveErrors >= SHUFFLE_PLAYLIST.length) return;
+    timeoutId = window.setTimeout(playNext, 500);
+  };
+  const onPlaying = () => {
+    consecutiveErrors = 0;
   };
 
   const onTimeUpdate = () => {
@@ -680,8 +728,13 @@ function startShufflePlaylist(
 
   activeAudio.addEventListener("timeupdate", onTimeUpdate);
   activeAudio.addEventListener("ended", onEnded);
+  activeAudio.addEventListener("error", onError);
+  activeAudio.addEventListener("playing", onPlaying);
 
   playNext();
+
+  const isPausedMidSong = () =>
+    !stopped && timeoutId === null && activeAudio.paused && !activeAudio.ended;
 
   return {
     stop: () => {
@@ -689,11 +742,17 @@ function startShufflePlaylist(
       cleanupTimers();
       activeAudio.removeEventListener("timeupdate", onTimeUpdate);
       activeAudio.removeEventListener("ended", onEnded);
+      activeAudio.removeEventListener("error", onError);
+      activeAudio.removeEventListener("playing", onPlaying);
       try { activeAudio.pause(); } catch {}
       try { activeAudio.removeAttribute("src"); } catch {}
       try { activeAudio.load(); } catch {}
       try { activeSource?.disconnect(); } catch {}
       try { activeGain?.disconnect(); } catch {}
+    },
+    needsResume: isPausedMidSong,
+    resume: () => {
+      if (isPausedMidSong()) activeAudio.play().catch(() => {});
     },
   };
 }
@@ -701,33 +760,31 @@ function startShufflePlaylist(
 /** PD US Gov — Army Field Band; source .oga: https://commons.wikimedia.org/wiki/File:%22The_Star-Spangled_Banner%22_-_Choral_with_band_accompaniment_-_United_States_Army_Field_Band.oga */
 const ANTHEM_MP3 = "/music/star-spangled-banner-anthem.mp3";
 
+/** Must stay synchronous: `play()` has to run inside the triggering gesture,
+ *  and rapid toggles must apply in call order. */
 export function setMusic(track: MusicTrack) {
-  if (track === currentTrack) return;
-  void ensureAudioRunning().then((c) => {
-    if (!c || !masterMusicGain) return;
-    if (musicNodes) {
-      musicNodes.stop();
-      musicNodes = null;
-    }
-    currentTrack = track;
-    if (track === "none") return;
-    if (track === "hype")
-      musicNodes = startTrackFromFile(
-        c,
-        masterMusicGain,
-        "/music/kernkraft.mp3",
-        45,
-        105,
-      );
-    if (track === "anthem")
-      musicNodes = startTrackFromFile(c, masterMusicGain, ANTHEM_MP3, 0);
-    if (track === "shuffle")
-      musicNodes = startShufflePlaylist(c, masterMusicGain);
-    if (track === "youtube") {
-      // YouTube audio is handled by the IFrame player component.
-      return;
-    }
-  });
+  if (track === currentTrack) {
+    musicNodes?.resume();
+    return;
+  }
+  if (musicNodes) {
+    musicNodes.stop();
+    musicNodes = null;
+  }
+  currentTrack = track;
+  // YouTube audio is handled by the IFrame player component.
+  if (track === "none" || track === "youtube") return;
+
+  const c = ensureCtx();
+  if (!c || !masterMusicGain) return;
+  if (c.state !== "running") void ensureAudioRunning();
+
+  if (track === "hype")
+    musicNodes = startTrackFromFile(c, masterMusicGain, "/music/kernkraft.mp3", 45, 105);
+  if (track === "anthem")
+    musicNodes = startTrackFromFile(c, masterMusicGain, ANTHEM_MP3, 0);
+  if (track === "shuffle")
+    musicNodes = startShufflePlaylist(c, masterMusicGain);
 }
 
 export function getCurrentTrack(): MusicTrack {
