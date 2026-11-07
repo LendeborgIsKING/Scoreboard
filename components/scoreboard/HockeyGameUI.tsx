@@ -8,6 +8,7 @@ import type { TeamId } from "@/lib/types";
 /** Shots on goal — away # | SOG | home # with + to increment. */
 export function HockeySogDisplay() {
   const sportId = useGameStore((s) => s.sportId);
+  const presentation = useGameStore((s) => s.presentationMode);
   const toggles = useGameStore((s) => s.hockeyToggles);
   const shotsA = useGameStore((s) => s.hockeyShotsA);
   const shotsB = useGameStore((s) => s.hockeyShotsB);
@@ -21,6 +22,7 @@ export function HockeySogDisplay() {
         <span className="font-mono text-xl font-black tabular-nums text-white">
           {shotsB}
         </span>
+        {!presentation && (
         <button
           type="button"
           onClick={() => adjustShots("b", 1)}
@@ -29,6 +31,7 @@ export function HockeySogDisplay() {
         >
           +
         </button>
+        )}
       </div>
       <span className="shrink-0 px-2 text-xs font-bold uppercase tracking-[0.35em] text-sky-300">
         SOG
@@ -37,6 +40,7 @@ export function HockeySogDisplay() {
         <span className="font-mono text-xl font-black tabular-nums text-white">
           {shotsA}
         </span>
+        {!presentation && (
         <button
           type="button"
           onClick={() => adjustShots("a", 1)}
@@ -45,6 +49,7 @@ export function HockeySogDisplay() {
         >
           +
         </button>
+        )}
       </div>
     </div>
   );
@@ -53,18 +58,23 @@ export function HockeySogDisplay() {
 /** Tap to mark which team has pulled the goalie (empty net). */
 export function HockeyEmptyNetBadge({ side }: { side: TeamId }) {
   const sportId = useGameStore((s) => s.sportId);
+  const presentation = useGameStore((s) => s.presentationMode);
   const toggles = useGameStore((s) => s.hockeyToggles);
   const emptyNetTeam = useGameStore((s) => s.hockeyEmptyNetTeam);
   const setEmptyNetTeam = useGameStore((s) => s.setHockeyEmptyNetTeam);
 
   if (sportId !== "hockey" || !toggles.emptyNetIndicator) return null;
+  if (presentation && emptyNetTeam !== side) return null;
 
   const active = emptyNetTeam === side;
 
   return (
     <button
       type="button"
-      onClick={() => setEmptyNetTeam(active ? null : side)}
+      onClick={() => {
+        if (presentation) return;
+        setEmptyNetTeam(active ? null : side);
+      }}
       className={`shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-black uppercase tracking-wider transition ${
         active
           ? "border-amber-400 bg-amber-500/25 text-amber-200 shadow-[0_0_12px_rgba(251,191,36,0.35)]"
@@ -197,12 +207,13 @@ export function HockeyGoalCelebration() {
 export function HockeyTickBridge() {
   const sportId = useGameStore((s) => s.sportId);
   const tick = useGameStore((s) => s.tickHockey);
+  const presentation = useGameStore((s) => s.presentationMode);
 
   useEffect(() => {
-    if (sportId !== "hockey") return;
+    if (presentation || sportId !== "hockey") return;
     const id = window.setInterval(() => tick(), 200);
     return () => window.clearInterval(id);
-  }, [sportId, tick]);
+  }, [presentation, sportId, tick]);
 
   return null;
 }

@@ -29,11 +29,14 @@ export function MobileAppShell({
   children,
   isGame,
   scrollable,
+  tvDisplay,
 }: {
   children: ReactNode;
   isGame?: boolean;
   /** Only the opening sport menu scrolls; every other screen must fit the viewport. */
   scrollable?: boolean;
+  /** Full-bleed TV / Cast receiver — no phone frame. */
+  tvDisplay?: boolean;
 }) {
   const { isMobile, mounted } = useIsMobileDevice();
   const paneClass = scrollable
@@ -58,6 +61,10 @@ export function MobileAppShell({
         {children}
       </div>
     );
+  }
+
+  if (tvDisplay) {
+    return <AutoFitGameShell>{children}</AutoFitGameShell>;
   }
 
   if (isMobile) {

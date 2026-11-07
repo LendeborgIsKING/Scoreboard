@@ -10,11 +10,13 @@ import { resolveSportConfig } from "@/lib/sportRegistry";
  * the scoreboard. Auto-dismisses when the horn finishes on its own.
  */
 export function StopHornOverlay() {
+  const presentation = useGameStore((s) => s.presentationMode);
   const sportId = useGameStore((s) => s.sportId);
   const customSport = useGameStore((s) => s.customSport);
   const hornPlaying = useGameStore((s) => s.hornPlaying);
   const stopHorn = useGameStore((s) => s.stopHorn);
   const cfg = resolveSportConfig(sportId, customSport);
+  if (presentation) return null;
 
   if (cfg.id !== "hockey") return null;
 

@@ -9,9 +9,11 @@ import { useGameStore } from "@/lib/gameStore";
  * the iconic synth hook (13 s in). Tap "Not now" to dismiss.
  */
 export function FinalCountdownPrompt() {
+  const presentation = useGameStore((s) => s.presentationMode);
   const visible = useGameStore((s) => s.finalCountdownPromptVisible);
   const dismiss = useGameStore((s) => s.dismissFinalCountdownPrompt);
   const play = useGameStore((s) => s.playFinalCountdown);
+  if (presentation) return null;
 
   return (
     <AnimatePresence>

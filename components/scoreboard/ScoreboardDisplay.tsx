@@ -279,7 +279,7 @@ export function ScoreboardDisplay() {
   const clockMs = useTimerMs();
   const clockSec = Math.ceil(clockMs / 1000);
   useCountdownTick();
-  useKeyboardShortcuts(true);
+  useKeyboardShortcuts(!presentation);
   useWakeLock(keepAwakeEnabled);
 
   const longPressB = useLongPress(() => {
@@ -389,11 +389,12 @@ export function ScoreboardDisplay() {
   };
 
   const onClockClick = () => {
-    if (!showGameClock) return;
+    if (presentation || !showGameClock) return;
     if (editing) openClockPicker();
     else setCountdownDuration(timer.countdownFromSeconds);
   };
   const onPeriodClick = () => {
+    if (presentation) return;
     if (editing) setPopover("period");
     else nextPeriod();
   };
@@ -401,6 +402,7 @@ export function ScoreboardDisplay() {
     if (editing) openTeamPicker(side);
   };
   const onShotClockClick = () => {
+    if (presentation) return;
     if (editing) {
       openShotClockPicker();
       return;
@@ -416,9 +418,10 @@ export function ScoreboardDisplay() {
     ? "border-2 border-dashed border-red-500 rounded-lg px-3 py-1"
     : "";
 
-  const scoreboardShellClass = isMobile
-    ? "relative flex h-full w-full flex-col overflow-hidden"
-    : "absolute left-1/2 top-1/2 flex h-[390px] w-[844px] -translate-x-1/2 -translate-y-1/2 rotate-90 flex-col overflow-hidden";
+  const scoreboardShellClass =
+    isMobile || presentation
+      ? "relative flex h-full w-full flex-col overflow-hidden"
+      : "absolute left-1/2 top-1/2 flex h-[390px] w-[844px] -translate-x-1/2 -translate-y-1/2 rotate-90 flex-col overflow-hidden";
 
   return (
     <div
@@ -532,6 +535,7 @@ export function ScoreboardDisplay() {
               <div className="flex items-center justify-center gap-2">
                 <ShotClock onClick={onShotClockClick} fontClass={tokens.displayFont} />
                 <div className="flex items-center gap-1">
+                  {!presentation && (
                   <CircleBtn
                     icon={
                       timer.running ? (
@@ -543,6 +547,7 @@ export function ScoreboardDisplay() {
                     onClick={() => (timer.running ? pauseTimer() : startTimer())}
                     ariaLabel={timer.running ? "Pause clock" : "Start clock"}
                   />
+                  )}
                   <motion.button
                     type="button"
                     onClick={onClockClick}
@@ -615,7 +620,9 @@ export function ScoreboardDisplay() {
               {showPossession && (
                 <PossessionToggle
                   active={possession === "b"}
-                  onClick={() => togglePossession("b")}
+                  onClick={() => {
+                    if (!presentation) togglePossession("b");
+                  }}
                   dir="right"
                 />
               )}
@@ -656,7 +663,11 @@ export function ScoreboardDisplay() {
                 remaining={teamB.timeouts}
                 teamLabel={teamB.name}
                 editing={editing}
-                onAdjust={(d) => editing ? adjustTimeouts("b", d) : setPopover("timeoutB")}
+                onAdjust={(d) => {
+                  if (presentation) return;
+                  if (editing) adjustTimeouts("b", d);
+                  else setPopover("timeoutB");
+                }}
               />
             )}
           </section>
@@ -687,8 +698,12 @@ export function ScoreboardDisplay() {
                 aValue={teamB.fouls}
                 bValue={teamA.fouls}
                 editing={editing}
-                onA={(d) => adjustFouls("b", d)}
-                onB={(d) => adjustFouls("a", d)}
+                onA={(d) => {
+                  if (!presentation) adjustFouls("b", d);
+                }}
+                onB={(d) => {
+                  if (!presentation) adjustFouls("a", d);
+                }}
                 displayFont={tokens.displayFont}
               />
             )}
@@ -733,7 +748,9 @@ export function ScoreboardDisplay() {
               {showPossession && (
                 <PossessionToggle
                   active={possession === "a"}
-                  onClick={() => togglePossession("a")}
+                  onClick={() => {
+                    if (!presentation) togglePossession("a");
+                  }}
                   dir="left"
                 />
               )}
@@ -759,7 +776,11 @@ export function ScoreboardDisplay() {
                 remaining={teamA.timeouts}
                 teamLabel={teamA.name}
                 editing={editing}
-                onAdjust={(d) => editing ? adjustTimeouts("a", d) : setPopover("timeoutA")}
+                onAdjust={(d) => {
+                  if (presentation) return;
+                  if (editing) adjustTimeouts("a", d);
+                  else setPopover("timeoutA");
+                }}
               />
             )}
             {!presentation && (

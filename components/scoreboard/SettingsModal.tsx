@@ -40,6 +40,14 @@ import {
   useSettingsLayout,
 } from "./SettingsLayoutContext";
 import { usePhoneLandscape } from "@/hooks/usePhoneLandscape";
+import {
+  displayUrl,
+  startCastToTv,
+  startFullscreenCast,
+  startTvWindow,
+  stopCasting,
+  useCastStatus,
+} from "@/lib/cast";
 
 type Props = {
   onClose: () => void;
@@ -58,7 +66,8 @@ type Panel =
   | "team-colors"
   | "hockey-horn"
   | "hockey"
-  | "hockey-periods";
+  | "hockey-periods"
+  | "cast";
 
 const THEMES: { id: import("@/lib/types").ThemeId; label: string; chip: string }[] = [
   { id: "dark",     label: "Dark",     chip: "bg-zinc-900" },
@@ -98,6 +107,7 @@ const PANEL_TITLES: Record<Panel, string> = {
   "hockey-horn": "Goal horns",
   hockey: "Hockey",
   "hockey-periods": "Period scores",
+  cast: "Cast to TV",
 };
 
 export function SettingsModal({
@@ -194,6 +204,7 @@ export function SettingsModal({
               onHockeyHorn={() => setPanel("hockey-horn")}
               onHockey={() => setPanel("hockey")}
               onHockeyPeriods={() => setPanel("hockey-periods")}
+              onCast={() => setPanel("cast")}
               onStats={onStats}
               onHistory={onHistory}
             />
@@ -209,6 +220,7 @@ export function SettingsModal({
             <HockeyPanel view="main" onReturnToScoreboard={onClose} />
           )}
           {panel === "hockey-periods" && <HockeyPanel view="periods" />}
+          {panel === "cast" && <CastPanel />}
         </FitScreen>
         </SettingsLayoutProvider>
       </motion.div>
@@ -229,6 +241,7 @@ function MenuView({
   onHockeyHorn,
   onHockey,
   onHockeyPeriods,
+  onCast,
   onStats,
   onHistory,
 }: {
@@ -242,6 +255,7 @@ function MenuView({
   onHockeyHorn: () => void;
   onHockey: () => void;
   onHockeyPeriods: () => void;
+  onCast: () => void;
   onStats: () => void;
   onHistory: () => void;
 }) {
@@ -295,6 +309,7 @@ function MenuView({
       <Tile label="Colors" icon={<DropGlyph />} onClick={onTeamColors} compact={isPhoneLandscape} />
       <Tile label="Stats" icon={<BarGlyph />} onClick={onStats} compact={isPhoneLandscape} />
       <Tile label="History" icon={<ListGlyph />} onClick={onHistory} compact={isPhoneLandscape} />
+      <Tile label="Cast" icon={<CastGlyph />} onClick={onCast} compact={isPhoneLandscape} />
       <Tile label="Share" icon={<ShareGlyph />} onClick={onShare} compact={isPhoneLandscape} />
       {isHockey && (
         <>
@@ -340,6 +355,125 @@ function Tile({
         {label}
       </span>
     </motion.button>
+  );
+}
+
+function CastPanel() {
+  const cast = useCastStatus();
+  const [copied, setCopied] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const { isPhoneLandscape } = useSettingsLayout();
+
+  const copyLink = async () => {
+    const url = displayUrl();
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1600);
+    } catch {
+      window.prompt("Copy this TV display link", url);
+    }
+  };
+
+  return (
+    <PanelShell title="Cast to TV">
+      <PanelGrid>
+        <PanelWide>
+          <p className="text-sm text-zinc-300">
+            Put the live scoreboard on a TV. Use this device as the controller.
+          </p>
+        </PanelWide>
+        {cast.connected && (
+          <PanelWide>
+            <p className="rounded-xl border border-lime-400/40 bg-lime-500/10 px-3 py-2 text-sm font-bold text-lime-300">
+              Connected{cast.label ? ` · ${cast.label}` : ""}
+            </p>
+          </PanelWide>
+        )}
+        <PanelWide>
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => {
+              playSfx("click");
+              setBusy(true);
+              void startCastToTv().finally(() => setBusy(false));
+            }}
+            className="w-full rounded-full bg-lime-500 px-4 py-3 text-sm font-black uppercase tracking-wider text-black transition hover:bg-lime-400 disabled:opacity-60"
+          >
+            {cast.connected ? "Cast again" : "Cast to TV"}
+          </button>
+        </PanelWide>
+        <button
+          type="button"
+          onClick={() => {
+            playSfx("click");
+            void startFullscreenCast();
+          }}
+          className="rounded-xl border border-white/20 bg-white/5 px-3 py-3 text-left text-sm font-bold text-white transition hover:bg-white/10"
+        >
+          Fullscreen
+          <span className="mt-1 block text-xs font-medium text-zinc-400">
+            Then AirPlay, Screen Mirroring, or Smart View
+          </span>
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            playSfx("click");
+            void startTvWindow();
+          }}
+          className="rounded-xl border border-white/20 bg-white/5 px-3 py-3 text-left text-sm font-bold text-white transition hover:bg-white/10"
+        >
+          TV window
+          <span className="mt-1 block text-xs font-medium text-zinc-400">
+            Second monitor, HDMI, or drag onto the TV
+          </span>
+        </button>
+        {cast.connected && (
+          <PanelWide>
+            <button
+              type="button"
+              onClick={() => {
+                playSfx("click");
+                stopCasting();
+              }}
+              className="w-full rounded-full border border-white/30 px-4 py-2 text-sm font-bold text-white transition hover:bg-white/10"
+            >
+              Stop casting
+            </button>
+          </PanelWide>
+        )}
+        <PanelWide>
+          <button
+            type="button"
+            onClick={() => {
+              playSfx("click");
+              void copyLink();
+            }}
+            className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm font-bold text-zinc-200 transition hover:bg-white/10"
+          >
+            {copied ? "Link copied" : "Copy TV display link"}
+          </button>
+        </PanelWide>
+        <PanelWide>
+          <ul
+            className={`space-y-1 text-zinc-400 ${
+              isPhoneLandscape ? "text-[11px] leading-snug" : "text-xs"
+            }`}
+          >
+            <li>Chromecast, Google TV, and many smart TVs: tap Cast to TV.</li>
+            <li>
+              Apple TV: tap Fullscreen, then Control Center → Screen Mirroring.
+            </li>
+            <li>
+              Samsung Smart View / Windows Cast: Fullscreen, then use the
+              system Cast control.
+            </li>
+          </ul>
+        </PanelWide>
+      </PanelGrid>
+    </PanelShell>
   );
 }
 
@@ -1056,6 +1190,14 @@ function SlidersGlyph() {
   return (
     <svg viewBox="0 0 24 24" className="h-7 w-7" fill="currentColor">
       <path d="M3 7h10a3 3 0 0 1 5.66 0H21v2h-2.34a3 3 0 0 1-5.66 0H3V7Zm0 8h2.34a3 3 0 0 1 5.66 0h10v2H11a3 3 0 0 1-5.66 0H3v-2Z" />
+    </svg>
+  );
+}
+
+function CastGlyph() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-7 w-7" fill="currentColor">
+      <path d="M3 4.5A1.5 1.5 0 0 1 4.5 3h15A1.5 1.5 0 0 1 21 4.5V15h-2V5H5v2.1A9.9 9.9 0 0 0 3 7V4.5ZM3 18.75a1.75 1.75 0 1 0 0 3.5 1.75 1.75 0 0 0 0-3.5Zm0-4.25a6 6 0 0 1 6 6h-2.2a3.8 3.8 0 0 0-3.8-3.8V14.5Zm0-4.2A10.2 10.2 0 0 1 13.2 20.5h-2.2A8 8 0 0 0 3 12.5V10.3Z" />
     </svg>
   );
 }
